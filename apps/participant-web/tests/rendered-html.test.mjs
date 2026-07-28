@@ -124,10 +124,12 @@ test("supports the photo verification review and completion flow", async () => {
   assert.match(pageSource, /사진 촬영하기/);
   assert.match(pageSource, /앨범에서 선택/);
   assert.match(pageSource, /주변 사람의 얼굴이나/);
-  assert.match(pageSource, /차량번호가 나오지 않도록 촬영해주세요/);
+  assert.match(pageSource, /차량번호가 나오지 않도록\s*촬영해주세요/);
   assert.match(pageSource, /className="privacy-warning"/);
+  assert.match(pageSource, /대상이 잘 보이도록 촬영하고,\s*<br \/>/);
+  assert.doesNotMatch(pageSource, /<span>△<\/span>/);
   assert.doesNotMatch(pageSource, /<b>예상 시간<\/b>/);
   assert.doesNotMatch(pageSource, /<b>주의 사항<\/b>/);
-  assert.match(pageSource, /다음 미션 보기/);
+  assert.doesNotMatch(pageSource, /다음 미션 보기/);
   assert.match(pageSource, /빙고판으로 돌아가기/);
 });
