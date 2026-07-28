@@ -72,19 +72,19 @@ button {
   cursor: not-allowed;
 }
 .ranking-timer {
-  margin: 19px 4px 10px;
+  margin: 14px 4px 5px;
   text-align: right;
   color: #777e79;
   font-size: 11px;
 }
 .my-rank-card {
-  min-height: 62px;
+  min-height: 54px;
   display: grid;
   grid-template-columns: 54px 30px 38px 1fr auto;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 10px 12px;
+  gap: 7px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
   border: 1px solid #abc4e8;
   border-left: 5px solid #376fbd;
   border-radius: 12px;
@@ -106,26 +106,10 @@ button {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
-.ranking-columns {
-  display: grid;
-  grid-template-columns: 38px 1fr auto;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 8px 8px 0 0;
-  background: #252b63;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-.ranking-columns span:last-child {
-  text-align: right;
-}
 .ranking-list {
   min-height: 315px;
   border: 1px solid #dfe3eb;
-  border-top: 0;
-  border-radius: 0 0 10px 10px;
+  border-radius: 10px;
   overflow: hidden;
   transition: opacity 0.15s;
 }
