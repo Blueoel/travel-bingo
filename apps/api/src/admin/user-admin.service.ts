@@ -9,6 +9,27 @@ import type { DatabaseClient } from "@travel-bingo/database";
 import { DATABASE_CLIENT } from "../database/database.module.js";
 
 type UserAction = "SUSPEND" | "ACTIVATE" | "WITHDRAW";
+export interface UserAdminRecord {
+  readonly id: string;
+  readonly nickname: string;
+  readonly email: string | null;
+  readonly role: "USER" | "ADMIN";
+  readonly status: "ACTIVE" | "SUSPENDED" | "DELETED";
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly _count: {
+    readonly bingoSessions: number;
+    readonly verifications: number;
+  };
+}
+export interface UserAdminMutation {
+  readonly id: string;
+  readonly nickname: string;
+  readonly email: string | null;
+  readonly role: "USER" | "ADMIN";
+  readonly status: "ACTIVE" | "SUSPENDED" | "DELETED";
+  readonly updatedAt: Date;
+}
 
 @Injectable()
 export class UserAdminService {
@@ -16,7 +37,18 @@ export class UserAdminService {
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
   ) {}
 
-  async list(query: { q?: string; status?: string }) {
+  async list(query: {
+    q?: string;
+    status?: string;
+  }): Promise<{
+    readonly items: UserAdminRecord[];
+    readonly summary: {
+      readonly total: number;
+      readonly active: number;
+      readonly suspended: number;
+      readonly deleted: number;
+    };
+  }> {
     const status: "ACTIVE" | "SUSPENDED" | "DELETED" | undefined =
       query.status === "ACTIVE" ||
       query.status === "SUSPENDED" ||
@@ -75,7 +107,7 @@ export class UserAdminService {
     userId: string,
     action: UserAction,
     administratorId: string,
-  ) {
+  ): Promise<UserAdminMutation> {
     if (!["SUSPEND", "ACTIVATE", "WITHDRAW"].includes(action)) {
       throw new BadRequestException("지원하지 않는 사용자 관리 작업입니다.");
     }

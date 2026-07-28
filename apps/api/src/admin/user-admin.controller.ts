@@ -9,7 +9,11 @@ import {
 } from "@nestjs/common";
 
 import { AuthService } from "../auth/auth.service.js";
-import { UserAdminService } from "./user-admin.service.js";
+import {
+  UserAdminService,
+  type UserAdminMutation,
+  type UserAdminRecord,
+} from "./user-admin.service.js";
 
 @Controller("api/v1/admin/users")
 export class UserAdminController {
@@ -24,7 +28,15 @@ export class UserAdminController {
     @Headers("x-user-id") developmentUserId: string | undefined,
     @Query("q") q?: string,
     @Query("status") status?: string,
-  ) {
+  ): Promise<{
+    readonly items: UserAdminRecord[];
+    readonly summary: {
+      readonly total: number;
+      readonly active: number;
+      readonly suspended: number;
+      readonly deleted: number;
+    };
+  }> {
     await this.auth.requireAdminId(cookie, developmentUserId);
     return this.users.list({
       ...(q ? { q } : {}),
@@ -38,7 +50,7 @@ export class UserAdminController {
     @Headers("x-user-id") developmentUserId: string | undefined,
     @Param("id") id: string,
     @Body() body: { action?: "SUSPEND" | "ACTIVATE" | "WITHDRAW" },
-  ) {
+  ): Promise<UserAdminMutation> {
     const administratorId = await this.auth.requireAdminId(
       cookie,
       developmentUserId,
