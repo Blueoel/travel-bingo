@@ -443,7 +443,42 @@ export default function Home() {
     setPhotoPreview(preview);
     setPhotoStage("REVIEWING");
     if (demoMode || !sessionId) {
-      window.setTimeout(() => approvePhotoMission(), 1400);
+      try {
+        const imageDataUrl = await readAsDataUrl(file);
+        const response = await fetch("/api/photo-verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            imageDataUrl,
+            title: selected.title,
+            description: selected.description,
+            verificationLabel: selected.verificationLabel,
+          }),
+        });
+        const verdict = await response.json() as {
+          decision?: "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
+          retryGuide?: string;
+          code?: string;
+          message?: string;
+        };
+        if (!response.ok || verdict.decision !== "APPROVED") {
+          setPhotoStage("DETAIL");
+          setMessage(
+            verdict.retryGuide ||
+              verdict.message ||
+              friendlyError(
+                verdict.decision === "NEEDS_REVIEW"
+                  ? "PHOTO_NEEDS_REVIEW"
+                  : verdict.code ?? "PHOTO_AI_REJECTED",
+              ),
+          );
+          return;
+        }
+        approvePhotoMission();
+      } catch {
+        setPhotoStage("DETAIL");
+        setMessage("사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.");
+      }
       return;
     }
     try {
