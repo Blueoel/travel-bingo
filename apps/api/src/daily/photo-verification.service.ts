@@ -11,10 +11,12 @@ import type { DatabaseClient } from "@travel-bingo/database";
 import { DATABASE_CLIENT } from "../database/database.module.js";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MIN_APPROVAL_CONFIDENCE = 0.85;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export interface PhotoAnalysis {
   readonly decision: "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
+  readonly targetVisible: boolean;
   readonly confidence: number;
   readonly evidence: readonly string[];
   readonly failureReasons: readonly string[];
@@ -39,15 +41,21 @@ export class PhotoVerificationService {
       where: {
         id: command.cellId,
         sessionId: command.sessionId,
-        session: { userId: command.userId, status: { in: ["ACTIVE", "CLEAR"] } },
+        session: {
+          userId: command.userId,
+          status: { in: ["ACTIVE", "CLEAR"] },
+        },
       },
       select: { missionSnapshot: true },
     });
-    if (!cell) throw new NotFoundException("The active photo mission was not found.");
+    if (!cell)
+      throw new NotFoundException("The active photo mission was not found.");
 
     const mission = asRecord(cell.missionSnapshot);
     if (mission?.kind !== "PHOTO") {
-      throw new BadRequestException("This mission does not support photo verification.");
+      throw new BadRequestException(
+        "This mission does not support photo verification.",
+      );
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -63,46 +71,66 @@ export class PhotoVerificationService {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: buildPrompt({
-                title: String(mission.title ?? "사진 미션"),
-                description: String(mission.description ?? ""),
-                targetValue: mission.targetValue,
-                verificationPolicy: mission.verificationPolicy,
-              }) },
-            { inlineData: { mimeType: image.mimeType, data: image.data } },
-          ],
-        }],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              decision: { type: "STRING", enum: ["APPROVED", "REJECTED", "NEEDS_REVIEW"] },
-              confidence: { type: "NUMBER" },
-              evidence: { type: "ARRAY", items: { type: "STRING" } },
-              failureReasons: { type: "ARRAY", items: { type: "STRING" } },
-              retryGuide: { type: "STRING" },
-            },
-            required: ["decision", "confidence", "evidence", "failureReasons", "retryGuide"],
-          },
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "content-type": "application/json",
         },
-      }),
-      signal: AbortSignal.timeout(25_000),
-    });
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: buildPrompt({
+                    title: String(mission.title ?? "사진 미션"),
+                    description: String(mission.description ?? ""),
+                    targetValue: mission.targetValue,
+                    verificationPolicy: mission.verificationPolicy,
+                  }),
+                },
+                { inlineData: { mimeType: image.mimeType, data: image.data } },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                decision: {
+                  type: "STRING",
+                  enum: ["APPROVED", "REJECTED", "NEEDS_REVIEW"],
+                },
+                targetVisible: { type: "BOOLEAN" },
+                confidence: { type: "NUMBER" },
+                evidence: { type: "ARRAY", items: { type: "STRING" } },
+                failureReasons: { type: "ARRAY", items: { type: "STRING" } },
+                retryGuide: { type: "STRING" },
+              },
+              required: [
+                "decision",
+                "targetVisible",
+                "confidence",
+                "evidence",
+                "failureReasons",
+                "retryGuide",
+              ],
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(25_000),
+      },
+    );
     if (!response.ok) {
-      throw new BadGatewayException("The photo AI provider could not complete the review.");
+      throw new BadGatewayException(
+        "The photo AI provider could not complete the review.",
+      );
     }
-    const payload = await response.json() as unknown;
-    return parseAnalysis(extractGeminiText(payload), model);
+    const payload = (await response.json()) as unknown;
+    return enforceApprovalPolicy(
+      parseAnalysis(extractGeminiText(payload), model),
+    );
   }
 }
 
@@ -120,7 +148,9 @@ function extractGeminiText(payload: unknown): string {
   const parts = Array.isArray(content?.parts) ? content.parts : [];
   const text = asRecord(parts[0])?.text;
   if (typeof text === "string") return text;
-  throw new BadGatewayException("The photo AI provider returned an invalid response.");
+  throw new BadGatewayException(
+    "The photo AI provider returned an invalid response.",
+  );
 }
 
 function buildPrompt(mission: {
@@ -131,8 +161,11 @@ function buildPrompt(mission: {
 }): string {
   return [
     "당신은 Travel Bingo 사진 미션의 검수자입니다.",
+    "미션의 핵심 대상이 사진에 실제로 명확하게 보여야 합니다.",
+    "제목이나 설명과 무관한 사진은 반드시 REJECTED로 판정하세요.",
     "사진에 직접 보이는 사실만 근거로 판단하세요. 추측하지 마세요.",
-    "조건이 분명히 충족되면 APPROVED, 분명히 불충족이면 REJECTED,",
+    "핵심 대상이 명확히 보이고 조건을 충족할 때만 targetVisible=true와 APPROVED를 함께 반환하세요.",
+    "핵심 대상이 없으면 targetVisible=false와 REJECTED를 반환하세요.",
     "가림·흐림·주관성 때문에 확신하기 어렵다면 NEEDS_REVIEW를 선택하세요.",
     `미션명: ${mission.title}`,
     `설명: ${mission.description}`,
@@ -144,7 +177,8 @@ function buildPrompt(mission: {
 }
 
 function validateImageDataUrl(value: string): void {
-  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(value);
+  const match =
+    /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(value);
   if (!match || !ALLOWED_IMAGE_TYPES.has(match[1] ?? "")) {
     throw new BadRequestException("JPEG, PNG, or WebP image data is required.");
   }
@@ -166,15 +200,18 @@ function parseAnalysis(text: string, model: string): PhotoAnalysis {
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
     const decision = parsed.decision;
+    const targetVisible = parsed.targetVisible;
     const confidence = parsed.confidence;
     if (
       !["APPROVED", "REJECTED", "NEEDS_REVIEW"].includes(String(decision)) ||
+      typeof targetVisible !== "boolean" ||
       typeof confidence !== "number"
     ) {
       throw new Error("Invalid verdict");
     }
     return {
       decision: decision as PhotoAnalysis["decision"],
+      targetVisible,
       confidence: Math.max(0, Math.min(1, confidence)),
       evidence: stringArray(parsed.evidence),
       failureReasons: stringArray(parsed.failureReasons),
@@ -189,14 +226,44 @@ function parseAnalysis(text: string, model: string): PhotoAnalysis {
   }
 }
 
+function enforceApprovalPolicy(analysis: PhotoAnalysis): PhotoAnalysis {
+  if (!analysis.targetVisible) {
+    return {
+      ...analysis,
+      decision: "REJECTED",
+      retryGuide:
+        analysis.retryGuide ??
+        "미션 대상이 사진에 보이지 않아요. 대상이 분명하게 나오도록 다시 촬영해 주세요.",
+    };
+  }
+
+  const safelyApproved =
+    analysis.decision === "APPROVED" &&
+    analysis.targetVisible &&
+    analysis.confidence >= MIN_APPROVAL_CONFIDENCE &&
+    analysis.evidence.length > 0;
+
+  if (safelyApproved || analysis.decision === "REJECTED") return analysis;
+
+  return {
+    ...analysis,
+    decision: "NEEDS_REVIEW",
+    retryGuide:
+      analysis.retryGuide ??
+      "미션 대상이 사진에 더 크고 선명하게 보이도록 다시 촬영해 주세요.",
+  };
+}
+
 function stringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string").slice(0, 4)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .slice(0, 4)
     : [];
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
