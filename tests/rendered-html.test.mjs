@@ -109,6 +109,16 @@ test("supports the photo verification review and completion flow", async () => {
   assert.match(pageSource, /capture="environment"/);
   assert.match(pageSource, /type:\s*"PHOTO",\s*imageDataUrl/);
   assert.match(pageSource, /fetch\("\/api\/photo-verify"/);
+  const verificationRoute = await readFile(
+    path.join(projectDirectory, "app", "api", "photo-verify", "route.ts"),
+    "utf8",
+  );
+  assert.match(verificationRoute, /MIN_APPROVAL_CONFIDENCE = 0\.85/);
+  assert.match(verificationRoute, /targetVisible/);
+  assert.match(
+    verificationRoute,
+    /제목이나 설명과 무관한 사진은 반드시 REJECTED/,
+  );
   assert.match(pageSource, /web-photo-/);
   assert.match(pageSource, /AI가 사진을 확인하고 있어요/);
   assert.match(pageSource, /사진 촬영하기/);
