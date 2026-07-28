@@ -80,22 +80,16 @@ button {
 .my-rank-card {
   min-height: 54px;
   display: grid;
-  grid-template-columns: 54px 30px 38px 1fr auto;
+  grid-template-columns: 30px 38px 1fr auto;
   align-items: center;
   gap: 7px;
   margin-bottom: 8px;
   padding: 6px 10px;
   border: 1px solid #abc4e8;
-  border-left: 5px solid #376fbd;
   border-radius: 12px;
   background: linear-gradient(90deg, #e7f0ff, #f5f8fd);
   box-shadow: 0 6px 18px #294b7918;
   font-size: 13px;
-}
-.my-rank-label {
-  color: #376fbd;
-  font-size: 11px;
-  font-weight: 900;
 }
 .my-rank-card > strong {
   color: #244f8a;

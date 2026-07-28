@@ -589,7 +589,6 @@ export default function Home() {
           <p className="ranking-timer">{ranking.endsAt ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}` : "랭킹 집계 데이터를 준비하고 있어요"}</p>
           {ranking.me && (
             <div className="my-rank-card">
-              <span className="my-rank-label">내 순위</span>
               <strong>{ranking.me.rank}</strong>
               <span className="rank-avatar">{ranking.me.nickname.slice(0,1)}</span>
               <b>{ranking.me.nickname}</b>
