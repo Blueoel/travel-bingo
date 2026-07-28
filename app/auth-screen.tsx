@@ -10,7 +10,12 @@ const API_BASE =
 export function AuthScreen({
   onAuthenticated,
 }: {
-  onAuthenticated: () => Promise<void>;
+  onAuthenticated: (user: {
+    id: string;
+    nickname: string;
+    email: string | null;
+    role?: "USER" | "ADMIN";
+  }) => Promise<void>;
 }) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
@@ -69,6 +74,14 @@ export function AuthScreen({
               : "회원가입 정보를 다시 확인해주세요."),
         );
       }
+      const result = (await response.json()) as {
+        user: {
+          id: string;
+          nickname: string;
+          email: string | null;
+          role?: "USER" | "ADMIN";
+        };
+      };
       if (mode === "register") {
         await fetch(`${API_BASE}/auth/logout`, {
           method: "POST",
@@ -83,7 +96,7 @@ export function AuthScreen({
         setMessage("회원가입이 완료됐어요. 새 계정으로 로그인해주세요.");
         return;
       }
-      await onAuthenticated();
+      await onAuthenticated(result.user);
     } catch (error) {
       setMessageKind("error");
       setMessage(
