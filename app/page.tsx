@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type MissionKind = "CHECK_IN" | "QUIZ" | "PLACE_VISIT" | "PHOTO" | "COMPOSITE";
 type Mission = {
@@ -274,6 +274,12 @@ export default function Home() {
   });
   const [rankingLoading, setRankingLoading] = useState(false);
   const [clock, setClock] = useState(Date.now());
+  const [photoStage, setPhotoStage] = useState<
+    "DETAIL" | "REVIEWING" | "COMPLETE"
+  >("DETAIL");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const albumInput = useRef<HTMLInputElement>(null);
 
   const applySession = (session: DailySession) => {
     setSessionId(session.id);
@@ -406,6 +412,32 @@ export default function Home() {
         maximumAge: 0,
       }),
     );
+
+  const closeMission = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setPhotoStage("DETAIL");
+    setSelected(null);
+  };
+
+  const verifyPhoto = (file?: File) => {
+    if (!selected || !file) return;
+    const preview = URL.createObjectURL(file);
+    setPhotoPreview(preview);
+    setPhotoStage("REVIEWING");
+    window.setTimeout(() => {
+      const nextItems = items.map((item) =>
+        item.id === selected.id ? { ...item, done: true } : item,
+      );
+      const nextLineKeys = completedClientLineKeys(nextItems);
+      celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
+      setItems(nextItems);
+      setLineKeys(nextLineKeys);
+      setPoints((current) => current + selected.points);
+      setSelected({ ...selected, done: true });
+      setPhotoStage("COMPLETE");
+    }, 1400);
+  };
 
   const complete = async () => {
     if (!selected || selected.done) return;
@@ -553,6 +585,8 @@ export default function Home() {
                 setSelected(item);
                 setMessage(null);
                 setAnswer("");
+                setPhotoStage("DETAIL");
+                setPhotoPreview(null);
               }}
             >
               <span className={`mission-icon ${item.kind.toLowerCase()}`}>
@@ -631,69 +665,100 @@ export default function Home() {
         </button>
       </nav>
       {selected && (
-        <div className="modal-backdrop" onClick={() => setSelected(null)}>
+        <div className="modal-backdrop" onClick={closeMission}>
           <section
-            className="mission-sheet"
+            className={`mission-sheet ${selected.kind === "PHOTO" ? "photo-sheet" : ""}`}
             onClick={(event) => event.stopPropagation()}
           >
-            <button className="close" onClick={() => setSelected(null)}>
+            <button className="close" onClick={closeMission}>
               ×
             </button>
-            <span className={`large-icon ${selected.kind.toLowerCase()}`}>
-              {selected.done ? "✓" : icon[selected.kind]}
-            </span>
-            <p className="eyebrow">{selected.kind.replace("_", " ")}</p>
-            <h2>{selected.title}</h2>
-            <p className="description">{selected.description}</p>
-            {(selected.difficulty ||
-              selected.estimatedTime ||
-              selected.verificationLabel) && (
-              <div className="mission-meta" aria-label="미션 정보">
-                {selected.difficulty && <span>{selected.difficulty}</span>}
-                {selected.estimatedTime && (
-                  <span>약 {selected.estimatedTime}</span>
-                )}
-                {selected.verificationLabel && (
-                  <span>{selected.verificationLabel}</span>
-                )}
+            {selected.kind === "PHOTO" && photoStage === "COMPLETE" ? (
+              <div className="mission-complete">
+                <p className="sheet-kicker">미션 완료</p>
+                <div className="completion-medal" aria-hidden="true">✓</div>
+                <h2>{selected.title}</h2>
+                <strong>+ {selected.points} Point</strong>
+                <div className="completion-progress">
+                  <span>현재 진행도</span>
+                  <b>{completeCount} / 25</b>
+                  <div className="track">
+                    <i style={{ width: `${(completeCount / 25) * 100}%` }} />
+                  </div>
+                </div>
+                <button className="primary" onClick={closeMission}>
+                  다음 미션 보기
+                </button>
+                <button className="secondary" onClick={closeMission}>
+                  빙고판으로 돌아가기
+                </button>
               </div>
+            ) : (
+              <>
+                <p className="sheet-kicker">
+                  미션 상세 {selected.kind === "PHOTO" ? "(사진 인증)" : ""}
+                </p>
+                {photoPreview ? (
+                  <div className="photo-preview">
+                    <img src={photoPreview} alt="선택한 인증 사진 미리보기" />
+                    {photoStage === "REVIEWING" && (
+                      <div className="ai-review" role="status">
+                        <i />
+                        <b>AI가 사진을 확인하고 있어요</b>
+                        <span>미션 조건과 사진의 안전성을 살펴보는 중이에요.</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className={`large-icon ${selected.kind.toLowerCase()}`}>
+                    {selected.done ? "✓" : icon[selected.kind]}
+                  </span>
+                )}
+                <h2>{selected.title}</h2>
+                <p className="description">{selected.description}</p>
+                <div className="detail-list">
+                  <p><span>▣</span><b>인증 방법</b><em>{selected.verificationLabel ?? selected.kind.replace("_", " ")}</em></p>
+                  <p><span>◉</span><b>획득 점수</b><em>{selected.points} Point</em></p>
+                  {selected.estimatedTime && <p><span>◷</span><b>예상 시간</b><em>{selected.estimatedTime}</em></p>}
+                  {selected.kind === "PHOTO" && <p><span>△</span><b>주의 사항</b><em>대상이 잘 보이도록 촬영해주세요.</em></p>}
+                </div>
+                {selected.kind === "QUIZ" && !selected.done && (
+                  <input
+                    className="answer-input"
+                    value={answer}
+                    onChange={(event) => setAnswer(event.target.value)}
+                    placeholder="정답을 입력해주세요"
+                  />
+                )}
+                {message && <p className="error-message">{message}</p>}
+                {selected.kind === "PHOTO" ? (
+                  <div className="photo-actions">
+                    <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(event) => verifyPhoto(event.target.files?.[0])} />
+                    <input ref={albumInput} type="file" accept="image/*" hidden onChange={(event) => verifyPhoto(event.target.files?.[0])} />
+                    <button className="primary" onClick={() => cameraInput.current?.click()} disabled={photoStage === "REVIEWING" || selected.done}>
+                      사진 촬영하기
+                    </button>
+                    <button className="secondary" onClick={() => albumInput.current?.click()} disabled={photoStage === "REVIEWING" || selected.done}>
+                      앨범에서 선택
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="reward">
+                      <span>획득 보상</span>
+                      <b>+ {selected.points} Point</b>
+                    </div>
+                    <button
+                      className="primary"
+                      onClick={complete}
+                      disabled={selected.done || submitting || (selected.kind === "QUIZ" && !answer.trim())}
+                    >
+                      {selected.done ? "완료한 미션이에요" : submitting ? "인증하고 있어요…" : selected.kind === "PLACE_VISIT" ? "현재 위치 인증하기" : selected.kind === "COMPOSITE" ? "GPS 체류 시작하기" : selected.kind === "QUIZ" ? "정답 제출하기" : "미션 완료하기"}
+                    </button>
+                  </>
+                )}
+              </>
             )}
-            {selected.kind === "QUIZ" && !selected.done && (
-              <input
-                className="answer-input"
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="정답을 입력해주세요"
-              />
-            )}
-            {message && <p className="error-message">{message}</p>}
-            <div className="reward">
-              <span>획득 보상</span>
-              <b>+ {selected.points} Point</b>
-            </div>
-            <button
-              className="primary"
-              onClick={complete}
-              disabled={
-                selected.done ||
-                submitting ||
-                (selected.kind === "QUIZ" && !answer.trim())
-              }
-            >
-              {selected.done
-                ? "완료한 미션이에요"
-                : submitting
-                  ? "인증하고 있어요…"
-                  : selected.kind === "PLACE_VISIT"
-                    ? "현재 위치 인증하기"
-                    : selected.kind === "PHOTO"
-                      ? "사진 인증 준비하기"
-                      : selected.kind === "COMPOSITE"
-                        ? "GPS 체류 시작하기"
-                        : selected.kind === "QUIZ"
-                          ? "정답 제출하기"
-                          : "미션 완료하기"}
-            </button>
           </section>
         </div>
       )}
