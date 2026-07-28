@@ -72,13 +72,61 @@ button {
   cursor: not-allowed;
 }
 .ranking-timer {
-  margin: 19px 4px 12px;
+  margin: 19px 4px 10px;
   text-align: right;
   color: #777e79;
   font-size: 11px;
 }
+.my-rank-card {
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 54px 30px 38px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid #abc4e8;
+  border-left: 5px solid #376fbd;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #e7f0ff, #f5f8fd);
+  box-shadow: 0 6px 18px #294b7918;
+  font-size: 13px;
+}
+.my-rank-label {
+  color: #376fbd;
+  font-size: 11px;
+  font-weight: 900;
+}
+.my-rank-card > strong {
+  color: #244f8a;
+  font-size: 17px;
+  text-align: center;
+}
+.my-rank-card > span:last-child {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.ranking-columns {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 8px 8px 0 0;
+  background: #252b63;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+.ranking-columns span:last-child {
+  text-align: right;
+}
 .ranking-list {
   min-height: 315px;
+  border: 1px solid #dfe3eb;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
   transition: opacity 0.15s;
 }
 .ranking-list.loading {
@@ -90,9 +138,26 @@ button {
   grid-template-columns: 34px 38px 1fr auto;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
-  border-radius: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #e3e6ec;
+  border-radius: 0;
   font-size: 13px;
+}
+.ranking-row:nth-child(even) {
+  background: #f7f8fb;
+}
+.ranking-row:last-child {
+  border-bottom: 0;
+}
+.ranking-row.is-me {
+  position: relative;
+  background: #e7f0ff;
+  box-shadow: inset 4px 0 #376fbd;
+}
+.ranking-row.is-me b,
+.ranking-row.is-me > span:last-child {
+  color: #244f8a;
+  font-weight: 900;
 }
 .ranking-row .rank {
   text-align: center;
@@ -118,14 +183,6 @@ button {
 }
 .ranking-row b small {
   color: #5173a8;
-}
-.my-ranking {
-  position: sticky;
-  bottom: 0;
-  margin-top: 10px;
-  border: 1px solid #c8d8ee;
-  background: #eaf2ff;
-  box-shadow: 0 5px 18px #294b7922;
 }
 .ranking-empty {
   padding: 80px 0;
