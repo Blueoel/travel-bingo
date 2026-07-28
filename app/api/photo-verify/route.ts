@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+import {
+  recordPhotoVerdict,
+  resolveGuest,
+  withGuestCookie,
+} from "../../../db/photo-verifications";
+
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MIN_APPROVAL_CONFIDENCE = 0.85;
 const IMAGE_PATTERN =
@@ -14,9 +20,50 @@ type GeminiVerdict = {
   retryGuide: string;
 };
 
+const PHOTO_MISSIONS: Record<
+  string,
+  {
+    title: string;
+    description: string;
+    verificationLabel: string;
+    points: number;
+  }
+> = {
+  "demo-shadow": {
+    title: "그림자를 따라",
+    description: "오늘 가장 재미있는 그림자를 찾아 사진을 남겨보세요.",
+    verificationLabel: "사진 1장",
+    points: 20,
+  },
+  "demo-same-color": {
+    title: "같은 색 세 장면",
+    description:
+      "산책 중 같은 색을 가진 서로 다른 대상 세 가지를 발견해보세요.",
+    verificationLabel: "사진 3장",
+    points: 20,
+  },
+  "demo-traffic-light": {
+    title: "신호등 찾기",
+    description: "신호등이 있는 교차로를 찾아 사진으로 남겨보세요.",
+    verificationLabel: "사진 1장",
+    points: 10,
+  },
+};
+
 export async function POST(request: Request) {
   try {
     const input = (await request.json()) as Record<string, unknown>;
+    const missionId = safeText(input.missionId, 80, "");
+    const mission = PHOTO_MISSIONS[missionId];
+    if (!mission) {
+      return NextResponse.json(
+        {
+          code: "UNKNOWN_PHOTO_MISSION",
+          message: "사진 미션을 찾을 수 없어요.",
+        },
+        { status: 400 },
+      );
+    }
     const imageDataUrl =
       typeof input.imageDataUrl === "string" ? input.imageDataUrl : "";
     const match = IMAGE_PATTERN.exec(imageDataUrl);
@@ -47,9 +94,6 @@ export async function POST(request: Request) {
       );
     }
     const model = process.env.GEMINI_VISION_MODEL ?? "gemini-3.5-flash-lite";
-    const title = safeText(input.title, 80, "사진 미션");
-    const description = safeText(input.description, 500, "");
-    const verificationLabel = safeText(input.verificationLabel, 80, "사진 1장");
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
@@ -71,9 +115,9 @@ export async function POST(request: Request) {
                     "핵심 대상이 명확히 보이고 조건을 충족할 때만 targetVisible=true와 APPROVED를 함께 반환하세요.",
                     "핵심 대상이 없으면 targetVisible=false와 REJECTED를 반환하세요.",
                     "흐림·가림·주관성 때문에 확신하기 어렵다면 NEEDS_REVIEW를 선택하세요.",
-                    `미션명: ${title}`,
-                    `설명: ${description}`,
-                    `필요 사진: ${verificationLabel}`,
+                    `미션명: ${mission.title}`,
+                    `설명: ${mission.description}`,
+                    `필요 사진: ${mission.verificationLabel}`,
                     "evidence에는 사진에서 확인한 근거만 작성하세요.",
                     "retryGuide는 재촬영에 필요한 짧은 한국어 안내이며 필요 없으면 빈 문자열입니다.",
                   ].join("\n"),
@@ -131,7 +175,24 @@ export async function POST(request: Request) {
     const content = asRecord(candidate?.content);
     const part = asRecord(asArray(content?.parts)[0]);
     const verdict = enforceApprovalPolicy(parseVerdict(part?.text));
-    return NextResponse.json({ ...verdict, model });
+    const guest = resolveGuest(request);
+    const award = await recordPhotoVerdict({
+      guestId: guest.guestId,
+      missionId,
+      missionTitle: mission.title,
+      points: mission.points,
+      verdict: { ...verdict, model },
+    });
+    return withGuestCookie(
+      NextResponse.json({
+        ...verdict,
+        model,
+        ...award,
+        alreadyCompleted:
+          verdict.decision === "APPROVED" && !award.awardGranted,
+      }),
+      guest,
+    );
   } catch {
     return NextResponse.json(
       {

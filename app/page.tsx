@@ -356,12 +356,27 @@ export default function Home() {
       setDemoMode(false);
     } catch {
       setDemoMode(true);
-      setItems(demoMissions);
-      setPoints(
-        demoMissions
-          .filter((item) => item.done)
-          .reduce((sum, item) => sum + item.points, 0),
-      );
+      const basePoints = demoMissions
+        .filter((item) => item.done)
+        .reduce((sum, item) => sum + item.points, 0);
+      try {
+        const progressResponse = await fetch("/api/photo-progress");
+        if (!progressResponse.ok) throw new Error("Photo progress unavailable");
+        const progress = (await progressResponse.json()) as {
+          missionIds: string[];
+          totalPoints: number;
+        };
+        const completedPhotoIds = new Set(progress.missionIds);
+        setItems(
+          demoMissions.map((item) =>
+            completedPhotoIds.has(item.id) ? { ...item, done: true } : item,
+          ),
+        );
+        setPoints(basePoints + progress.totalPoints);
+      } catch {
+        setItems(demoMissions);
+        setPoints(basePoints);
+      }
     } finally {
       setLoading(false);
     }
@@ -452,6 +467,7 @@ export default function Home() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             imageDataUrl,
+            missionId: selected.id,
             title: selected.title,
             description: selected.description,
             verificationLabel: selected.verificationLabel,
@@ -462,6 +478,9 @@ export default function Home() {
           retryGuide?: string;
           code?: string;
           message?: string;
+          awardGranted?: boolean;
+          awardedPoints?: number;
+          alreadyCompleted?: boolean;
         };
         if (!response.ok || verdict.decision !== "APPROVED") {
           setPhotoStage("DETAIL");
@@ -476,7 +495,7 @@ export default function Home() {
           );
           return;
         }
-        approvePhotoMission();
+        approvePhotoMission(undefined, verdict.awardGranted !== false);
       } catch {
         setPhotoStage("DETAIL");
         setMessage(
@@ -519,6 +538,7 @@ export default function Home() {
 
   const approvePhotoMission = (
     result?: VerificationResult & { totalPoints?: number },
+    awardPoints = true,
   ) => {
     if (!selected) return;
     const nextItems = items.map((item) =>
@@ -529,7 +549,11 @@ export default function Home() {
     celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
     setItems(nextItems);
     setLineKeys(nextLineKeys);
-    setPoints((current) => result?.totalPoints ?? current + selected.points);
+    setPoints(
+      (current) =>
+        result?.totalPoints ??
+        (awardPoints ? current + selected.points : current),
+    );
     setSelected({ ...selected, done: true });
     setPhotoStage("COMPLETE");
   };
