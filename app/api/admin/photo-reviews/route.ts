@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { listPendingPhotoReviews } from "../../../../db/photo-verifications";
+import { listPhotoReviews } from "../../../../db/photo-verifications";
 
 const DEMO_ADMIN = "10000000-0000-4000-8000-000000000002";
 
@@ -32,7 +32,9 @@ export async function GET(request: Request) {
       { status: 401, headers: corsHeaders(request) },
     );
   }
-  const reviews = await listPendingPhotoReviews();
+  const processed =
+    new URL(request.url).searchParams.get("status") === "history";
+  const reviews = await listPhotoReviews(processed);
   return NextResponse.json(
     {
       reviews: reviews.map((review) => ({

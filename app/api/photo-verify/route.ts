@@ -189,6 +189,8 @@ export async function POST(request: Request) {
       guestId: guest.guestId,
       missionId,
       missionTitle: mission.title,
+      missionDescription: mission.description,
+      verificationLabel: mission.verificationLabel,
       points: mission.points,
       photoKey,
       verdict: { ...verdict, model },
