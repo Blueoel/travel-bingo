@@ -1,0 +1,13 @@
+node_modules/
+.turbo/
+dist/
+packages/database/src/generated/
+coverage/
+.next/
+.env
+.env.*.local
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+.idea/

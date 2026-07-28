@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Travel Bingo: 환경 확인",
+      "type": "shell",
+      "command": "pnpm env:check",
+      "problemMatcher": []
+    },
+    {
+      "label": "Travel Bingo: 인프라 시작",
+      "type": "shell",
+      "command": "pnpm infra:up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Travel Bingo: 전체 검증",
+      "type": "shell",
+      "command": "pnpm typecheck && pnpm test && pnpm build",
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}

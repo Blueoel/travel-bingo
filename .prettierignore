@@ -1,0 +1,8 @@
+node_modules
+.turbo
+dist
+packages/database/src/generated
+coverage
+.next
+pnpm-lock.yaml
+Travel_Bingo_*.md

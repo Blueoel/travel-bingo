@@ -1,0 +1,35 @@
+{
+  "name": "travel-bingo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "db:deploy": "pnpm --filter @travel-bingo/database db:deploy",
+    "db:generate": "pnpm --filter @travel-bingo/database db:generate",
+    "db:migrate": "pnpm --filter @travel-bingo/database db:migrate",
+    "db:reset": "pnpm --filter @travel-bingo/database db:reset",
+    "db:seed": "pnpm --filter @travel-bingo/database db:seed",
+    "db:status": "pnpm --filter @travel-bingo/database db:status",
+    "dev": "turbo dev",
+    "env:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-environment.ps1",
+    "infra:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-compose.ps1 up",
+    "infra:down": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-compose.ps1 down",
+    "infra:logs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-compose.ps1 logs",
+    "infra:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-compose.ps1 status",
+    "lint": "turbo lint",
+    "setup": "pnpm install --frozen-lockfile && pnpm env:check",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
