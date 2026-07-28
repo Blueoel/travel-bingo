@@ -526,7 +526,7 @@ nav .active {
   font-style: normal;
 }
 .detail-list .privacy-warning {
-  grid-template-columns: 20px 1fr;
+  display: block;
 }
 .privacy-warning strong {
   color: #222824;

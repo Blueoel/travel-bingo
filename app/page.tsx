@@ -835,9 +835,6 @@ export default function Home() {
                     <i style={{ width: `${(completeCount / 25) * 100}%` }} />
                   </div>
                 </div>
-                <button className="primary" onClick={closeMission}>
-                  다음 미션 보기
-                </button>
                 <button className="secondary" onClick={closeMission}>
                   빙고판으로 돌아가기
                 </button>
@@ -883,10 +880,11 @@ export default function Home() {
                   </p>
                   {selected.kind === "PHOTO" && (
                     <p className="privacy-warning">
-                      <span>△</span>
                       <strong>
-                        대상이 잘 보이도록 촬영하고, 주변 사람의 얼굴이나
-                        차량번호가 나오지 않도록 촬영해주세요.
+                        대상이 잘 보이도록 촬영하고,
+                        <br />
+                        주변 사람의 얼굴이나 차량번호가 나오지 않도록
+                        촬영해주세요.
                       </strong>
                     </p>
                   )}
