@@ -50,6 +50,76 @@ const quizzes = [
   ["칠장사의 시설 유형은?", "사찰"],
 ] as const;
 
+const contributedMissions = [
+  {
+    title: "그림자를 따라",
+    description: "오늘 가장 재미있는 그림자를 찾아 사진을 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION",
+    points: 20,
+    difficulty: 2,
+    estimatedMinutesMin: 10,
+    estimatedMinutesMax: 10,
+    similarityGroup: "SHADOW_OBSERVATION",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+    },
+  },
+  {
+    title: "쉼표",
+    description: "마음에 드는 장소를 발견했다면 10분 동안 머물러 보세요.",
+    kind: "COMPOSITE" as const,
+    category: "REST",
+    points: 10,
+    difficulty: 1,
+    estimatedMinutesMin: 10,
+    estimatedMinutesMax: 10,
+    similarityGroup: "REST_STAY",
+    targetValue: 600,
+    targetUnit: "SECOND",
+    verificationPolicy: {
+      type: "GPS_STAY",
+      durationSeconds: 600,
+      allowedDriftM: 50,
+    },
+  },
+  {
+    title: "같은 색 세 장면",
+    description:
+      "산책 중 같은 색을 가진 서로 다른 대상 세 가지를 발견해보세요. 같은 물건을 반복 촬영하면 인정되지 않아요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION_COLLECTION",
+    points: 20,
+    difficulty: 2,
+    estimatedMinutesMin: 10,
+    estimatedMinutesMax: 20,
+    similarityGroup: "COLOR_COLLECTION",
+    targetValue: 3,
+    targetUnit: "PHOTO",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 3,
+      distinctSubjects: true,
+    },
+  },
+  {
+    title: "신호등 찾기",
+    description: "신호등이 있는 교차로를 찾아 사진으로 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "EXPLORATION",
+    points: 10,
+    difficulty: 1,
+    estimatedMinutesMin: 3,
+    estimatedMinutesMax: 3,
+    similarityGroup: "ROAD_FACILITY",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+    },
+  },
+] as const;
+
 function missionId(position: number): string {
   return `50000000-0000-4000-8000-${String(position + 1).padStart(12, "0")}`;
 }
@@ -166,7 +236,9 @@ async function seed(): Promise<void> {
   }
 
   for (const [index, title] of checkIns.entries()) {
-    const position = places.length + quizzes.length + index;
+    if (index >= 11) break;
+    const position =
+      places.length + quizzes.length + contributedMissions.length + index;
     await database.mission.upsert({
       where: { id: missionId(position) },
       update: { kind: "CHECK_IN", title },
@@ -179,6 +251,18 @@ async function seed(): Promise<void> {
         verificationPolicy: { type: "CHECK_IN" },
         points: 10,
         difficulty: 1,
+      },
+    });
+  }
+
+  for (const [index, mission] of contributedMissions.entries()) {
+    const position = places.length + quizzes.length + index;
+    await database.mission.upsert({
+      where: { id: missionId(position) },
+      update: mission,
+      create: {
+        id: missionId(position),
+        ...mission,
       },
     });
   }

@@ -168,6 +168,9 @@ export class DailySessionService {
                 radiusM: source.mission.radiusM,
                 points: source.mission.points,
                 difficulty: source.mission.difficulty,
+                estimatedMinutesMin: source.mission.estimatedMinutesMin,
+                estimatedMinutesMax: source.mission.estimatedMinutesMax,
+                similarityGroup: source.mission.similarityGroup,
                 place: source.mission.place
                   ? {
                       id: source.mission.place.id,

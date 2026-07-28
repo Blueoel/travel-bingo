@@ -32,3 +32,9 @@ export {
   type DailyLayoutIdentity,
   type DailyLayoutVariant,
 } from "./daily-layout.js";
+
+export {
+  MISSION_POINTS,
+  pointsForDifficulty,
+  type MissionDifficulty,
+} from "./mission.js";
