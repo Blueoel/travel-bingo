@@ -266,6 +266,44 @@ mark {
   font-weight: 800;
   cursor: pointer;
 }
+.userFilters {
+  grid-template-columns: minmax(260px, 1fr) 180px;
+}
+.tableLoading {
+  opacity: 0.55;
+}
+.userCatalog table {
+  min-width: 920px;
+}
+.userStatus.active {
+  color: #24704a;
+  background: #e7f4eb;
+}
+.userStatus.suspended {
+  color: #8b5c0e;
+  background: #fff0d3;
+}
+.userStatus.deleted {
+  color: #727874;
+  background: #edf0ee;
+}
+.userActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.withdrawButton {
+  border: 0;
+  background: transparent;
+  color: #a33c37;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.protectedUser {
+  color: #969d98;
+  font-size: 12px;
+}
 .empty {
   text-align: center !important;
   color: #858c88;
