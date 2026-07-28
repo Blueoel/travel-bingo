@@ -587,19 +587,28 @@ export default function Home() {
             <button disabled title="친구 기능 준비 중">친구</button>
           </div>
           <p className="ranking-timer">{ranking.endsAt ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}` : "랭킹 집계 데이터를 준비하고 있어요"}</p>
+          {ranking.me && (
+            <div className="my-rank-card">
+              <span className="my-rank-label">내 순위</span>
+              <strong>{ranking.me.rank}</strong>
+              <span className="rank-avatar">{ranking.me.nickname.slice(0,1)}</span>
+              <b>{ranking.me.nickname}</b>
+              <span>{ranking.me.points.toLocaleString()} P</span>
+            </div>
+          )}
+          <div className="ranking-columns" aria-hidden="true">
+            <span>#</span><span>참가자</span><span>포인트</span>
+          </div>
           <div className={`ranking-list ${rankingLoading ? "loading" : ""}`}>
             {ranking.entries.map((entry) => (
-              <div className="ranking-row" key={entry.userId}>
+              <div className={`ranking-row ${entry.userId === ranking.me?.userId ? "is-me" : ""}`} key={entry.userId}>
                 <strong className={`rank rank-${entry.rank}`}>{entry.rank <= 3 ? ["","🥇","🥈","🥉"][entry.rank] : entry.rank}</strong>
                 <span className="rank-avatar">{entry.nickname.slice(0,1)}</span>
-                <b>{entry.nickname}</b><span>{entry.points.toLocaleString()} P</span>
+                <b>{entry.nickname}{entry.userId === ranking.me?.userId && <small> (나)</small>}</b><span>{entry.points.toLocaleString()} P</span>
               </div>
             ))}
             {!rankingLoading && ranking.entries.length === 0 && <p className="ranking-empty">아직 랭킹에 등록된 참여자가 없어요.</p>}
           </div>
-          {ranking.me && !ranking.entries.some((entry) => entry.userId === ranking.me?.userId) && (
-            <div className="ranking-row my-ranking"><strong className="rank">{ranking.me.rank}</strong><span className="rank-avatar">{ranking.me.nickname.slice(0,1)}</span><b>{ranking.me.nickname} <small>(나)</small></b><span>{ranking.me.points.toLocaleString()} P</span></div>
-          )}
         </section>
       )}
       <nav>
