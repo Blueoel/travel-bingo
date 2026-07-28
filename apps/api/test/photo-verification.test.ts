@@ -19,7 +19,8 @@ const database = {
 
 describe("PhotoVerificationService", () => {
   afterEach(() => {
-    delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_VISION_MODEL;
     vi.restoreAllMocks();
   });
 
@@ -43,21 +44,25 @@ describe("PhotoVerificationService", () => {
     })).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
-  it("returns a structured verdict after safety and vision checks", async () => {
-    process.env.OPENAI_API_KEY = "test-key";
+  it("returns a structured verdict from the Gemini vision check", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
     vi.stubGlobal("fetch", vi
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        results: [{ flagged: false }],
-      }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        output_text: JSON.stringify({
-          decision: "APPROVED",
-          confidence: 0.94,
-          evidence: ["교차로 신호등이 선명하게 보임"],
-          failureReasons: [],
-          retryGuide: null,
-        }),
+        candidates: [{
+          finishReason: "STOP",
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                decision: "APPROVED",
+                confidence: 0.94,
+                evidence: ["교차로 신호등이 선명하게 보임"],
+                failureReasons: [],
+                retryGuide: "",
+              }),
+            }],
+          },
+        }],
       }), { status: 200 })));
 
     const service = new PhotoVerificationService(database as never);
@@ -70,7 +75,7 @@ describe("PhotoVerificationService", () => {
 
     expect(result.decision).toBe("APPROVED");
     expect(result.confidence).toBe(0.94);
-    expect(result.model).toBe("gpt-5.6-luna");
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.model).toBe("gemini-2.5-flash-lite");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

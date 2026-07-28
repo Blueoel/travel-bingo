@@ -50,7 +50,7 @@ export class PhotoVerificationService {
       throw new BadRequestException("This mission does not support photo verification.");
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException({
         code: "AI_NOT_CONFIGURED",
@@ -58,49 +58,41 @@ export class PhotoVerificationService {
       });
     }
 
-    await assertSafeImage(apiKey, command.imageDataUrl);
-    const model = process.env.OPENAI_VISION_MODEL ?? "gpt-5.6-luna";
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const model = process.env.GEMINI_VISION_MODEL ?? "gemini-2.5-flash-lite";
+    const image = splitImageDataUrl(command.imageDataUrl);
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiKey}`,
+        "x-goog-api-key": apiKey,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model,
-        reasoning: { effort: "low" },
-        input: [{
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: buildPrompt({
+        contents: [{
+          parts: [
+            { text: buildPrompt({
                 title: String(mission.title ?? "사진 미션"),
                 description: String(mission.description ?? ""),
                 targetValue: mission.targetValue,
                 verificationPolicy: mission.verificationPolicy,
-              }),
-            },
-            { type: "input_image", image_url: command.imageDataUrl, detail: "low" },
+              }) },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
           ],
         }],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "photo_mission_verdict",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                decision: { type: "string", enum: ["APPROVED", "REJECTED", "NEEDS_REVIEW"] },
-                confidence: { type: "number", minimum: 0, maximum: 1 },
-                evidence: { type: "array", items: { type: "string" }, maxItems: 4 },
-                failureReasons: { type: "array", items: { type: "string" }, maxItems: 4 },
-                retryGuide: { type: ["string", "null"] },
-              },
-              required: ["decision", "confidence", "evidence", "failureReasons", "retryGuide"],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              decision: { type: "STRING", enum: ["APPROVED", "REJECTED", "NEEDS_REVIEW"] },
+              confidence: { type: "NUMBER" },
+              evidence: { type: "ARRAY", items: { type: "STRING" } },
+              failureReasons: { type: "ARRAY", items: { type: "STRING" } },
+              retryGuide: { type: "STRING" },
             },
+            required: ["decision", "confidence", "evidence", "failureReasons", "retryGuide"],
           },
         },
       }),
@@ -110,35 +102,25 @@ export class PhotoVerificationService {
       throw new BadGatewayException("The photo AI provider could not complete the review.");
     }
     const payload = await response.json() as unknown;
-    return parseAnalysis(extractOutputText(payload), model);
+    return parseAnalysis(extractGeminiText(payload), model);
   }
 }
 
-async function assertSafeImage(apiKey: string, imageDataUrl: string): Promise<void> {
-  const response = await fetch("https://api.openai.com/v1/moderations", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "omni-moderation-latest",
-      input: [{ type: "image_url", image_url: { url: imageDataUrl } }],
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) {
-    throw new BadGatewayException("The image safety check could not be completed.");
-  }
-  const payload = await response.json() as {
-    results?: Array<{ flagged?: boolean }>;
-  };
-  if (payload.results?.[0]?.flagged) {
+function extractGeminiText(payload: unknown): string {
+  const record = asRecord(payload);
+  const candidates = Array.isArray(record?.candidates) ? record.candidates : [];
+  const candidate = asRecord(candidates[0]);
+  if (candidate?.finishReason === "SAFETY") {
     throw new BadRequestException({
       code: "UNSAFE_IMAGE",
       message: "The submitted image cannot be used for mission verification.",
     });
   }
+  const content = asRecord(candidate?.content);
+  const parts = Array.isArray(content?.parts) ? content.parts : [];
+  const text = asRecord(parts[0])?.text;
+  if (typeof text === "string") return text;
+  throw new BadGatewayException("The photo AI provider returned an invalid response.");
 }
 
 function buildPrompt(mission: {
@@ -172,18 +154,12 @@ function validateImageDataUrl(value: string): void {
   }
 }
 
-function extractOutputText(payload: unknown): string {
-  const record = asRecord(payload);
-  if (typeof record?.output_text === "string") return record.output_text;
-  const output = Array.isArray(record?.output) ? record.output : [];
-  for (const item of output) {
-    const content = Array.isArray(asRecord(item)?.content) ? asRecord(item)?.content as unknown[] : [];
-    for (const part of content) {
-      const text = asRecord(part)?.text;
-      if (typeof text === "string") return text;
-    }
+function splitImageDataUrl(value: string): { mimeType: string; data: string } {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(value);
+  if (!match?.[1] || !match[2]) {
+    throw new BadRequestException("The image data is invalid.");
   }
-  throw new BadGatewayException("The photo AI provider returned an invalid response.");
+  return { mimeType: match[1], data: match[2] };
 }
 
 function parseAnalysis(text: string, model: string): PhotoAnalysis {
@@ -202,7 +178,10 @@ function parseAnalysis(text: string, model: string): PhotoAnalysis {
       confidence: Math.max(0, Math.min(1, confidence)),
       evidence: stringArray(parsed.evidence),
       failureReasons: stringArray(parsed.failureReasons),
-      retryGuide: typeof parsed.retryGuide === "string" ? parsed.retryGuide : null,
+      retryGuide:
+        typeof parsed.retryGuide === "string" && parsed.retryGuide.trim()
+          ? parsed.retryGuide
+          : null,
       model,
     };
   } catch {
