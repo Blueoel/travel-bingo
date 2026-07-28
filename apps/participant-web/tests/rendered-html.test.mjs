@@ -99,3 +99,17 @@ test("includes the contributed Daily missions and difficulty-based rewards", asy
   assert.match(pageSource, /사진 3장/);
   assert.match(pageSource, /GPS 체류/);
 });
+
+test("supports the photo verification review and completion flow", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /capture="environment"/);
+  assert.match(pageSource, /AI가 사진을 확인하고 있어요/);
+  assert.match(pageSource, /사진 촬영하기/);
+  assert.match(pageSource, /앨범에서 선택/);
+  assert.match(pageSource, /다음 미션 보기/);
+  assert.match(pageSource, /빙고판으로 돌아가기/);
+});
