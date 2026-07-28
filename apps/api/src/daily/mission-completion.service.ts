@@ -15,6 +15,7 @@ import {
 } from "@travel-bingo/domain";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
+import type { PhotoAnalysis } from "./photo-verification.service.js";
 
 const POINTS_PER_LINE = 100;
 
@@ -29,6 +30,7 @@ export interface CompleteMissionCommand {
 export type MissionEvidence =
   | { readonly type: "CHECK_IN" }
   | { readonly type: "QUIZ"; readonly answer: string }
+  | { readonly type: "PHOTO"; readonly analysis: PhotoAnalysis }
   | {
       readonly type: "GPS";
       readonly latitude: number;
@@ -149,7 +151,12 @@ export class MissionCompletionService {
             sessionCellId: cell.id,
             userId: command.userId,
             idempotencyKey: command.idempotencyKey,
-            type: evidence.type === "GPS" ? "GPS" : "QUIZ",
+            type:
+              evidence.type === "GPS"
+                ? "GPS"
+                : evidence.type === "PHOTO"
+                  ? "PHOTO"
+                  : "QUIZ",
             status: "REJECTED",
             latitude: evidence.type === "GPS" ? evidence.latitude : null,
             longitude: evidence.type === "GPS" ? evidence.longitude : null,
@@ -215,7 +222,9 @@ export class MissionCompletionService {
               ? "GPS"
               : evidence.type === "QUIZ"
                 ? "QUIZ"
-                : "ADMIN",
+                : evidence.type === "PHOTO"
+                  ? "PHOTO"
+                  : "ADMIN",
           status: "APPROVED",
           latitude: evidence.type === "GPS" ? evidence.latitude : null,
           longitude: evidence.type === "GPS" ? evidence.longitude : null,
@@ -434,6 +443,18 @@ function evaluateMission(
         };
   }
 
+  if (mission.kind === "PHOTO" && evidence.type === "PHOTO") {
+    return evidence.analysis.decision === "APPROVED"
+      ? { approved: true, reasonCode: "PHOTO_AI_APPROVED" }
+      : {
+          approved: false,
+          reasonCode:
+            evidence.analysis.decision === "NEEDS_REVIEW"
+              ? "PHOTO_NEEDS_REVIEW"
+              : "PHOTO_AI_REJECTED",
+        };
+  }
+
   throw new ForbiddenException(
     `Evidence type ${evidence.type} cannot verify mission kind ${String(mission.kind)}.`,
   );
@@ -461,15 +482,24 @@ function toFiniteNumber(value: unknown): number | null {
 
 function publicEvidence(
   evidence: MissionEvidence,
-):
-  | { readonly method: string }
-  | { readonly method: string; readonly submittedAnswerHash: string } {
+): Record<string, string | number | string[] | null> {
   if (evidence.type === "QUIZ") {
     return {
       method: evidence.type,
       submittedAnswerHash: createHash("sha256")
         .update(normalizeAnswer(evidence.answer))
         .digest("hex"),
+    };
+  }
+  if (evidence.type === "PHOTO") {
+    return {
+      method: evidence.type,
+      decision: evidence.analysis.decision,
+      confidence: evidence.analysis.confidence,
+      evidence: [...evidence.analysis.evidence],
+      failureReasons: [...evidence.analysis.failureReasons],
+      retryGuide: evidence.analysis.retryGuide,
+      model: evidence.analysis.model,
     };
   }
   return { method: evidence.type };

@@ -5,12 +5,14 @@ import { DailyOperationService } from "./daily-operation.service.js";
 import { DailySchedulerService } from "./daily-scheduler.service.js";
 import { DailySessionService } from "./daily-session.service.js";
 import { MissionCompletionService } from "./mission-completion.service.js";
+import { PhotoVerificationService } from "./photo-verification.service.js";
 
 @Module({
   controllers: [DailySessionController],
   providers: [
     DailySessionService,
     MissionCompletionService,
+    PhotoVerificationService,
     DailyOperationService,
     DailySchedulerService,
   ],

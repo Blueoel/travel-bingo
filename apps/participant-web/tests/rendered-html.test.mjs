@@ -107,6 +107,8 @@ test("supports the photo verification review and completion flow", async () => {
   );
 
   assert.match(pageSource, /capture="environment"/);
+  assert.match(pageSource, /type:\s*"PHOTO",\s*imageDataUrl/);
+  assert.match(pageSource, /web-photo-/);
   assert.match(pageSource, /AI가 사진을 확인하고 있어요/);
   assert.match(pageSource, /사진 촬영하기/);
   assert.match(pageSource, /앨범에서 선택/);

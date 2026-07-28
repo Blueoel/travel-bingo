@@ -18,12 +18,14 @@ import {
   type MissionEvidence,
   type MissionCompletionResult,
 } from "./mission-completion.service.js";
+import { PhotoVerificationService } from "./photo-verification.service.js";
 
 @Controller("api/v1/daily-sessions")
 export class DailySessionController {
   constructor(
     private readonly dailySessionService: DailySessionService,
     private readonly missionCompletionService: MissionCompletionService,
+    private readonly photoVerificationService: PhotoVerificationService,
     private readonly authService: AuthService,
   ) {}
 
@@ -74,15 +76,29 @@ export class DailySessionController {
     @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ): Promise<MissionCompletionResult> {
-    return this.missionCompletionService.verify(
-      {
-        userId: await this.authService.requireUserId(cookieHeader, userId),
+    const command = {
+      userId: await this.authService.requireUserId(cookieHeader, userId),
+      sessionId,
+      cellId,
+      idempotencyKey: requireIdempotencyKey(idempotencyKey),
+    };
+    const input = asInput(body);
+    if (input.type === "PHOTO") {
+      if (typeof input.imageDataUrl !== "string") {
+        throw new BadRequestException("Photo image data is required.");
+      }
+      const analysis = await this.photoVerificationService.analyze({
+        userId: command.userId,
         sessionId,
         cellId,
-        idempotencyKey: requireIdempotencyKey(idempotencyKey),
-      },
-      parseEvidence(body),
-    );
+        imageDataUrl: input.imageDataUrl,
+      });
+      return this.missionCompletionService.verify(command, {
+        type: "PHOTO",
+        analysis,
+      });
+    }
+    return this.missionCompletionService.verify(command, parseEvidence(body));
   }
 }
 
@@ -96,10 +112,7 @@ function requireIdempotencyKey(value: string | undefined): string {
 }
 
 function parseEvidence(body: unknown): MissionEvidence {
-  if (!body || typeof body !== "object" || !("type" in body)) {
-    throw new BadRequestException("A mission evidence body is required.");
-  }
-  const input = body as Record<string, unknown>;
+  const input = asInput(body);
   if (input.type === "QUIZ" && typeof input.answer === "string") {
     return { type: "QUIZ", answer: input.answer };
   }
@@ -122,4 +135,11 @@ function parseEvidence(body: unknown): MissionEvidence {
     }
   }
   throw new BadRequestException("The mission evidence body is invalid.");
+}
+
+function asInput(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== "object" || !("type" in body)) {
+    throw new BadRequestException("A mission evidence body is required.");
+  }
+  return body as Record<string, unknown>;
 }
