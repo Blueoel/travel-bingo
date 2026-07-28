@@ -1,4 +1,4 @@
-import { and, eq, sum } from "drizzle-orm";
+import { and, eq, isNull, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb } from "./index";
@@ -63,6 +63,7 @@ export async function recordPhotoVerdict(input: {
   missionId: string;
   missionTitle: string;
   points: number;
+  photoKey?: string | null;
   verdict: StoredPhotoVerdict;
 }): Promise<{ awardGranted: boolean; awardedPoints: number }> {
   const db = await getDb();
@@ -75,6 +76,7 @@ export async function recordPhotoVerdict(input: {
     guestId: input.guestId,
     missionId: input.missionId,
     missionTitle: input.missionTitle,
+    points: input.points,
     dailyDate,
     decision: input.verdict.decision,
     targetVisible: input.verdict.targetVisible,
@@ -82,6 +84,7 @@ export async function recordPhotoVerdict(input: {
     evidenceJson: JSON.stringify(input.verdict.evidence),
     failureReasonsJson: JSON.stringify(input.verdict.failureReasons),
     retryGuide: input.verdict.retryGuide || null,
+    photoKey: input.photoKey ?? null,
     model: input.verdict.model,
     submittedAt: now,
   });
@@ -108,6 +111,71 @@ export async function recordPhotoVerdict(input: {
     awardGranted: awarded.length === 1,
     awardedPoints: awarded.length === 1 ? input.points : 0,
   };
+}
+
+export async function listPendingPhotoReviews() {
+  const db = await getDb();
+  return db
+    .select({
+      id: photoVerificationAttempts.id,
+      missionTitle: photoVerificationAttempts.missionTitle,
+      confidence: photoVerificationAttempts.confidence,
+      evidenceJson: photoVerificationAttempts.evidenceJson,
+      failureReasonsJson: photoVerificationAttempts.failureReasonsJson,
+      retryGuide: photoVerificationAttempts.retryGuide,
+      submittedAt: photoVerificationAttempts.submittedAt,
+    })
+    .from(photoVerificationAttempts)
+    .where(
+      and(
+        eq(photoVerificationAttempts.decision, "NEEDS_REVIEW"),
+        isNull(photoVerificationAttempts.reviewDecision),
+      ),
+    );
+}
+
+export async function decidePhotoReview(input: {
+  verificationId: string;
+  decision: "APPROVED" | "REJECTED";
+  reviewerEmail: string;
+}): Promise<{ awardGranted: boolean }> {
+  const db = await getDb();
+  const [attempt] = await db
+    .select()
+    .from(photoVerificationAttempts)
+    .where(eq(photoVerificationAttempts.id, input.verificationId))
+    .limit(1);
+  if (!attempt || attempt.decision !== "NEEDS_REVIEW") {
+    throw new Error("Review not found");
+  }
+  if (attempt.reviewDecision) {
+    return { awardGranted: false };
+  }
+
+  await db
+    .update(photoVerificationAttempts)
+    .set({
+      reviewDecision: input.decision,
+      reviewerEmail: input.reviewerEmail,
+      reviewedAt: new Date(),
+    })
+    .where(eq(photoVerificationAttempts.id, input.verificationId));
+
+  if (input.decision !== "APPROVED") return { awardGranted: false };
+  const awarded = await db
+    .insert(photoMissionAwards)
+    .values({
+      id: crypto.randomUUID(),
+      verificationId: attempt.id,
+      guestId: attempt.guestId,
+      missionId: attempt.missionId,
+      dailyDate: attempt.dailyDate,
+      points: attempt.points,
+      awardedAt: new Date(),
+    })
+    .onConflictDoNothing()
+    .returning({ id: photoMissionAwards.id });
+  return { awardGranted: awarded.length === 1 };
 }
 
 export async function getPhotoProgress(guestId: string): Promise<{

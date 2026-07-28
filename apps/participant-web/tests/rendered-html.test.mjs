@@ -163,6 +163,7 @@ test("persists photo verdicts and prevents duplicate daily rewards", async () =>
   );
 
   assert.equal(hostingConfig.d1, "DB");
+  assert.equal(hostingConfig.r2, "PHOTOS");
   assert.match(schemaSource, /photoVerificationAttempts/);
   assert.match(schemaSource, /photoMissionAwards/);
   assert.match(schemaSource, /photo_award_guest_mission_date_uq/);
@@ -173,4 +174,33 @@ test("persists photo verdicts and prevents duplicate daily rewards", async () =>
   assert.match(progressRoute, /getPhotoProgress/);
   assert.match(pageSource, /fetch\("\/api\/photo-progress"\)/);
   assert.match(pageSource, /verdict\.awardGranted !== false/);
+});
+
+test("provides an owner-only photo review queue", async () => {
+  const reviewPage = await readFile(
+    path.join(projectDirectory, "app", "admin", "reviews", "page.tsx"),
+    "utf8",
+  );
+  const reviewApi = await readFile(
+    path.join(
+      projectDirectory,
+      "app",
+      "api",
+      "admin",
+      "photo-reviews",
+      "route.ts",
+    ),
+    "utf8",
+  );
+  const storageSource = await readFile(
+    path.join(projectDirectory, "db", "photo-storage.ts"),
+    "utf8",
+  );
+
+  assert.match(reviewPage, /사진 인증 검수/);
+  assert.match(reviewPage, /"APPROVED"/);
+  assert.match(reviewPage, /"REJECTED"/);
+  assert.match(reviewApi, /oai-authenticated-user-email/);
+  assert.match(storageSource, /env\.PHOTOS/);
+  assert.match(storageSource, /bucket\.put/);
 });
