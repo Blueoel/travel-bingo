@@ -525,6 +525,13 @@ nav .active {
   color: #222824;
   font-style: normal;
 }
+.detail-list .privacy-warning {
+  grid-template-columns: 20px 1fr;
+}
+.privacy-warning strong {
+  color: #222824;
+  line-height: 1.45;
+}
 .photo-actions {
   display: grid;
   gap: 9px;
@@ -605,7 +612,9 @@ nav .active {
   border: 8px solid #d79a19;
   border-radius: 50%;
   background: linear-gradient(145deg, #ffd95d, #efae22);
-  box-shadow: inset 0 0 0 5px #ffe78d, 0 12px 28px #a76d1730;
+  box-shadow:
+    inset 0 0 0 5px #ffe78d,
+    0 12px 28px #a76d1730;
   color: #80520c;
   font-size: 54px;
   font-weight: 900;
@@ -632,11 +641,19 @@ nav .active {
   margin-top: 9px;
 }
 @keyframes review-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes medal-in {
-  from { transform: scale(0.5) rotate(-8deg); opacity: 0; }
-  to { transform: scale(1) rotate(0); opacity: 1; }
+  from {
+    transform: scale(0.5) rotate(-8deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
 }
 .close {
   position: absolute;
