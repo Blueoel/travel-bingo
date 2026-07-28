@@ -75,7 +75,7 @@ describe("PhotoVerificationService", () => {
 
     expect(result.decision).toBe("APPROVED");
     expect(result.confidence).toBe(0.94);
-    expect(result.model).toBe("gemini-2.5-flash-lite");
+    expect(result.model).toBe("gemini-3.5-flash-lite");
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
