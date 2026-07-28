@@ -168,6 +168,168 @@ button {
   color: #828984;
   font-size: 13px;
 }
+.my-screen {
+  position: absolute;
+  inset: 0 0 76px;
+  z-index: 4;
+  padding: 22px 18px 38px;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 12% 20%, #eadfc933 0 1px, transparent 2px),
+    #fffdf8;
+  background-size: 19px 21px, auto;
+}
+.my-header {
+  justify-content: center;
+  margin-bottom: 19px;
+}
+.my-header h1 {
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
+  font-size: 21px;
+}
+.my-profile-card {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid #dcd3c2;
+  border-radius: 20px 17px 22px 16px;
+  background: #fffefa;
+  box-shadow: 0 8px 24px #5c4d2e12;
+}
+.my-avatar {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #3f5e39;
+  border-radius: 47% 53% 48% 52%;
+  background:
+    repeating-linear-gradient(145deg, #ffffff1f 0 2px, transparent 2px 5px),
+    #dce7c9;
+  color: #304a2e;
+  font-family: "Segoe Print", cursive;
+  font-size: 25px;
+  font-weight: 800;
+  transform: rotate(-2deg);
+}
+.my-profile-card h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.my-profile-card p {
+  max-width: 190px;
+  overflow: hidden;
+  color: #7b786f;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.level-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef1d8;
+  color: #587044;
+  font-size: 10px;
+  font-weight: 800;
+}
+.my-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 12px;
+  padding: 16px 5px;
+  border: 1px solid #e1d9cb;
+  border-radius: 16px 19px 15px 18px;
+  background: #fffefa;
+}
+.my-stats div {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+.my-stats div + div {
+  border-left: 1px solid #e7e0d4;
+}
+.my-stats b {
+  color: #355c39;
+  font-size: 18px;
+}
+.my-stats span {
+  color: #878278;
+  font-size: 10px;
+}
+.my-menu {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid #dfd7c9;
+  border-radius: 17px 14px 19px 15px;
+  background: #fffefa;
+}
+.my-menu button {
+  width: 100%;
+  min-height: 55px;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 1px solid #e8e1d6;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.my-menu button:last-child {
+  border-bottom: 0;
+}
+.my-menu button > span {
+  color: #58764e;
+  font-size: 20px;
+}
+.my-menu button > b {
+  color: #aaa397;
+  font-size: 22px;
+}
+.admin-account-note {
+  margin: 13px 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #edf3e8;
+  color: #4e6848;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.logout-button {
+  width: 100%;
+  margin-top: 15px;
+  padding: 13px;
+  border: 1px solid #c9c1b4;
+  border-radius: 13px;
+  background: transparent;
+  color: #7e4f42;
+  font-weight: 750;
+  cursor: pointer;
+}
+.my-doodle {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  gap: 23px;
+  height: 80px;
+  color: #718b4f;
+  font-family: cursive;
+  font-size: 32px;
+}
+.my-doodle i {
+  color: #e8a229;
+  font-style: normal;
+  font-size: 24px;
+}
+.my-doodle b {
+  font-size: 38px;
+}
 header {
   display: flex;
   justify-content: space-between;

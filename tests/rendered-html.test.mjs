@@ -78,6 +78,19 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
 });
 
+test("provides an account dashboard and logout flow", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /activeTab === "my"/);
+  assert.match(pageSource, /\/auth\/logout/);
+  assert.match(pageSource, /여행 기록/);
+  assert.match(pageSource, /획득 배지/);
+  assert.match(pageSource, /로그아웃/);
+});
+
 test("celebrates newly completed bingo lines in API and demo modes", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
