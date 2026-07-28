@@ -208,6 +208,10 @@ function friendlyError(code?: string): string {
     OUTSIDE_ALLOWED_RADIUS:
       "아직 목적지와 거리가 있어요. 조금 더 가까이 이동해주세요.",
     INVALID_COORDINATES: "현재 위치를 확인할 수 없어요.",
+    PHOTO_AI_REJECTED: "미션 조건을 확인하기 어려워요. 대상을 더 선명하게 다시 촬영해주세요.",
+    PHOTO_NEEDS_REVIEW: "AI가 확신하기 어려워 관리자 검수가 필요해요.",
+    UNSAFE_IMAGE: "이 사진은 인증에 사용할 수 없어요. 다른 사진을 선택해주세요.",
+    AI_NOT_CONFIGURED: "사진 AI 인증이 아직 설정되지 않았어요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
 }
@@ -232,6 +236,18 @@ function estimatedTimeLabel(
   if (!minimum) return `${maximum}분`;
   if (!maximum || minimum === maximum) return `${minimum}분`;
   return `${minimum}~${maximum}분`;
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Image could not be read."));
+    reader.onerror = () => reject(reader.error ?? new Error("Image could not be read."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function remainingTime(endsAt: string, now: number): string {
@@ -420,23 +436,60 @@ export default function Home() {
     setSelected(null);
   };
 
-  const verifyPhoto = (file?: File) => {
+  const verifyPhoto = async (file?: File) => {
     if (!selected || !file) return;
+    setMessage(null);
     const preview = URL.createObjectURL(file);
     setPhotoPreview(preview);
     setPhotoStage("REVIEWING");
-    window.setTimeout(() => {
+    if (demoMode || !sessionId) {
+      window.setTimeout(() => approvePhotoMission(), 1400);
+      return;
+    }
+    try {
+      const imageDataUrl = await readAsDataUrl(file);
+      const response = await apiFetch(
+        `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "idempotency-key": `web-photo-${crypto.randomUUID()}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ type: "PHOTO", imageDataUrl }),
+        },
+      );
+      const result = await response.json() as VerificationResult & {
+        totalPoints?: number;
+        code?: string;
+        message?: string;
+      };
+      if (!response.ok || result.verificationStatus === "REJECTED") {
+        setPhotoStage("DETAIL");
+        setMessage(friendlyError(result.reasonCode ?? result.code));
+        return;
+      }
+      approvePhotoMission(result);
+    } catch {
+      setPhotoStage("DETAIL");
+      setMessage("사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.");
+    }
+  };
+
+  const approvePhotoMission = (
+    result?: VerificationResult & { totalPoints?: number },
+  ) => {
+    if (!selected) return;
       const nextItems = items.map((item) =>
         item.id === selected.id ? { ...item, done: true } : item,
       );
-      const nextLineKeys = completedClientLineKeys(nextItems);
+      const nextLineKeys = result?.completedLineKeys ?? completedClientLineKeys(nextItems);
       celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
       setItems(nextItems);
       setLineKeys(nextLineKeys);
-      setPoints((current) => current + selected.points);
+      setPoints((current) => result?.totalPoints ?? current + selected.points);
       setSelected({ ...selected, done: true });
       setPhotoStage("COMPLETE");
-    }, 1400);
   };
 
   const complete = async () => {
