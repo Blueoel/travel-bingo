@@ -133,3 +133,44 @@ test("supports the photo verification review and completion flow", async () => {
   assert.doesNotMatch(pageSource, /다음 미션 보기/);
   assert.match(pageSource, /빙고판으로 돌아가기/);
 });
+
+test("persists photo verdicts and prevents duplicate daily rewards", async () => {
+  const hostingConfig = JSON.parse(
+    await readFile(
+      path.join(projectDirectory, ".openai", "hosting.json"),
+      "utf8",
+    ),
+  );
+  const schemaSource = await readFile(
+    path.join(projectDirectory, "db", "schema.ts"),
+    "utf8",
+  );
+  const storageSource = await readFile(
+    path.join(projectDirectory, "db", "photo-verifications.ts"),
+    "utf8",
+  );
+  const verifyRoute = await readFile(
+    path.join(projectDirectory, "app", "api", "photo-verify", "route.ts"),
+    "utf8",
+  );
+  const progressRoute = await readFile(
+    path.join(projectDirectory, "app", "api", "photo-progress", "route.ts"),
+    "utf8",
+  );
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.equal(hostingConfig.d1, "DB");
+  assert.match(schemaSource, /photoVerificationAttempts/);
+  assert.match(schemaSource, /photoMissionAwards/);
+  assert.match(schemaSource, /photo_award_guest_mission_date_uq/);
+  assert.match(storageSource, /\.onConflictDoNothing\(\)/);
+  assert.match(storageSource, /dailyDateInSeoul/);
+  assert.match(verifyRoute, /recordPhotoVerdict/);
+  assert.match(verifyRoute, /awardGranted/);
+  assert.match(progressRoute, /getPhotoProgress/);
+  assert.match(pageSource, /fetch\("\/api\/photo-progress"\)/);
+  assert.match(pageSource, /verdict\.awardGranted !== false/);
+});
