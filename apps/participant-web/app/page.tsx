@@ -43,11 +43,31 @@ type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
+type RankingPeriod = "DAILY" | "WEEKLY" | "MONTHLY" | "TOTAL";
+type RankingScope = "ALL" | "COMMON" | "REGION";
+type RankingEntry = {
+  userId: string;
+  nickname: string;
+  points: number;
+  rank: number;
+};
+type RankingResult = {
+  entries: RankingEntry[];
+  me: RankingEntry | null;
+  endsAt: string | null;
+};
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
 const apiFetch = (path: string, init?: RequestInit) =>
   fetch(`${API_BASE}${path}`, { ...init, credentials: "include" });
+const demoRanking: RankingEntry[] = [
+  { userId: "demo-1", nickname: "산책왕", points: 1980, rank: 1 },
+  { userId: "demo-2", nickname: "걷는감자", points: 1850, rank: 2 },
+  { userId: "demo-3", nickname: "안성토끼", points: 1620, rank: 3 },
+  { userId: "demo-4", nickname: "하늘걷기", points: 1430, rank: 4 },
+  { userId: "demo-5", nickname: "바람따라", points: 1280, rank: 5 },
+];
 
 const BINGO_LINES = [
   [0, 1, 2, 3, 4],
@@ -214,6 +234,15 @@ function estimatedTimeLabel(
   return `${minimum}~${maximum}분`;
 }
 
+function remainingTime(endsAt: string, now: number): string {
+  const remaining = Math.max(0, new Date(endsAt).getTime() - now);
+  const days = Math.floor(remaining / 86_400_000);
+  const hours = Math.floor((remaining % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = Math.floor((remaining % 60_000) / 1000);
+  return `${days ? `${days}일 ` : ""}${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function Home() {
   const [items, setItems] = useState<Mission[]>(demoMissions);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -234,6 +263,17 @@ export default function Home() {
   );
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
+  const [activeTab, setActiveTab] = useState<"bingo" | "ranking">("bingo");
+  const [rankingPeriod, setRankingPeriod] =
+    useState<RankingPeriod>("WEEKLY");
+  const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
+  const [ranking, setRanking] = useState<RankingResult>({
+    entries: demoRanking,
+    me: { userId: "me", nickname: "선", points: 420, rank: 18 },
+    endsAt: null,
+  });
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [clock, setClock] = useState(Date.now());
 
   const applySession = (session: DailySession) => {
     setSessionId(session.id);
@@ -324,6 +364,26 @@ export default function Home() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "ranking") return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    setRankingLoading(true);
+    void apiFetch(`/rankings?period=${rankingPeriod}&scope=${rankingScope}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Ranking API unavailable");
+        setRanking((await response.json()) as RankingResult);
+      })
+      .catch(() => {
+        setRanking({
+          entries: demoRanking,
+          me: { userId: "me", nickname, points: 420, rank: 18 },
+          endsAt: null,
+        });
+      })
+      .finally(() => setRankingLoading(false));
+    return () => window.clearInterval(timer);
+  }, [activeTab, rankingPeriod, rankingScope, nickname]);
 
   const installApp = async () => {
     if (!installPrompt) return;
@@ -512,6 +572,36 @@ export default function Home() {
           해가 지기 전 20분 산책은 기분 전환에 좋아요.
         </p>
       </aside>
+      {activeTab === "ranking" && (
+        <section className="ranking-screen">
+          <header className="ranking-header"><h1>랭킹</h1></header>
+          <div className="ranking-tabs" aria-label="랭킹 기간">
+            {([["DAILY","일간"],["WEEKLY","주간"],["MONTHLY","월간"],["TOTAL","누적"]] as const).map(([value,label]) => (
+              <button key={value} className={rankingPeriod === value ? "active" : ""} onClick={() => setRankingPeriod(value)}>{label}</button>
+            ))}
+          </div>
+          <div className="ranking-tabs scope-tabs" aria-label="랭킹 범위">
+            {([["ALL","전체"],["COMMON","공통"],["REGION","지역"]] as const).map(([value,label]) => (
+              <button key={value} className={rankingScope === value ? "active" : ""} onClick={() => setRankingScope(value)}>{label}</button>
+            ))}
+            <button disabled title="친구 기능 준비 중">친구</button>
+          </div>
+          <p className="ranking-timer">{ranking.endsAt ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}` : "랭킹 집계 데이터를 준비하고 있어요"}</p>
+          <div className={`ranking-list ${rankingLoading ? "loading" : ""}`}>
+            {ranking.entries.map((entry) => (
+              <div className="ranking-row" key={entry.userId}>
+                <strong className={`rank rank-${entry.rank}`}>{entry.rank <= 3 ? ["","🥇","🥈","🥉"][entry.rank] : entry.rank}</strong>
+                <span className="rank-avatar">{entry.nickname.slice(0,1)}</span>
+                <b>{entry.nickname}</b><span>{entry.points.toLocaleString()} P</span>
+              </div>
+            ))}
+            {!rankingLoading && ranking.entries.length === 0 && <p className="ranking-empty">아직 랭킹에 등록된 참여자가 없어요.</p>}
+          </div>
+          {ranking.me && !ranking.entries.some((entry) => entry.userId === ranking.me?.userId) && (
+            <div className="ranking-row my-ranking"><strong className="rank">{ranking.me.rank}</strong><span className="rank-avatar">{ranking.me.nickname.slice(0,1)}</span><b>{ranking.me.nickname} <small>(나)</small></b><span>{ranking.me.points.toLocaleString()} P</span></div>
+          )}
+        </section>
+      )}
       <nav>
         <button>
           <span>⌂</span>홈
@@ -519,10 +609,16 @@ export default function Home() {
         <button>
           <span>♧</span>탐험
         </button>
-        <button className="active">
+        <button
+          className={activeTab === "bingo" ? "active" : ""}
+          onClick={() => setActiveTab("bingo")}
+        >
           <span>▦</span>빙고
         </button>
-        <button>
+        <button
+          className={activeTab === "ranking" ? "active" : ""}
+          onClick={() => setActiveTab("ranking")}
+        >
           <span>☆</span>랭킹
         </button>
         <button>

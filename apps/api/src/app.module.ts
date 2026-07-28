@@ -5,6 +5,7 @@ import { AuthModule } from "./auth/auth.module.js";
 import { DailyModule } from "./daily/daily.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { RankingModule } from "./ranking/ranking.module.js";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { HealthModule } from "./health/health.module.js";
     HealthModule,
     DailyModule,
     AdminModule,
+    RankingModule,
   ],
 })
 export class AppModule {}
