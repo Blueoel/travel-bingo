@@ -12,7 +12,11 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: environment.corsOrigins.length > 0 ? environment.corsOrigins : true,
     credentials: true,
-    allowedHeaders: ["content-type", "idempotency-key"],
+    allowedHeaders: [
+      "content-type",
+      "idempotency-key",
+      ...(process.env.NODE_ENV === "production" ? [] : ["x-user-id"]),
+    ],
     methods: ["GET", "POST", "OPTIONS"],
   });
   app.enableShutdownHooks();

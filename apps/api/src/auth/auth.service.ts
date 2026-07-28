@@ -1,6 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import type { DatabaseClient } from "@travel-bingo/database";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
@@ -16,7 +21,11 @@ export class AuthService {
 
   async createGuest(): Promise<{
     readonly token: string;
-    readonly user: { readonly id: string; readonly nickname: string };
+    readonly user: {
+      readonly id: string;
+      readonly nickname: string;
+      readonly role: "USER" | "ADMIN";
+    };
   }> {
     const token = randomBytes(32).toString("base64url");
     const suffix = randomBytes(2).toString("hex").toUpperCase();
@@ -30,14 +39,18 @@ export class AuthService {
           },
         },
       },
-      select: { id: true, nickname: true },
+      select: { id: true, nickname: true, role: true },
     });
     return { token, user };
   }
 
   async getUser(
     cookieHeader: string | undefined,
-  ): Promise<{ readonly id: string; readonly nickname: string } | null> {
+  ): Promise<{
+    readonly id: string;
+    readonly nickname: string;
+    readonly role: "USER" | "ADMIN";
+  } | null> {
     const token = readCookie(cookieHeader, AUTH_COOKIE_NAME);
     if (!token) return null;
     const session = await this.database.authSession.findFirst({
@@ -47,7 +60,7 @@ export class AuthService {
         expiresAt: { gt: new Date() },
         user: { status: "ACTIVE" },
       },
-      include: { user: { select: { id: true, nickname: true } } },
+      include: { user: { select: { id: true, nickname: true, role: true } } },
     });
     return session?.user ?? null;
   }
@@ -62,6 +75,30 @@ export class AuthService {
       return developmentUserId;
     }
     throw new UnauthorizedException("A valid user session is required.");
+  }
+
+  async requireAdminId(
+    cookieHeader: string | undefined,
+    developmentUserId?: string,
+  ): Promise<string> {
+    const sessionUser = await this.getUser(cookieHeader);
+    if (sessionUser) {
+      if (sessionUser.role !== "ADMIN") {
+        throw new ForbiddenException("Administrator access is required.");
+      }
+      return sessionUser.id;
+    }
+
+    if (process.env.NODE_ENV !== "production" && developmentUserId) {
+      const user = await this.database.user.findUnique({
+        where: { id: developmentUserId },
+        select: { id: true, role: true, status: true },
+      });
+      if (user?.role === "ADMIN" && user.status === "ACTIVE") return user.id;
+      throw new ForbiddenException("Administrator access is required.");
+    }
+
+    throw new UnauthorizedException("A valid administrator session is required.");
   }
 
   async revoke(cookieHeader: string | undefined): Promise<void> {

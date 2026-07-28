@@ -74,6 +74,12 @@ enum MissionKind {
   COMPOSITE
 }
 
+enum MissionScope {
+  COMMON
+  REGION
+  EVENT
+}
+
 model User {
   id             String          @id @default(uuid()) @db.Uuid
   role           UserRole        @default(USER)
@@ -86,6 +92,7 @@ model User {
   verifications  Verification[]
   pointLedger    PointLedger[]
   authSessions   AuthSession[]
+  missionRevisions MissionRevision[] @relation("MissionRevisionAuthor")
 
   @@index([status, createdAt])
 }
@@ -117,6 +124,8 @@ model Region {
   places                Place[]
   themes                BingoTheme[]
   templates             BingoTemplate[]
+  missionLinks          MissionRegion[]
+  missionCollections    MissionCollection[]
 
   @@index([status, populationDeclineFlag])
 }
@@ -190,6 +199,7 @@ model Mission {
   id                  String         @id @default(uuid()) @db.Uuid
   placeId             String?        @db.Uuid
   kind                MissionKind
+  scope               MissionScope   @default(COMMON)
   title               String         @db.VarChar(120)
   description         String
   category            String         @db.VarChar(40)
@@ -207,9 +217,70 @@ model Mission {
   updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
   place               Place?         @relation(fields: [placeId], references: [id], onDelete: Restrict)
   templateCells       TemplateCell[]
+  regionLinks         MissionRegion[]
+  collectionItems     MissionCollectionItem[]
+  revisions           MissionRevision[]
 
   @@index([placeId, status])
   @@index([category, status])
+  @@index([scope, status, category])
+  @@index([similarityGroup, status])
+}
+
+model MissionRegion {
+  missionId String   @db.Uuid
+  regionId  String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  region    Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, regionId])
+  @@index([regionId, missionId])
+}
+
+model MissionCollection {
+  id          String        @id @default(uuid()) @db.Uuid
+  regionId    String?       @db.Uuid
+  name        String        @db.VarChar(120)
+  type        String        @db.VarChar(30)
+  description String?
+  status      ContentStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+  region      Region?       @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  items       MissionCollectionItem[]
+
+  @@unique([type, regionId, name])
+  @@index([type, regionId, status])
+}
+
+model MissionCollectionItem {
+  collectionId String            @db.Uuid
+  missionId    String            @db.Uuid
+  displayOrder Int               @default(0)
+  weight       Int               @default(100)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  collection   MissionCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  mission      Mission           @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, missionId])
+  @@index([collectionId, displayOrder])
+  @@index([missionId])
+}
+
+model MissionRevision {
+  id          String   @id @default(uuid()) @db.Uuid
+  missionId   String   @db.Uuid
+  revision    Int
+  snapshot    Json
+  changeNote  String?  @db.VarChar(300)
+  changedById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  mission     Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  changedBy   User?    @relation("MissionRevisionAuthor", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@unique([missionId, revision])
+  @@index([missionId, createdAt])
 }
 
 model TemplateCell {

@@ -11,9 +11,11 @@ const database = createDatabaseClient({ connectionString: databaseUrl });
 
 const ids = {
   user: "10000000-0000-4000-8000-000000000001",
+  admin: "10000000-0000-4000-8000-000000000002",
   region: "20000000-0000-4000-8000-000000000001",
   theme: "30000000-0000-4000-8000-000000000001",
   template: "40000000-0000-4000-8000-000000000001",
+  collection: "70000000-0000-4000-8000-000000000001",
 };
 
 const places = [
@@ -139,6 +141,15 @@ async function seed(): Promise<void> {
     where: { id: ids.user },
     update: { nickname: "시연 사용자", status: "ACTIVE" },
     create: { id: ids.user, nickname: "시연 사용자" },
+  });
+  await database.user.upsert({
+    where: { id: ids.admin },
+    update: { nickname: "개발 관리자", role: "ADMIN", status: "ACTIVE" },
+    create: {
+      id: ids.admin,
+      nickname: "개발 관리자",
+      role: "ADMIN",
+    },
   });
   await database.region.upsert({
     where: { id: ids.region },
@@ -266,6 +277,54 @@ async function seed(): Promise<void> {
       },
     });
   }
+
+  const regionMissionIds = Array.from(
+    { length: places.length + quizzes.length },
+    (_, position) => missionId(position),
+  );
+  const commonMissionIds = Array.from(
+    { length: contributedMissions.length + 11 },
+    (_, index) => missionId(places.length + quizzes.length + index),
+  );
+  await database.mission.updateMany({
+    where: { id: { in: regionMissionIds } },
+    data: { scope: "REGION" },
+  });
+  await database.mission.updateMany({
+    where: { id: { in: commonMissionIds } },
+    data: { scope: "COMMON" },
+  });
+  await database.missionRegion.createMany({
+    data: regionMissionIds.map((missionIdValue) => ({
+      missionId: missionIdValue,
+      regionId: ids.region,
+    })),
+    skipDuplicates: true,
+  });
+  await database.missionCollection.upsert({
+    where: { id: ids.collection },
+    update: {
+      name: "개발용 Daily 산책 미션",
+      type: "DAILY",
+      status: "ACTIVE",
+    },
+    create: {
+      id: ids.collection,
+      name: "개발용 Daily 산책 미션",
+      type: "DAILY",
+      description: "개인별 Daily 빙고판을 구성하는 개발용 미션 후보군",
+    },
+  });
+  await database.missionCollectionItem.deleteMany({
+    where: { collectionId: ids.collection },
+  });
+  await database.missionCollectionItem.createMany({
+    data: Array.from({ length: 25 }, (_, position) => ({
+      collectionId: ids.collection,
+      missionId: missionId(position),
+      displayOrder: position,
+    })),
+  });
 
   await database.bingoTemplate.upsert({
     where: { id: ids.template },
