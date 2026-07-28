@@ -177,6 +177,10 @@ test("persists photo verdicts and prevents duplicate daily rewards", async () =>
 });
 
 test("provides an owner-only photo review queue", async () => {
+  const schemaSource = await readFile(
+    path.join(projectDirectory, "db", "schema.ts"),
+    "utf8",
+  );
   const reviewApi = await readFile(
     path.join(
       projectDirectory,
@@ -194,6 +198,8 @@ test("provides an owner-only photo review queue", async () => {
   );
 
   assert.match(reviewApi, /oai-authenticated-user-email/);
+  assert.match(reviewApi, /status.*history/);
+  assert.match(schemaSource, /reviewReason/);
   assert.match(storageSource, /env\.PHOTOS/);
   assert.match(storageSource, /bucket\.put/);
 });

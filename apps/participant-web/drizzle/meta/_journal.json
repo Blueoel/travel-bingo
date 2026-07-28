@@ -22,6 +22,13 @@
       "when": 1785226464688,
       "tag": "0002_complete_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785227852968,
+      "tag": "0003_thankful_wraith",
+      "breakpoints": true
     }
   ]
 }

@@ -31,7 +31,7 @@ export async function POST(
       { status: 401, headers: corsHeaders(request) },
     );
   }
-  const body = (await request.json()) as { decision?: string };
+  const body = (await request.json()) as { decision?: string; reason?: string };
   if (!["APPROVED", "REJECTED"].includes(body.decision ?? "")) {
     return NextResponse.json(
       { message: "올바른 판정을 선택해주세요." },
@@ -43,6 +43,7 @@ export async function POST(
     verificationId: id,
     decision: body.decision as "APPROVED" | "REJECTED",
     reviewerEmail,
+    reason: body.reason,
   });
   return NextResponse.json(result, { headers: corsHeaders(request) });
 }

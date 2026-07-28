@@ -21,10 +21,18 @@ type Mission = {
 type PhotoReview = {
   id: string;
   missionTitle: string;
+  missionDescription: string;
+  verificationLabel: string;
+  guestId: string;
+  points: number;
   confidence: number;
   evidence: string[];
   failureReasons: string[];
   submittedAt: string;
+  reviewDecision: "APPROVED" | "REJECTED" | null;
+  reviewReason: string | null;
+  reviewerEmail: string | null;
+  reviewedAt: string | null;
   imageUrl: string;
 };
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
@@ -47,6 +55,13 @@ export default function AdminPage() {
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<PhotoReview[]>([]);
+  const [reviewMode, setReviewMode] = useState<"pending" | "history">(
+    "pending",
+  );
+  const [reviewReasons, setReviewReasons] = useState<Record<string, string>>(
+    {},
+  );
+  const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const params = useMemo(() => {
@@ -118,10 +133,14 @@ export default function AdminPage() {
   }
   async function loadReviews() {
     try {
-      const result = await fetch(`${PHOTO_API}/api/admin/photo-reviews`, {
-        credentials: "include",
-        headers: { "x-user-id": ADMIN },
-      });
+      const query = reviewMode === "history" ? "?status=history" : "";
+      const result = await fetch(
+        `${PHOTO_API}/api/admin/photo-reviews${query}`,
+        {
+          credentials: "include",
+          headers: { "x-user-id": ADMIN },
+        },
+      );
       if (!result.ok) throw new Error("사진 검수 목록을 불러오지 못했습니다.");
       setReviews(((await result.json()) as { reviews: PhotoReview[] }).reviews);
       setError("");
@@ -134,11 +153,15 @@ export default function AdminPage() {
     }
   }
   async function decideReview(id: string, decision: "APPROVED" | "REJECTED") {
+    const reason = reviewReasons[id]?.trim();
+    if (decision === "REJECTED" && !reason) {
+      return setError("거절 사유를 먼저 선택해주세요.");
+    }
     const result = await fetch(`${PHOTO_API}/api/admin/photo-reviews/${id}`, {
       method: "POST",
       credentials: "include",
       headers: { "content-type": "application/json", "x-user-id": ADMIN },
-      body: JSON.stringify({ decision }),
+      body: JSON.stringify({ decision, reason }),
     });
     if (!result.ok) return setError("검수 결과를 저장하지 못했습니다.");
     setReviews((current) => current.filter((review) => review.id !== id));
@@ -150,7 +173,7 @@ export default function AdminPage() {
   }
   useEffect(() => {
     if (view === "reviews") void loadReviews();
-  }, [view]);
+  }, [view, reviewMode]);
   const common = missions.filter((m) => m.scope === "COMMON").length,
     regional = missions.filter((m) => m.scope === "REGION").length,
     dailyCandidates = missions.filter(
@@ -424,10 +447,25 @@ export default function AdminPage() {
           <section className="reviewPanel">
             <div className="catalogHead">
               <div>
-                <h2>검수 대기 목록</h2>
-                <p>AI 판정 근거와 사진을 비교한 뒤 최종 처리합니다.</p>
+                <h2>
+                  {reviewMode === "pending" ? "검수 대기 목록" : "처리 이력"}
+                </h2>
+                <p>미션 조건과 제출 사진, AI 판정 근거를 함께 확인합니다.</p>
               </div>
-              <mark>{reviews.length}건 대기</mark>
+              <div className="reviewTabs">
+                <button
+                  className={reviewMode === "pending" ? "selected" : ""}
+                  onClick={() => setReviewMode("pending")}
+                >
+                  대기
+                </button>
+                <button
+                  className={reviewMode === "history" ? "selected" : ""}
+                  onClick={() => setReviewMode("history")}
+                >
+                  처리 이력
+                </button>
+              </div>
             </div>
             {reviews.length ? (
               <div className="reviewGrid">
@@ -436,9 +474,37 @@ export default function AdminPage() {
                     <img
                       src={`${PHOTO_API}${review.imageUrl}`}
                       alt={`${review.missionTitle} 인증 사진`}
+                      onClick={() =>
+                        setZoomedPhoto(`${PHOTO_API}${review.imageUrl}`)
+                      }
                     />
                     <div>
                       <h2>{review.missionTitle}</h2>
+                      <p className="reviewDescription">
+                        {review.missionDescription}
+                      </p>
+                      <dl>
+                        <div>
+                          <dt>사용자</dt>
+                          <dd>{review.guestId.slice(0, 8)}…</dd>
+                        </div>
+                        <div>
+                          <dt>제출 일시</dt>
+                          <dd>
+                            {new Date(review.submittedAt).toLocaleString(
+                              "ko-KR",
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>인증 조건</dt>
+                          <dd>{review.verificationLabel}</dd>
+                        </div>
+                        <div>
+                          <dt>보상</dt>
+                          <dd>{review.points} Point</dd>
+                        </div>
+                      </dl>
                       <p>
                         AI 신뢰도 <b>{Math.round(review.confidence * 100)}%</b>
                       </p>
@@ -448,21 +514,59 @@ export default function AdminPage() {
                       {review.failureReasons.map((item) => (
                         <small key={item}>확인 필요: {item}</small>
                       ))}
+                      {reviewMode === "history" && (
+                        <p
+                          className={`reviewResult ${review.reviewDecision?.toLowerCase()}`}
+                        >
+                          {review.reviewDecision === "APPROVED"
+                            ? "승인"
+                            : "거절"}
+                          {review.reviewReason
+                            ? ` · ${review.reviewReason}`
+                            : ""}
+                        </p>
+                      )}
                     </div>
-                    <footer>
-                      <button
-                        className="secondary"
-                        onClick={() => decideReview(review.id, "REJECTED")}
-                      >
-                        거절
-                      </button>
-                      <button
-                        className="primary"
-                        onClick={() => decideReview(review.id, "APPROVED")}
-                      >
-                        승인
-                      </button>
-                    </footer>
+                    {reviewMode === "pending" && (
+                      <footer>
+                        <select
+                          aria-label="거절 사유"
+                          value={reviewReasons[review.id] ?? ""}
+                          onChange={(event) =>
+                            setReviewReasons((current) => ({
+                              ...current,
+                              [review.id]: event.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">거절 사유 선택</option>
+                          <option value="미션 대상이 확인되지 않음">
+                            미션 대상이 확인되지 않음
+                          </option>
+                          <option value="사진이 흐리거나 가려짐">
+                            사진이 흐리거나 가려짐
+                          </option>
+                          <option value="인증 조건을 충족하지 않음">
+                            인증 조건을 충족하지 않음
+                          </option>
+                          <option value="개인정보가 노출됨">
+                            개인정보가 노출됨
+                          </option>
+                        </select>
+                        <button
+                          className="secondary"
+                          onClick={() => decideReview(review.id, "REJECTED")}
+                        >
+                          거절
+                        </button>
+                        <button
+                          className="primary"
+                          onClick={() => decideReview(review.id, "APPROVED")}
+                        >
+                          승인
+                        </button>
+                      </footer>
+                    )}
                   </article>
                 ))}
               </div>
@@ -472,6 +576,12 @@ export default function AdminPage() {
           </section>
         )}
       </main>
+      {zoomedPhoto && (
+        <div className="photoZoom" onClick={() => setZoomedPhoto(null)}>
+          <button aria-label="확대 사진 닫기">×</button>
+          <img src={zoomedPhoto} alt="확대된 인증 사진" />
+        </div>
+      )}
       {open && (
         <div className="backdrop" onMouseDown={() => setOpen(false)}>
           <form

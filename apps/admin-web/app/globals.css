@@ -402,6 +402,93 @@ mark {
   gap: 8px;
   padding: 0 16px 16px;
 }
+.reviewCard footer select {
+  grid-column: 1/-1;
+}
+.reviewCard img {
+  cursor: zoom-in;
+}
+.reviewDescription {
+  min-height: 38px;
+}
+.reviewCard dl {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0;
+  padding: 10px;
+  background: #f7f9f7;
+  border-radius: 8px;
+}
+.reviewCard dl div {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+.reviewCard dt {
+  color: var(--muted);
+}
+.reviewCard dd {
+  margin: 0;
+  font-weight: 700;
+}
+.reviewTabs {
+  display: flex;
+  gap: 6px;
+}
+.reviewTabs button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #edf1ef;
+  color: #526158;
+  font-weight: 700;
+  cursor: pointer;
+}
+.reviewTabs button.selected {
+  background: #17251f !important;
+  color: #fff !important;
+}
+.reviewResult {
+  margin-top: 12px !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+.reviewResult.approved {
+  background: #e7f4eb;
+  color: #24704a;
+}
+.reviewResult.rejected {
+  background: #fff0ef;
+  color: #9b302c;
+}
+.photoZoom {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background: #07100bcc;
+}
+.photoZoom img {
+  max-width: min(900px, 92vw);
+  max-height: 86vh;
+  border-radius: 12px;
+}
+.photoZoom button {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 26px;
+  cursor: pointer;
+}
 .backdrop {
   position: fixed;
   inset: 0;

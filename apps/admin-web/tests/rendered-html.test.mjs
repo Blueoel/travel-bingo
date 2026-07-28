@@ -33,4 +33,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /검수 대기 목록/);
   assert.match(pageSource, /decideReview/);
   assert.match(pageSource, /PHOTO_REVIEW_API_URL/);
+  assert.match(pageSource, /처리 이력/);
+  assert.match(pageSource, /거절 사유 선택/);
+  assert.match(pageSource, /제출 일시/);
+  assert.match(pageSource, /인증 조건/);
+  assert.match(pageSource, /photoZoom/);
 });

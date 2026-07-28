@@ -14,6 +14,10 @@ export const photoVerificationAttempts = sqliteTable(
     guestId: text("guest_id").notNull(),
     missionId: text("mission_id").notNull(),
     missionTitle: text("mission_title").notNull(),
+    missionDescription: text("mission_description").notNull().default(""),
+    verificationLabel: text("verification_label")
+      .notNull()
+      .default("사진 인증"),
     points: integer("points").notNull().default(0),
     dailyDate: text("daily_date").notNull(),
     decision: text("decision").notNull(),
@@ -24,6 +28,7 @@ export const photoVerificationAttempts = sqliteTable(
     retryGuide: text("retry_guide"),
     photoKey: text("photo_key"),
     reviewDecision: text("review_decision"),
+    reviewReason: text("review_reason"),
     reviewerEmail: text("reviewer_email"),
     reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
     model: text("model").notNull(),

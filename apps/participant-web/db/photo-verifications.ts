@@ -1,4 +1,4 @@
-import { and, eq, isNull, sum } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb } from "./index";
@@ -62,6 +62,8 @@ export async function recordPhotoVerdict(input: {
   guestId: string;
   missionId: string;
   missionTitle: string;
+  missionDescription: string;
+  verificationLabel: string;
   points: number;
   photoKey?: string | null;
   verdict: StoredPhotoVerdict;
@@ -76,6 +78,8 @@ export async function recordPhotoVerdict(input: {
     guestId: input.guestId,
     missionId: input.missionId,
     missionTitle: input.missionTitle,
+    missionDescription: input.missionDescription,
+    verificationLabel: input.verificationLabel,
     points: input.points,
     dailyDate,
     decision: input.verdict.decision,
@@ -113,31 +117,44 @@ export async function recordPhotoVerdict(input: {
   };
 }
 
-export async function listPendingPhotoReviews() {
+export async function listPhotoReviews(processed = false) {
   const db = await getDb();
   return db
     .select({
       id: photoVerificationAttempts.id,
       missionTitle: photoVerificationAttempts.missionTitle,
+      missionDescription: photoVerificationAttempts.missionDescription,
+      verificationLabel: photoVerificationAttempts.verificationLabel,
+      guestId: photoVerificationAttempts.guestId,
+      points: photoVerificationAttempts.points,
       confidence: photoVerificationAttempts.confidence,
       evidenceJson: photoVerificationAttempts.evidenceJson,
       failureReasonsJson: photoVerificationAttempts.failureReasonsJson,
       retryGuide: photoVerificationAttempts.retryGuide,
       submittedAt: photoVerificationAttempts.submittedAt,
+      reviewDecision: photoVerificationAttempts.reviewDecision,
+      reviewReason: photoVerificationAttempts.reviewReason,
+      reviewerEmail: photoVerificationAttempts.reviewerEmail,
+      reviewedAt: photoVerificationAttempts.reviewedAt,
     })
     .from(photoVerificationAttempts)
     .where(
       and(
         eq(photoVerificationAttempts.decision, "NEEDS_REVIEW"),
-        isNull(photoVerificationAttempts.reviewDecision),
+        processed
+          ? isNotNull(photoVerificationAttempts.reviewDecision)
+          : isNull(photoVerificationAttempts.reviewDecision),
       ),
-    );
+    )
+    .orderBy(desc(photoVerificationAttempts.submittedAt))
+    .limit(100);
 }
 
 export async function decidePhotoReview(input: {
   verificationId: string;
   decision: "APPROVED" | "REJECTED";
   reviewerEmail: string;
+  reason?: string | null;
 }): Promise<{ awardGranted: boolean }> {
   const db = await getDb();
   const [attempt] = await db
@@ -156,6 +173,7 @@ export async function decidePhotoReview(input: {
     .update(photoVerificationAttempts)
     .set({
       reviewDecision: input.decision,
+      reviewReason: input.reason?.trim() || null,
       reviewerEmail: input.reviewerEmail,
       reviewedAt: new Date(),
     })
