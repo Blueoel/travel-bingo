@@ -344,11 +344,16 @@ export default function Home() {
     );
   };
 
-  const loadDaily = async () => {
+  const loadDaily = async (preserveAuthenticated = false) => {
     try {
       const authResponse = await apiFetch("/auth/me");
       if (authResponse.status === 401) {
-        setAuthStatus("unauthenticated");
+        if (preserveAuthenticated) {
+          setAuthStatus("authenticated");
+          setDemoMode(true);
+        } else {
+          setAuthStatus("unauthenticated");
+        }
         setLoading(false);
         return;
       }
@@ -403,17 +408,24 @@ export default function Home() {
     }
   };
 
-  const enterBingoAfterLogin = async () => {
+  const enterBingoAfterLogin = async (
+    user: Omit<AccountUser, "role"> & { role?: AccountUser["role"] },
+  ) => {
     setActiveTab("bingo");
     setSelected(null);
     setMessage(null);
+    setAccount({
+      ...user,
+      role: user.role ?? "USER",
+    });
+    setNickname(user.nickname);
     setLoading(true);
     setAuthStatus("authenticated");
-    await loadDaily();
+    await loadDaily(true);
   };
 
   useEffect(() => {
-    void loadDaily();
+    void loadDaily(false);
     setOnline(navigator.onLine);
     if ("serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js");
