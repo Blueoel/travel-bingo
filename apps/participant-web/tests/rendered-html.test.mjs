@@ -79,6 +79,12 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
   assert.match(authSource, /\/auth\/logout/);
   assert.match(authSource, /회원가입이 완료됐어요\. 새 계정으로 로그인해주세요\./);
   assert.match(authSource, /await onAuthenticated\(\)/);
+  assert.match(pageSource, /const enterBingoAfterLogin = async/);
+  assert.match(pageSource, /setActiveTab\("bingo"\)/);
+  assert.match(
+    pageSource,
+    /<AuthScreen onAuthenticated=\{enterBingoAfterLogin\} \/>/,
+  );
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
 });
 
