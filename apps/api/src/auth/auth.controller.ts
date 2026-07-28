@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Headers,
@@ -32,6 +33,30 @@ export class AuthController {
     const existing = await this.authService.getUser(cookieHeader);
     if (existing) return { user: existing };
     const { token, user } = await this.authService.createGuest();
+    response.cookie(AUTH_COOKIE_NAME, token, cookieOptions());
+    return { user };
+  }
+
+  @Post("register")
+  async register(
+    @Body() body: { name?: string; email?: string; password?: string },
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<{
+    readonly user: { readonly id: string; readonly nickname: string };
+  }> {
+    const { token, user } = await this.authService.register(body);
+    response.cookie(AUTH_COOKIE_NAME, token, cookieOptions());
+    return { user };
+  }
+
+  @Post("login")
+  async login(
+    @Body() body: { email?: string; password?: string },
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<{
+    readonly user: { readonly id: string; readonly nickname: string };
+  }> {
+    const { token, user } = await this.authService.login(body);
     response.cookie(AUTH_COOKIE_NAME, token, cookieOptions());
     return { user };
   }

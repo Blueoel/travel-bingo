@@ -850,6 +850,430 @@ nav .active {
     opacity: 0;
   }
 }
+
+.auth-shell {
+  position: relative;
+  width: min(100%, 480px);
+  min-height: 100dvh;
+  margin: auto;
+  padding: max(54px, env(safe-area-inset-top)) 28px
+    max(92px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 22%, #f2eadb55 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 68%, #d9d1bf33 0 1px, transparent 2px),
+    #fffdf8;
+  background-size: 17px 19px, 23px 21px, auto;
+  box-shadow: 0 0 40px #5b4b2a1a;
+  color: #283126;
+}
+.auth-back {
+  position: absolute;
+  z-index: 3;
+  top: max(22px, env(safe-area-inset-top));
+  left: 22px;
+  border: 0;
+  background: transparent;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+}
+.auth-back.is-hidden {
+  visibility: hidden;
+}
+.doodle-hero {
+  position: relative;
+  width: 270px;
+  height: 218px;
+  margin: 10px auto 2px;
+}
+.doodle-hero.register {
+  width: 330px;
+  height: 210px;
+  margin-top: 2px;
+}
+.doodle-cloud {
+  position: absolute;
+  color: #8fbee3;
+  font-size: 31px;
+  font-family: cursive;
+  transform: scaleX(1.25);
+}
+.cloud-one {
+  top: 0;
+  left: 0;
+}
+.cloud-two {
+  top: 4px;
+  right: 0;
+}
+.doodle-map {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 39px;
+  height: 153px;
+  border: 3px solid #394c2e;
+  background: #fffefa;
+  clip-path: polygon(0 10%, 28% 0, 53% 13%, 76% 0, 100% 10%, 100% 100%, 75% 87%, 52% 100%, 28% 87%, 0 100%);
+  transform: rotate(-1.5deg);
+}
+.register .doodle-map {
+  left: 125px;
+  right: 5px;
+  top: 55px;
+  height: 132px;
+  transform: rotate(4deg);
+}
+.map-fold {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  width: 1px;
+  background: #d5c998;
+}
+.fold-one {
+  left: 32%;
+  transform: rotate(-2deg);
+}
+.fold-two {
+  left: 68%;
+  transform: rotate(3deg);
+}
+.map-tree,
+.map-route,
+.map-heart,
+.map-star,
+.map-check {
+  position: absolute;
+  font-family: "Segoe Print", "Comic Sans MS", cursive;
+  font-style: normal;
+}
+.map-tree {
+  left: 9%;
+  top: 24%;
+  color: #55642c;
+  font-size: 41px;
+}
+.map-route {
+  left: 24%;
+  top: 49%;
+  color: #705426;
+  font-size: 25px;
+  transform: rotate(-10deg);
+}
+.map-heart {
+  left: 48%;
+  top: 48%;
+  color: #e45d39;
+  font-size: 41px;
+}
+.map-star {
+  right: 7%;
+  top: 13%;
+  color: #ef9f21;
+  font-size: 43px;
+}
+.map-check {
+  right: 14%;
+  bottom: 8%;
+  color: #4f7b39;
+  font-size: 33px;
+}
+.doodle-note {
+  position: absolute;
+  z-index: 2;
+  left: 2px;
+  top: 38px;
+  width: 130px;
+  height: 154px;
+  padding: 35px 16px;
+  border: 2px solid #6d5726;
+  border-radius: 10px 4px 9px 6px;
+  background: #fffef9;
+  box-shadow: -7px 7px 0 #faf3df;
+  transform: rotate(-7deg);
+  color: #33492e;
+  font-family: "Segoe Print", "Comic Sans MS", cursive;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.doodle-note:before {
+  content: "◌◌◌◌◌◌";
+  position: absolute;
+  left: -10px;
+  top: 3px;
+  width: 16px;
+  color: #6d5726;
+  font-size: 22px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.doodle-note span {
+  display: block;
+}
+.doodle-note i {
+  color: #e45d39;
+  font-size: 25px;
+}
+.auth-copy {
+  text-align: center;
+}
+.auth-copy h1 {
+  color: #283126;
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
+  font-size: clamp(27px, 7vw, 34px);
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.auth-copy h1 span {
+  margin-left: 7px;
+  font-size: 23px;
+}
+.auth-copy p {
+  margin-top: 5px;
+  color: #66645e;
+  font-size: 13px;
+}
+.title-scribble {
+  display: block;
+  width: 92px;
+  height: 9px;
+  margin: 4px auto 17px;
+  border-top: 3px solid #e6a71e;
+  border-radius: 50%;
+  transform: rotate(-2deg);
+}
+.auth-form {
+  display: grid;
+  gap: 9px;
+  margin-top: 25px;
+}
+.auth-form > label:not(.terms-check) {
+  position: relative;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ded5c7;
+  border-radius: 13px 15px 12px 14px;
+  background: #fffefa;
+  box-shadow: inset 0 0 16px #e9dfca15;
+}
+.auth-form input:not([type="checkbox"]) {
+  width: 100%;
+  height: 56px;
+  padding: 0 46px 0 55px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #273127;
+  font-size: 15px;
+}
+.auth-form input::placeholder {
+  color: #a19c92;
+}
+.auth-form > label:focus-within {
+  border-color: #748d5e;
+  box-shadow: 0 0 0 3px #718c5c18;
+}
+.field-icon {
+  position: absolute;
+  left: 20px;
+  color: #424940;
+  font-size: 21px;
+}
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  border: 0;
+  background: transparent;
+  color: #666d63;
+  font-size: 21px;
+  cursor: pointer;
+}
+.forgot-password {
+  justify-self: end;
+  margin: 1px 2px 4px;
+  border: 0;
+  background: transparent;
+  color: #44653d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.terms-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 8px 1px 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.terms-check input {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid #43513e;
+  border-radius: 50%;
+}
+.terms-check input:checked {
+  box-shadow: inset 0 0 0 4px #fffdf8;
+  background: #56784d;
+}
+.terms-check u {
+  color: #3e6639;
+  text-underline-offset: 3px;
+}
+.auth-message {
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fff3dd;
+  color: #805b1e;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.auth-submit {
+  min-height: 56px;
+  border: 1px solid #385632;
+  border-radius: 13px 15px 12px 14px;
+  background:
+    repeating-linear-gradient(165deg, #ffffff08 0 2px, transparent 2px 5px),
+    #557d4e;
+  box-shadow: inset 0 0 17px #21371e25;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.auth-submit:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 17px 0;
+  color: #968e80;
+  font-size: 12px;
+}
+.auth-divider:before,
+.auth-divider:after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e0d8ca;
+}
+.auth-divider span {
+  padding: 2px 11px;
+  border: 1px solid #e0d8ca;
+  border-radius: 20px;
+  background: #fffdf8;
+}
+.social-actions {
+  display: grid;
+  gap: 8px;
+}
+.social-actions button {
+  min-height: 49px;
+  border: 1px solid #ded5c7;
+  border-radius: 13px;
+  background: #fffefa;
+  cursor: pointer;
+  font-size: 14px;
+}
+.social-actions b {
+  margin-right: 10px;
+  font-size: 18px;
+}
+.social-actions .google-mark {
+  color: #4285f4;
+  font-family: Arial, sans-serif;
+}
+.auth-switch {
+  position: relative;
+  z-index: 2;
+  margin-top: 20px;
+  text-align: center;
+  color: #5e5c57;
+  font-size: 13px;
+}
+.auth-switch button {
+  margin-left: 8px;
+  padding: 2px 1px;
+  border: 0;
+  border-bottom: 2px solid #779059;
+  background: transparent;
+  color: #345b32;
+  font-weight: 800;
+  cursor: pointer;
+}
+.doodle-ground {
+  position: absolute;
+  right: 0;
+  bottom: 10px;
+  left: 0;
+  height: 70px;
+  color: #6f8a48;
+  pointer-events: none;
+}
+.doodle-ground .hill {
+  position: absolute;
+  left: 12px;
+  bottom: 7px;
+  width: 105px;
+  height: 42px;
+  border: 2px solid #647d43;
+  border-radius: 80% 70% 0 0;
+  background:
+    repeating-linear-gradient(35deg, transparent 0 5px, #8ba86633 5px 7px),
+    #eef2df;
+  clip-path: polygon(0 100%, 0 55%, 20% 25%, 39% 45%, 60% 5%, 100% 68%, 100% 100%);
+}
+.doodle-ground .path {
+  position: absolute;
+  left: 95px;
+  right: 78px;
+  bottom: 1px;
+  height: 27px;
+  border-top: 2px solid #9a7a3d;
+  border-radius: 50%;
+  transform: rotate(2deg);
+}
+.doodle-ground i {
+  position: absolute;
+  right: 38px;
+  bottom: 15px;
+  color: #e79d21;
+  font-size: 27px;
+}
+.doodle-ground b {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  font-size: 24px;
+}
+.auth-loading {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+}
+.auth-loading-mark {
+  color: #557d4e;
+  font-family: cursive;
+  font-size: 60px;
+  animation: review-spin 1.2s linear infinite;
+}
+.auth-loading p {
+  color: #667060;
+  font-size: 13px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bingo-celebration,
   .bingo-pop,
@@ -863,6 +1287,16 @@ nav .active {
   }
 }
 @media (max-width: 360px) {
+  .auth-shell {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+  .doodle-hero {
+    transform: scale(0.88);
+    transform-origin: center bottom;
+    margin-top: -12px;
+    margin-bottom: -13px;
+  }
   .app-shell {
     padding-left: 10px;
     padding-right: 10px;

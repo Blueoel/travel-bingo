@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { AuthScreen } from "./auth-screen";
+
 type MissionKind = "CHECK_IN" | "QUIZ" | "PLACE_VISIT" | "PHOTO" | "COMPOSITE";
 type Mission = {
   id: string;
@@ -263,6 +265,9 @@ function remainingTime(endsAt: string, now: number): string {
 }
 
 export default function Home() {
+  const [authStatus, setAuthStatus] = useState<
+    "checking" | "authenticated" | "unauthenticated"
+  >("checking");
   const [items, setItems] = useState<Mission[]>(demoMissions);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
@@ -332,15 +337,18 @@ export default function Home() {
 
   const loadDaily = async () => {
     try {
-      let authResponse = await apiFetch("/auth/me");
+      const authResponse = await apiFetch("/auth/me");
       if (authResponse.status === 401) {
-        authResponse = await apiFetch("/auth/guest", { method: "POST" });
+        setAuthStatus("unauthenticated");
+        setLoading(false);
+        return;
       }
       if (!authResponse.ok) throw new Error("Authentication unavailable");
       const auth = (await authResponse.json()) as {
         user: { nickname: string };
       };
       setNickname(auth.user.nickname);
+      setAuthStatus("authenticated");
 
       let response = await apiFetch("/daily-sessions/today");
       if (response.status === 404) {
@@ -355,6 +363,7 @@ export default function Home() {
       applySession((await response.json()) as DailySession);
       setDemoMode(false);
     } catch {
+      setAuthStatus("authenticated");
       setDemoMode(true);
       const basePoints = demoMissions
         .filter((item) => item.done)
@@ -633,6 +642,19 @@ export default function Home() {
   };
 
   const completeCount = items.filter((item) => item.done).length;
+
+  if (authStatus === "checking") {
+    return (
+      <main className="auth-shell auth-loading">
+        <div className="auth-loading-mark">⌁</div>
+        <p>오늘의 산책을 준비하고 있어요…</p>
+      </main>
+    );
+  }
+
+  if (authStatus === "unauthenticated") {
+    return <AuthScreen onAuthenticated={loadDaily} />;
+  }
 
   return (
     <main className="app-shell">

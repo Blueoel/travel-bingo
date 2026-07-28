@@ -14,19 +14,17 @@ async function render(pathname = "/") {
   return server.default.fetch(new Request(`http://localhost${pathname}`));
 }
 
-test("renders the Travel Bingo daily walk screen", async () => {
+test("renders the Travel Bingo authentication entry", async () => {
   const response = await render();
   const html = await response.text();
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
   assert.match(html, /<html lang="ko"/);
-  assert.match(html, /<title>Travel Bingo \| 오늘의 산책<\/title>/);
+  assert.match(html, /<title>Travel Bingo \| 산책에서 여행까지<\/title>/);
   assert.match(html, /rel="manifest" href="\/manifest\.webmanifest"/);
   assert.match(html, /name="theme-color" content="#173a2c"/);
-  assert.match(html, /오늘의 산책 빙고/);
-  assert.match(html, /DAILY WALK/);
-  assert.match(html, /오늘의 빙고를 준비하고 있어요/);
+  assert.match(html, /오늘의 산책을 준비하고 있어요/);
   assert.doesNotMatch(html, /codex-preview/);
   assert.doesNotMatch(html, /starter/i);
 });
@@ -61,15 +59,22 @@ test("contains installable PWA and offline support", async () => {
   assert.match(pageSource, /window\.addEventListener\("offline"/);
 });
 
-test("uses cookie-backed guest authentication without a fixed demo user", async () => {
+test("uses cookie-backed email authentication without a fixed demo user", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
   );
+  const authSource = await readFile(
+    path.join(projectDirectory, "app", "auth-screen.tsx"),
+    "utf8",
+  );
 
   assert.match(pageSource, /\/auth\/me/);
-  assert.match(pageSource, /\/auth\/guest/);
+  assert.match(authSource, /auth\/\$\{mode === "login" \? "login" : "register"\}/);
+  assert.match(authSource, /Apple로 계속하기/);
+  assert.match(authSource, /Google로 계속하기/);
   assert.match(pageSource, /credentials:\s*"include"/);
+  assert.match(authSource, /credentials:\s*"include"/);
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
 });
 
