@@ -596,9 +596,6 @@ export default function Home() {
               <span>{ranking.me.points.toLocaleString()} P</span>
             </div>
           )}
-          <div className="ranking-columns" aria-hidden="true">
-            <span>#</span><span>참가자</span><span>포인트</span>
-          </div>
           <div className={`ranking-list ${rankingLoading ? "loading" : ""}`}>
             {ranking.entries.map((entry) => (
               <div className={`ranking-row ${entry.userId === ranking.me?.userId ? "is-me" : ""}`} key={entry.userId}>

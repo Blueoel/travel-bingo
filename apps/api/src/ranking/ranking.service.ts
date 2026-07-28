@@ -81,7 +81,7 @@ export class RankingService {
       scope,
       startsAt: window.startsAt?.toISOString() ?? null,
       endsAt: window.endsAt?.toISOString() ?? null,
-      entries: entries.slice(0, 50),
+      entries: entries.slice(0, 10),
       me,
     };
   }
