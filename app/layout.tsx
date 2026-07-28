@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Travel Bingo | 오늘의 산책",
-  description: "걷고, 발견하고, 빙고를 완성하는 여행 미션",
+  title: "Travel Bingo | 산책에서 여행까지",
+  description: "오늘도 작은 발견을 시작하는 산책 빙고",
   manifest: "/manifest.webmanifest",
   applicationName: "Travel Bingo",
   appleWebApp: {
