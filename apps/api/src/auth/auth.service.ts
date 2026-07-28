@@ -33,6 +33,7 @@ export class AuthService {
     readonly user: {
       readonly id: string;
       readonly nickname: string;
+      readonly email: string | null;
       readonly role: "USER" | "ADMIN";
     };
   }> {
@@ -41,7 +42,7 @@ export class AuthService {
       data: {
         nickname: `여행자 ${suffix}`,
       },
-      select: { id: true, nickname: true, role: true },
+      select: { id: true, nickname: true, email: true, role: true },
     });
     return this.createSession(user);
   }
@@ -55,6 +56,7 @@ export class AuthService {
     readonly user: {
       readonly id: string;
       readonly nickname: string;
+      readonly email: string | null;
       readonly role: "USER" | "ADMIN";
     };
   }> {
@@ -79,7 +81,7 @@ export class AuthService {
         email,
         passwordHash: await hashPassword(password),
       },
-      select: { id: true, nickname: true, role: true },
+      select: { id: true, nickname: true, email: true, role: true },
     });
     return this.createSession(user);
   }
@@ -92,6 +94,7 @@ export class AuthService {
     readonly user: {
       readonly id: string;
       readonly nickname: string;
+      readonly email: string | null;
       readonly role: "USER" | "ADMIN";
     };
   }> {
@@ -121,6 +124,7 @@ export class AuthService {
     return this.createSession({
       id: account.id,
       nickname: account.nickname,
+      email,
       role: account.role,
     });
   }
@@ -130,6 +134,7 @@ export class AuthService {
   ): Promise<{
     readonly id: string;
     readonly nickname: string;
+    readonly email: string | null;
     readonly role: "USER" | "ADMIN";
   } | null> {
     const token = readCookie(cookieHeader, AUTH_COOKIE_NAME);
@@ -141,7 +146,11 @@ export class AuthService {
         expiresAt: { gt: new Date() },
         user: { status: "ACTIVE" },
       },
-      include: { user: { select: { id: true, nickname: true, role: true } } },
+      include: {
+        user: {
+          select: { id: true, nickname: true, email: true, role: true },
+        },
+      },
     });
     return session?.user ?? null;
   }
@@ -194,6 +203,7 @@ export class AuthService {
   private async createSession(user: {
     readonly id: string;
     readonly nickname: string;
+    readonly email: string | null;
     readonly role: "USER" | "ADMIN";
   }): Promise<{ readonly token: string; readonly user: typeof user }> {
     const token = randomBytes(32).toString("base64url");

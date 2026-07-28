@@ -58,6 +58,12 @@ type RankingResult = {
   me: RankingEntry | null;
   endsAt: string | null;
 };
+type AccountUser = {
+  id: string;
+  nickname: string;
+  email: string | null;
+  role: "USER" | "ADMIN";
+};
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
@@ -268,6 +274,7 @@ export default function Home() {
   const [authStatus, setAuthStatus] = useState<
     "checking" | "authenticated" | "unauthenticated"
   >("checking");
+  const [account, setAccount] = useState<AccountUser | null>(null);
   const [items, setItems] = useState<Mission[]>(demoMissions);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
@@ -287,7 +294,9 @@ export default function Home() {
   );
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
-  const [activeTab, setActiveTab] = useState<"bingo" | "ranking">("bingo");
+  const [activeTab, setActiveTab] = useState<"bingo" | "ranking" | "my">(
+    "bingo",
+  );
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [ranking, setRanking] = useState<RankingResult>({
@@ -345,9 +354,10 @@ export default function Home() {
       }
       if (!authResponse.ok) throw new Error("Authentication unavailable");
       const auth = (await authResponse.json()) as {
-        user: { nickname: string };
+        user: AccountUser;
       };
       setNickname(auth.user.nickname);
+      setAccount(auth.user);
       setAuthStatus("authenticated");
 
       let response = await apiFetch("/daily-sessions/today");
@@ -440,6 +450,18 @@ export default function Home() {
     await installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
+  };
+
+  const logout = async () => {
+    setMessage(null);
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } finally {
+      setAccount(null);
+      setSessionId(null);
+      setActiveTab("bingo");
+      setAuthStatus("unauthenticated");
+    }
   };
 
   const celebrate = (count: number) => {
@@ -836,6 +858,67 @@ export default function Home() {
           </div>
         </section>
       )}
+      {activeTab === "my" && (
+        <section className="my-screen">
+          <header className="my-header">
+            <h1>마이</h1>
+          </header>
+          <div className="my-profile-card">
+            <span className="my-avatar">
+              {(account?.nickname ?? nickname).slice(0, 1)}
+            </span>
+            <div>
+              <h2>{account?.nickname ?? nickname}</h2>
+              <p>{account?.email ?? "체험 계정"}</p>
+            </div>
+            <span className="level-badge">산책자</span>
+          </div>
+          <div className="my-stats">
+            <div>
+              <b>{points.toLocaleString()}</b>
+              <span>누적 Point</span>
+            </div>
+            <div>
+              <b>{completeCount}</b>
+              <span>완료 미션</span>
+            </div>
+            <div>
+              <b>{lineKeys.length}</b>
+              <span>완성 빙고</span>
+            </div>
+          </div>
+          <div className="my-menu">
+            <button type="button">
+              <span>▤</span>
+              여행 기록
+              <b>›</b>
+            </button>
+            <button type="button">
+              <span>♧</span>
+              획득 배지
+              <b>›</b>
+            </button>
+            <button type="button">
+              <span>⚙</span>
+              설정
+              <b>›</b>
+            </button>
+          </div>
+          {account?.role === "ADMIN" && (
+            <p className="admin-account-note">
+              관리자 계정입니다 · 관리자 화면은 별도 콘솔을 이용해주세요.
+            </p>
+          )}
+          <button className="logout-button" type="button" onClick={logout}>
+            로그아웃
+          </button>
+          <div className="my-doodle" aria-hidden="true">
+            <span>⌁</span>
+            <i>✿</i>
+            <b>♧</b>
+          </div>
+        </section>
+      )}
       <nav>
         <button>
           <span>⌂</span>홈
@@ -855,7 +938,10 @@ export default function Home() {
         >
           <span>☆</span>랭킹
         </button>
-        <button>
+        <button
+          className={activeTab === "my" ? "active" : ""}
+          onClick={() => setActiveTab("my")}
+        >
           <span>○</span>마이
         </button>
       </nav>

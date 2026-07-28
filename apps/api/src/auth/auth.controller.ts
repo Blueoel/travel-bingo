@@ -28,7 +28,11 @@ export class AuthController {
     @Headers("cookie") cookieHeader: string | undefined,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<{
-    readonly user: { readonly id: string; readonly nickname: string };
+    readonly user: {
+      readonly id: string;
+      readonly nickname: string;
+      readonly email: string | null;
+    };
   }> {
     const existing = await this.authService.getUser(cookieHeader);
     if (existing) return { user: existing };
@@ -42,7 +46,11 @@ export class AuthController {
     @Body() body: { name?: string; email?: string; password?: string },
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<{
-    readonly user: { readonly id: string; readonly nickname: string };
+    readonly user: {
+      readonly id: string;
+      readonly nickname: string;
+      readonly email: string | null;
+    };
   }> {
     const { token, user } = await this.authService.register(body);
     response.cookie(AUTH_COOKIE_NAME, token, cookieOptions());
@@ -54,7 +62,11 @@ export class AuthController {
     @Body() body: { email?: string; password?: string },
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<{
-    readonly user: { readonly id: string; readonly nickname: string };
+    readonly user: {
+      readonly id: string;
+      readonly nickname: string;
+      readonly email: string | null;
+    };
   }> {
     const { token, user } = await this.authService.login(body);
     response.cookie(AUTH_COOKIE_NAME, token, cookieOptions());
@@ -63,7 +75,12 @@ export class AuthController {
 
   @Get("me")
   async me(@Headers("cookie") cookieHeader: string | undefined): Promise<{
-    readonly user: { readonly id: string; readonly nickname: string };
+    readonly user: {
+      readonly id: string;
+      readonly nickname: string;
+      readonly email: string | null;
+      readonly role: "USER" | "ADMIN";
+    };
   }> {
     const user = await this.authService.getUser(cookieHeader);
     if (!user) {
