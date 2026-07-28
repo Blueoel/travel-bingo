@@ -1,0 +1,52 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Query,
+} from "@nestjs/common";
+
+import { AuthService } from "../auth/auth.service.js";
+import { UserAdminService } from "./user-admin.service.js";
+
+@Controller("api/v1/admin/users")
+export class UserAdminController {
+  constructor(
+    private readonly users: UserAdminService,
+    private readonly auth: AuthService,
+  ) {}
+
+  @Get()
+  async list(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Query("q") q?: string,
+    @Query("status") status?: string,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.users.list({
+      ...(q ? { q } : {}),
+      ...(status ? { status } : {}),
+    });
+  }
+
+  @Patch(":id/status")
+  async updateStatus(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Param("id") id: string,
+    @Body() body: { action?: "SUSPEND" | "ACTIVATE" | "WITHDRAW" },
+  ) {
+    const administratorId = await this.auth.requireAdminId(
+      cookie,
+      developmentUserId,
+    );
+    return this.users.updateStatus(
+      id,
+      body.action ?? ("" as "SUSPEND"),
+      administratorId,
+    );
+  }
+}

@@ -35,6 +35,22 @@ type PhotoReview = {
   reviewedAt: string | null;
   imageUrl: string;
 };
+type UserRecord = {
+  id: string;
+  nickname: string;
+  email: string | null;
+  role: "USER" | "ADMIN";
+  status: "ACTIVE" | "SUSPENDED" | "DELETED";
+  createdAt: string;
+  updatedAt: string;
+  _count: { bingoSessions: number; verifications: number };
+};
+type UserSummary = {
+  total: number;
+  active: number;
+  suspended: number;
+  deleted: number;
+};
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const PHOTO_API =
   process.env.NEXT_PUBLIC_PHOTO_REVIEW_API_URL ??
@@ -51,7 +67,9 @@ export default function AdminPage() {
   const [query, setQuery] = useState(""),
     [scope, setScope] = useState(""),
     [regionId, setRegionId] = useState("");
-  const [view, setView] = useState<"catalog" | "daily" | "reviews">("catalog"),
+  const [view, setView] = useState<
+    "catalog" | "daily" | "reviews" | "users"
+  >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<PhotoReview[]>([]);
@@ -62,6 +80,16 @@ export default function AdminPage() {
     {},
   );
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [userSummary, setUserSummary] = useState<UserSummary>({
+    total: 0,
+    active: 0,
+    suspended: 0,
+    deleted: 0,
+  });
+  const [userQuery, setUserQuery] = useState("");
+  const [userStatus, setUserStatus] = useState("");
+  const [userLoading, setUserLoading] = useState(false);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const params = useMemo(() => {
@@ -174,6 +202,71 @@ export default function AdminPage() {
   useEffect(() => {
     if (view === "reviews") void loadReviews();
   }, [view, reviewMode]);
+  async function loadUsers() {
+    setUserLoading(true);
+    try {
+      const query = new URLSearchParams();
+      if (userQuery) query.set("q", userQuery);
+      if (userStatus) query.set("status", userStatus);
+      const result = await fetch(`${API}/admin/users?${query}`, {
+        credentials: "include",
+        headers: { "x-user-id": ADMIN },
+      });
+      if (!result.ok) throw new Error("사용자 목록을 불러오지 못했습니다.");
+      const data = (await result.json()) as {
+        items: UserRecord[];
+        summary: UserSummary;
+      };
+      setUsers(data.items);
+      setUserSummary(data.summary);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "사용자 목록을 불러오지 못했습니다.",
+      );
+    } finally {
+      setUserLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (view === "users") void loadUsers();
+  }, [view, userQuery, userStatus]);
+  async function manageUser(
+    user: UserRecord,
+    action: "SUSPEND" | "ACTIVATE" | "WITHDRAW",
+  ) {
+    if (
+      action === "WITHDRAW" &&
+      !window.confirm(
+        `${user.nickname} 계정을 탈퇴 처리할까요?\n개인정보가 익명화되고 모든 로그인 세션이 종료됩니다.`,
+      )
+    ) {
+      return;
+    }
+    const result = await fetch(`${API}/admin/users/${user.id}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "content-type": "application/json",
+        "x-user-id": ADMIN,
+      },
+      body: JSON.stringify({ action }),
+    });
+    if (!result.ok) {
+      const data = (await result.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+      return setError(data?.message ?? "사용자 상태를 변경하지 못했습니다.");
+    }
+    setNotice(
+      action === "WITHDRAW"
+        ? "계정을 탈퇴 처리하고 개인정보를 익명화했습니다."
+        : action === "SUSPEND"
+          ? "계정 이용을 정지하고 로그인 세션을 종료했습니다."
+          : "계정을 다시 활성화했습니다.",
+    );
+    await loadUsers();
+  }
   const common = missions.filter((m) => m.scope === "COMMON").length,
     regional = missions.filter((m) => m.scope === "REGION").length,
     dailyCandidates = missions.filter(
@@ -208,7 +301,12 @@ export default function AdminPage() {
             사진 검수
           </button>
           <span>지역 관리</span>
-          <span>사용자</span>
+          <button
+            className={view === "users" ? "selected" : ""}
+            onClick={() => setView("users")}
+          >
+            사용자 관리
+          </button>
         </nav>
         <div className="user">
           선　<b>관리자</b>
@@ -223,14 +321,18 @@ export default function AdminPage() {
                 ? "미션 관리"
                 : view === "daily"
                   ? "Daily 빙고 구성"
-                  : "사진 검수"}
+                  : view === "reviews"
+                    ? "사진 검수"
+                    : "사용자 관리"}
             </h1>
             <p>
               {view === "catalog"
                 ? "공통·지역 미션을 등록하고 운영 상태를 관리합니다."
                 : view === "daily"
                   ? "매일 무작위로 배치할 공통 미션 후보를 선택합니다."
-                  : "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."}
+                  : view === "reviews"
+                    ? "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."
+                    : "가입 계정과 이용 상태를 안전하게 관리합니다."}
             </p>
           </div>
           {view === "catalog" ? (
@@ -443,7 +545,7 @@ export default function AdminPage() {
               })}
             </div>
           </section>
-        ) : (
+        ) : view === "reviews" ? (
           <section className="reviewPanel">
             <div className="catalogHead">
               <div>
@@ -574,6 +676,147 @@ export default function AdminPage() {
               <p className="empty">현재 검수 대기 사진이 없습니다.</p>
             )}
           </section>
+        ) : (
+          <>
+            <section className="summary userSummary">
+              <article>
+                <span>전체 계정</span>
+                <b>{userSummary.total}</b>
+                <small>가입 이력 전체</small>
+              </article>
+              <article>
+                <span>이용 중</span>
+                <b className="green">{userSummary.active}</b>
+                <small>로그인 가능</small>
+              </article>
+              <article>
+                <span>이용 정지</span>
+                <b>{userSummary.suspended}</b>
+                <small>관리자 정지</small>
+              </article>
+              <article>
+                <span>탈퇴</span>
+                <b>{userSummary.deleted}</b>
+                <small>개인정보 익명화</small>
+              </article>
+            </section>
+            <section className="catalog userCatalog">
+              <div className="catalogHead">
+                <div>
+                  <h2>가입 사용자</h2>
+                  <p>
+                    비밀번호는 저장된 해시를 포함해 관리자 화면에 표시하지
+                    않습니다.
+                  </p>
+                </div>
+              </div>
+              <div className="filters userFilters">
+                <input
+                  aria-label="사용자 검색"
+                  placeholder="이름 또는 이메일 검색"
+                  value={userQuery}
+                  onChange={(event) => setUserQuery(event.target.value)}
+                />
+                <select
+                  aria-label="사용자 상태"
+                  value={userStatus}
+                  onChange={(event) => setUserStatus(event.target.value)}
+                >
+                  <option value="">모든 상태</option>
+                  <option value="ACTIVE">이용 중</option>
+                  <option value="SUSPENDED">이용 정지</option>
+                  <option value="DELETED">탈퇴</option>
+                </select>
+              </div>
+              <div className={`table ${userLoading ? "tableLoading" : ""}`}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>사용자</th>
+                      <th>권한</th>
+                      <th>가입일</th>
+                      <th>활동</th>
+                      <th>상태</th>
+                      <th>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.length ? (
+                      users.map((user) => (
+                        <tr key={user.id}>
+                          <td>
+                            <b>{user.nickname}</b>
+                            <small>{user.email ?? "이메일 미등록"}</small>
+                          </td>
+                          <td>{user.role === "ADMIN" ? "관리자" : "일반"}</td>
+                          <td>
+                            {new Date(user.createdAt).toLocaleDateString(
+                              "ko-KR",
+                            )}
+                          </td>
+                          <td>
+                            빙고 {user._count.bingoSessions} · 인증{" "}
+                            {user._count.verifications}
+                          </td>
+                          <td>
+                            <mark
+                              className={`userStatus ${user.status.toLowerCase()}`}
+                            >
+                              {user.status === "ACTIVE"
+                                ? "이용 중"
+                                : user.status === "SUSPENDED"
+                                  ? "이용 정지"
+                                  : "탈퇴"}
+                            </mark>
+                          </td>
+                          <td>
+                            {user.role === "ADMIN" ||
+                            user.status === "DELETED" ? (
+                              <span className="protectedUser">
+                                {user.role === "ADMIN" ? "보호 계정" : "처리 완료"}
+                              </span>
+                            ) : (
+                              <div className="userActions">
+                                <button
+                                  className="textButton"
+                                  onClick={() =>
+                                    manageUser(
+                                      user,
+                                      user.status === "ACTIVE"
+                                        ? "SUSPEND"
+                                        : "ACTIVATE",
+                                    )
+                                  }
+                                >
+                                  {user.status === "ACTIVE"
+                                    ? "이용 정지"
+                                    : "복구"}
+                                </button>
+                                <button
+                                  className="withdrawButton"
+                                  onClick={() =>
+                                    manageUser(user, "WITHDRAW")
+                                  }
+                                >
+                                  탈퇴 처리
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="empty">
+                          조건에 맞는 사용자가 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
         )}
       </main>
       {zoomedPhoto && (

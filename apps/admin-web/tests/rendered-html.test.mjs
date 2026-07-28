@@ -23,6 +23,7 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(html, /미션 관리/);
   assert.match(html, /Daily 빙고 구성/);
   assert.match(html, /사진 검수/);
+  assert.match(html, /사용자 관리/);
   assert.match(html, /새 미션/);
   assert.doesNotMatch(html, /Your site is taking shape|SkeletonPreview/);
 
@@ -38,4 +39,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /제출 일시/);
   assert.match(pageSource, /인증 조건/);
   assert.match(pageSource, /photoZoom/);
+  assert.match(pageSource, /가입 사용자/);
+  assert.match(pageSource, /비밀번호는 저장된 해시를 포함해 관리자 화면에 표시하지/);
+  assert.match(pageSource, /manageUser/);
+  assert.match(pageSource, /탈퇴 처리/);
+  assert.match(pageSource, /개인정보를 익명화/);
 });
