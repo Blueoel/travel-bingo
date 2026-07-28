@@ -403,6 +403,15 @@ export default function Home() {
     }
   };
 
+  const enterBingoAfterLogin = async () => {
+    setActiveTab("bingo");
+    setSelected(null);
+    setMessage(null);
+    setLoading(true);
+    setAuthStatus("authenticated");
+    await loadDaily();
+  };
+
   useEffect(() => {
     void loadDaily();
     setOnline(navigator.onLine);
@@ -677,7 +686,7 @@ export default function Home() {
   }
 
   if (authStatus === "unauthenticated") {
-    return <AuthScreen onAuthenticated={loadDaily} />;
+    return <AuthScreen onAuthenticated={enterBingoAfterLogin} />;
   }
 
   return (
