@@ -16,7 +16,7 @@ import {
 } from "@travel-bingo/domain";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
-import { getSeoulDate, toDatabaseDate } from "./daily-date.js";
+import { getDailyCycle, toDatabaseDate } from "./daily-date.js";
 
 export interface CreateDailySessionCommand {
   readonly userId: string;
@@ -52,7 +52,7 @@ export class DailySessionService {
   ) {}
 
   async getToday(command: GetDailySessionCommand): Promise<DailySessionResult> {
-    const date = getSeoulDate(command.now ?? new Date());
+    const date = getDailyCycle(command.now ?? new Date()).date;
     const session = await this.database.bingoSession.findFirst({
       where: {
         userId: command.userId,
@@ -77,7 +77,7 @@ export class DailySessionService {
     command: CreateDailySessionCommand,
   ): Promise<DailySessionResult> {
     const now = command.now ?? new Date();
-    const date = getSeoulDate(now);
+    const date = getDailyCycle(now).date;
     const dailyDate = toDatabaseDate(date);
 
     const template = await this.database.bingoTemplate.findFirst({

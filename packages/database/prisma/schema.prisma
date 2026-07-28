@@ -81,18 +81,19 @@ enum MissionScope {
 }
 
 model User {
-  id             String          @id @default(uuid()) @db.Uuid
-  role           UserRole        @default(USER)
-  nickname       String          @db.VarChar(40)
-  status         UserStatus      @default(ACTIVE)
-  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
-  ownedTemplates BingoTemplate[] @relation("TemplateOwner")
-  bingoSessions  BingoSession[]
-  verifications  Verification[]
-  pointLedger    PointLedger[]
-  authSessions   AuthSession[]
-  missionRevisions MissionRevision[] @relation("MissionRevisionAuthor")
+  id               String                 @id @default(uuid()) @db.Uuid
+  role             UserRole               @default(USER)
+  nickname         String                 @db.VarChar(40)
+  status           UserStatus             @default(ACTIVE)
+  createdAt        DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime               @updatedAt @db.Timestamptz(3)
+  ownedTemplates   BingoTemplate[]        @relation("TemplateOwner")
+  bingoSessions    BingoSession[]
+  verifications    Verification[]
+  pointLedger      PointLedger[]
+  authSessions     AuthSession[]
+  missionRevisions MissionRevision[]      @relation("MissionRevisionAuthor")
+  dailyRankings    DailyRankingSnapshot[]
 
   @@index([status, createdAt])
 }
@@ -112,15 +113,15 @@ model AuthSession {
 }
 
 model Region {
-  id                    String          @id @default(uuid()) @db.Uuid
-  name                  String          @db.VarChar(80)
-  administrativeCode    String          @unique @db.VarChar(20)
-  centerLatitude        Decimal         @db.Decimal(9, 6)
-  centerLongitude       Decimal         @db.Decimal(9, 6)
-  populationDeclineFlag Boolean         @default(false)
-  status                ContentStatus   @default(ACTIVE)
-  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  id                    String              @id @default(uuid()) @db.Uuid
+  name                  String              @db.VarChar(80)
+  administrativeCode    String              @unique @db.VarChar(20)
+  centerLatitude        Decimal             @db.Decimal(9, 6)
+  centerLongitude       Decimal             @db.Decimal(9, 6)
+  populationDeclineFlag Boolean             @default(false)
+  status                ContentStatus       @default(ACTIVE)
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
   places                Place[]
   themes                BingoTheme[]
   templates             BingoTemplate[]
@@ -196,26 +197,26 @@ model BingoTemplate {
 }
 
 model Mission {
-  id                  String         @id @default(uuid()) @db.Uuid
-  placeId             String?        @db.Uuid
+  id                  String                  @id @default(uuid()) @db.Uuid
+  placeId             String?                 @db.Uuid
   kind                MissionKind
-  scope               MissionScope   @default(COMMON)
-  title               String         @db.VarChar(120)
+  scope               MissionScope            @default(COMMON)
+  title               String                  @db.VarChar(120)
   description         String
-  category            String         @db.VarChar(40)
+  category            String                  @db.VarChar(40)
   verificationPolicy  Json
-  targetValue         Decimal?       @db.Decimal(12, 2)
-  targetUnit          String?        @db.VarChar(30)
+  targetValue         Decimal?                @db.Decimal(12, 2)
+  targetUnit          String?                 @db.VarChar(30)
   radiusM             Int?
   points              Int
-  difficulty          Int            @default(1)
+  difficulty          Int                     @default(1)
   estimatedMinutesMin Int?
   estimatedMinutesMax Int?
-  similarityGroup     String?        @db.VarChar(60)
-  status              ContentStatus  @default(ACTIVE)
-  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
-  place               Place?         @relation(fields: [placeId], references: [id], onDelete: Restrict)
+  similarityGroup     String?                 @db.VarChar(60)
+  status              ContentStatus           @default(ACTIVE)
+  createdAt           DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                @updatedAt @db.Timestamptz(3)
+  place               Place?                  @relation(fields: [placeId], references: [id], onDelete: Restrict)
   templateCells       TemplateCell[]
   regionLinks         MissionRegion[]
   collectionItems     MissionCollectionItem[]
@@ -239,15 +240,15 @@ model MissionRegion {
 }
 
 model MissionCollection {
-  id          String        @id @default(uuid()) @db.Uuid
-  regionId    String?       @db.Uuid
-  name        String        @db.VarChar(120)
-  type        String        @db.VarChar(30)
+  id          String                  @id @default(uuid()) @db.Uuid
+  regionId    String?                 @db.Uuid
+  name        String                  @db.VarChar(120)
+  type        String                  @db.VarChar(30)
   description String?
-  status      ContentStatus @default(ACTIVE)
-  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
-  region      Region?       @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  status      ContentStatus           @default(ACTIVE)
+  createdAt   DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                @updatedAt @db.Timestamptz(3)
+  region      Region?                 @relation(fields: [regionId], references: [id], onDelete: Restrict)
   items       MissionCollectionItem[]
 
   @@unique([type, regionId, name])
@@ -401,4 +402,33 @@ model OutboxEvent {
   lastError   String?
 
   @@index([processedAt, occurredAt])
+}
+
+model DailyOperation {
+  id                String    @id @default(uuid()) @db.Uuid
+  cycleDate         DateTime  @unique @db.Date
+  status            String    @default("PROCESSING") @db.VarChar(20)
+  templateId        String?   @db.Uuid
+  rankingEntryCount Int       @default(0)
+  rewardPointTotal  Int       @default(0)
+  startedAt         DateTime  @default(now()) @db.Timestamptz(3)
+  completedAt       DateTime? @db.Timestamptz(3)
+  lastError         String?
+
+  @@index([status, cycleDate])
+}
+
+model DailyRankingSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  cycleDate    DateTime @db.Date
+  userId       String   @db.Uuid
+  rank         Int
+  score        Int
+  rewardPoints Int
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([cycleDate, userId])
+  @@index([cycleDate, rank])
+  @@index([userId, cycleDate])
 }

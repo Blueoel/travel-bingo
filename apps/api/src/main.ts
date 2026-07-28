@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
       "idempotency-key",
       ...(process.env.NODE_ENV === "production" ? [] : ["x-user-id"]),
     ],
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "PUT", "OPTIONS"],
   });
   app.enableShutdownHooks();
   await app.listen(environment.port, "0.0.0.0");

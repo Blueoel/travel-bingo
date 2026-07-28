@@ -22,3 +22,19 @@ export function getSeoulDate(now: Date): string {
 export function toDatabaseDate(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);
 }
+
+export function getDailyCycle(now: Date): {
+  readonly date: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+} {
+  const seoulDate = getSeoulDate(now);
+  const boundary = new Date(`${seoulDate}T00:30:00+09:00`);
+  if (now < boundary) boundary.setUTCDate(boundary.getUTCDate() - 1);
+  const endsAt = new Date(boundary.getTime() + 24 * 60 * 60 * 1000);
+  return {
+    date: getSeoulDate(new Date(boundary.getTime() + 9 * 60 * 60 * 1000)),
+    startsAt: boundary,
+    endsAt,
+  };
+}

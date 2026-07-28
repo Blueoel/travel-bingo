@@ -240,9 +240,9 @@ export class MissionCatalogService {
 
   async updateDailyCollection(input: DailyCollectionInput) {
     const missionIds = [...new Set(input.missionIds)];
-    if (missionIds.length < 9 || missionIds.length > 100) {
+    if (missionIds.length < 25 || missionIds.length > 100) {
       throw new BadRequestException(
-        "Daily collection requires between 9 and 100 unique missions.",
+        "Daily collection requires between 25 and 100 unique missions.",
       );
     }
     const eligibleCount = await this.database.mission.count({
