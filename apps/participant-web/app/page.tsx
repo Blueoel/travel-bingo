@@ -881,21 +881,13 @@ export default function Home() {
                     <b>획득 점수</b>
                     <em>{selected.points} Point</em>
                   </p>
-                  {selected.estimatedTime && (
-                    <p>
-                      <span>◷</span>
-                      <b>예상 시간</b>
-                      <em>{selected.estimatedTime}</em>
-                    </p>
-                  )}
                   {selected.kind === "PHOTO" && (
-                    <p>
+                    <p className="privacy-warning">
                       <span>△</span>
-                      <b>주의 사항</b>
-                      <em>
+                      <strong>
                         대상이 잘 보이도록 촬영하고, 주변 사람의 얼굴이나
                         차량번호가 나오지 않도록 촬영해주세요.
-                      </em>
+                      </strong>
                     </p>
                   )}
                 </div>
