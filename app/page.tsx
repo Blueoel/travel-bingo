@@ -208,9 +208,11 @@ function friendlyError(code?: string): string {
     OUTSIDE_ALLOWED_RADIUS:
       "아직 목적지와 거리가 있어요. 조금 더 가까이 이동해주세요.",
     INVALID_COORDINATES: "현재 위치를 확인할 수 없어요.",
-    PHOTO_AI_REJECTED: "미션 조건을 확인하기 어려워요. 대상을 더 선명하게 다시 촬영해주세요.",
+    PHOTO_AI_REJECTED:
+      "미션 조건을 확인하기 어려워요. 대상을 더 선명하게 다시 촬영해주세요.",
     PHOTO_NEEDS_REVIEW: "AI가 확신하기 어려워 관리자 검수가 필요해요.",
-    UNSAFE_IMAGE: "이 사진은 인증에 사용할 수 없어요. 다른 사진을 선택해주세요.",
+    UNSAFE_IMAGE:
+      "이 사진은 인증에 사용할 수 없어요. 다른 사진을 선택해주세요.",
     AI_NOT_CONFIGURED: "사진 AI 인증이 아직 설정되지 않았어요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
@@ -245,7 +247,8 @@ function readAsDataUrl(file: File): Promise<string> {
       typeof reader.result === "string"
         ? resolve(reader.result)
         : reject(new Error("Image could not be read."));
-    reader.onerror = () => reject(reader.error ?? new Error("Image could not be read."));
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Image could not be read."));
     reader.readAsDataURL(file);
   });
 }
@@ -280,8 +283,7 @@ export default function Home() {
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
   const [activeTab, setActiveTab] = useState<"bingo" | "ranking">("bingo");
-  const [rankingPeriod, setRankingPeriod] =
-    useState<RankingPeriod>("WEEKLY");
+  const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [ranking, setRanking] = useState<RankingResult>({
     entries: demoRanking,
@@ -455,7 +457,7 @@ export default function Home() {
             verificationLabel: selected.verificationLabel,
           }),
         });
-        const verdict = await response.json() as {
+        const verdict = (await response.json()) as {
           decision?: "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
           retryGuide?: string;
           code?: string;
@@ -469,7 +471,7 @@ export default function Home() {
               friendlyError(
                 verdict.decision === "NEEDS_REVIEW"
                   ? "PHOTO_NEEDS_REVIEW"
-                  : verdict.code ?? "PHOTO_AI_REJECTED",
+                  : (verdict.code ?? "PHOTO_AI_REJECTED"),
               ),
           );
           return;
@@ -477,7 +479,9 @@ export default function Home() {
         approvePhotoMission();
       } catch {
         setPhotoStage("DETAIL");
-        setMessage("사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.");
+        setMessage(
+          "사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.",
+        );
       }
       return;
     }
@@ -494,7 +498,7 @@ export default function Home() {
           body: JSON.stringify({ type: "PHOTO", imageDataUrl }),
         },
       );
-      const result = await response.json() as VerificationResult & {
+      const result = (await response.json()) as VerificationResult & {
         totalPoints?: number;
         code?: string;
         message?: string;
@@ -507,7 +511,9 @@ export default function Home() {
       approvePhotoMission(result);
     } catch {
       setPhotoStage("DETAIL");
-      setMessage("사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.");
+      setMessage(
+        "사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
     }
   };
 
@@ -515,16 +521,17 @@ export default function Home() {
     result?: VerificationResult & { totalPoints?: number },
   ) => {
     if (!selected) return;
-      const nextItems = items.map((item) =>
-        item.id === selected.id ? { ...item, done: true } : item,
-      );
-      const nextLineKeys = result?.completedLineKeys ?? completedClientLineKeys(nextItems);
-      celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
-      setItems(nextItems);
-      setLineKeys(nextLineKeys);
-      setPoints((current) => result?.totalPoints ?? current + selected.points);
-      setSelected({ ...selected, done: true });
-      setPhotoStage("COMPLETE");
+    const nextItems = items.map((item) =>
+      item.id === selected.id ? { ...item, done: true } : item,
+    );
+    const nextLineKeys =
+      result?.completedLineKeys ?? completedClientLineKeys(nextItems);
+    celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
+    setItems(nextItems);
+    setLineKeys(nextLineKeys);
+    setPoints((current) => result?.totalPoints ?? current + selected.points);
+    setSelected({ ...selected, done: true });
+    setPhotoStage("COMPLETE");
   };
 
   const complete = async () => {
@@ -696,36 +703,88 @@ export default function Home() {
       </aside>
       {activeTab === "ranking" && (
         <section className="ranking-screen">
-          <header className="ranking-header"><h1>랭킹</h1></header>
+          <header className="ranking-header">
+            <h1>랭킹</h1>
+          </header>
           <div className="ranking-tabs" aria-label="랭킹 기간">
-            {([["DAILY","일간"],["WEEKLY","주간"],["MONTHLY","월간"],["TOTAL","누적"]] as const).map(([value,label]) => (
-              <button key={value} className={rankingPeriod === value ? "active" : ""} onClick={() => setRankingPeriod(value)}>{label}</button>
+            {(
+              [
+                ["DAILY", "일간"],
+                ["WEEKLY", "주간"],
+                ["MONTHLY", "월간"],
+                ["TOTAL", "누적"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                className={rankingPeriod === value ? "active" : ""}
+                onClick={() => setRankingPeriod(value)}
+              >
+                {label}
+              </button>
             ))}
           </div>
           <div className="ranking-tabs scope-tabs" aria-label="랭킹 범위">
-            {([["ALL","전체"],["COMMON","공통"],["REGION","지역"]] as const).map(([value,label]) => (
-              <button key={value} className={rankingScope === value ? "active" : ""} onClick={() => setRankingScope(value)}>{label}</button>
+            {(
+              [
+                ["ALL", "전체"],
+                ["COMMON", "공통"],
+                ["REGION", "지역"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                className={rankingScope === value ? "active" : ""}
+                onClick={() => setRankingScope(value)}
+              >
+                {label}
+              </button>
             ))}
-            <button disabled title="친구 기능 준비 중">친구</button>
+            <button disabled title="친구 기능 준비 중">
+              친구
+            </button>
           </div>
-          <p className="ranking-timer">{ranking.endsAt ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}` : "랭킹 집계 데이터를 준비하고 있어요"}</p>
+          <p className="ranking-timer">
+            {ranking.endsAt
+              ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}`
+              : "랭킹 집계 데이터를 준비하고 있어요"}
+          </p>
           {ranking.me && (
             <div className="my-rank-card">
               <strong>{ranking.me.rank}</strong>
-              <span className="rank-avatar">{ranking.me.nickname.slice(0,1)}</span>
+              <span className="rank-avatar">
+                {ranking.me.nickname.slice(0, 1)}
+              </span>
               <b>{ranking.me.nickname}</b>
               <span>{ranking.me.points.toLocaleString()} P</span>
             </div>
           )}
           <div className={`ranking-list ${rankingLoading ? "loading" : ""}`}>
             {ranking.entries.map((entry) => (
-              <div className={`ranking-row ${entry.userId === ranking.me?.userId ? "is-me" : ""}`} key={entry.userId}>
-                <strong className={`rank rank-${entry.rank}`}>{entry.rank <= 3 ? ["","🥇","🥈","🥉"][entry.rank] : entry.rank}</strong>
-                <span className="rank-avatar">{entry.nickname.slice(0,1)}</span>
-                <b>{entry.nickname}{entry.userId === ranking.me?.userId && <small> (나)</small>}</b><span>{entry.points.toLocaleString()} P</span>
+              <div
+                className={`ranking-row ${entry.userId === ranking.me?.userId ? "is-me" : ""}`}
+                key={entry.userId}
+              >
+                <strong className={`rank rank-${entry.rank}`}>
+                  {entry.rank <= 3
+                    ? ["", "🥇", "🥈", "🥉"][entry.rank]
+                    : entry.rank}
+                </strong>
+                <span className="rank-avatar">
+                  {entry.nickname.slice(0, 1)}
+                </span>
+                <b>
+                  {entry.nickname}
+                  {entry.userId === ranking.me?.userId && <small> (나)</small>}
+                </b>
+                <span>{entry.points.toLocaleString()} P</span>
               </div>
             ))}
-            {!rankingLoading && ranking.entries.length === 0 && <p className="ranking-empty">아직 랭킹에 등록된 참여자가 없어요.</p>}
+            {!rankingLoading && ranking.entries.length === 0 && (
+              <p className="ranking-empty">
+                아직 랭킹에 등록된 참여자가 없어요.
+              </p>
+            )}
           </div>
         </section>
       )}
@@ -764,7 +823,9 @@ export default function Home() {
             {selected.kind === "PHOTO" && photoStage === "COMPLETE" ? (
               <div className="mission-complete">
                 <p className="sheet-kicker">미션 완료</p>
-                <div className="completion-medal" aria-hidden="true">✓</div>
+                <div className="completion-medal" aria-hidden="true">
+                  ✓
+                </div>
                 <h2>{selected.title}</h2>
                 <strong>+ {selected.points} Point</strong>
                 <div className="completion-progress">
@@ -793,7 +854,9 @@ export default function Home() {
                       <div className="ai-review" role="status">
                         <i />
                         <b>AI가 사진을 확인하고 있어요</b>
-                        <span>미션 조건과 사진의 안전성을 살펴보는 중이에요.</span>
+                        <span>
+                          미션 조건과 사진의 안전성을 살펴보는 중이에요.
+                        </span>
                       </div>
                     )}
                   </div>
@@ -805,10 +868,36 @@ export default function Home() {
                 <h2>{selected.title}</h2>
                 <p className="description">{selected.description}</p>
                 <div className="detail-list">
-                  <p><span>▣</span><b>인증 방법</b><em>{selected.verificationLabel ?? selected.kind.replace("_", " ")}</em></p>
-                  <p><span>◉</span><b>획득 점수</b><em>{selected.points} Point</em></p>
-                  {selected.estimatedTime && <p><span>◷</span><b>예상 시간</b><em>{selected.estimatedTime}</em></p>}
-                  {selected.kind === "PHOTO" && <p><span>△</span><b>주의 사항</b><em>대상이 잘 보이도록 촬영해주세요.</em></p>}
+                  <p>
+                    <span>▣</span>
+                    <b>인증 방법</b>
+                    <em>
+                      {selected.verificationLabel ??
+                        selected.kind.replace("_", " ")}
+                    </em>
+                  </p>
+                  <p>
+                    <span>◉</span>
+                    <b>획득 점수</b>
+                    <em>{selected.points} Point</em>
+                  </p>
+                  {selected.estimatedTime && (
+                    <p>
+                      <span>◷</span>
+                      <b>예상 시간</b>
+                      <em>{selected.estimatedTime}</em>
+                    </p>
+                  )}
+                  {selected.kind === "PHOTO" && (
+                    <p>
+                      <span>△</span>
+                      <b>주의 사항</b>
+                      <em>
+                        대상이 잘 보이도록 촬영하고, 주변 사람의 얼굴이나
+                        차량번호가 나오지 않도록 촬영해주세요.
+                      </em>
+                    </p>
+                  )}
                 </div>
                 {selected.kind === "QUIZ" && !selected.done && (
                   <input
@@ -821,12 +910,33 @@ export default function Home() {
                 {message && <p className="error-message">{message}</p>}
                 {selected.kind === "PHOTO" ? (
                   <div className="photo-actions">
-                    <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(event) => verifyPhoto(event.target.files?.[0])} />
-                    <input ref={albumInput} type="file" accept="image/*" hidden onChange={(event) => verifyPhoto(event.target.files?.[0])} />
-                    <button className="primary" onClick={() => cameraInput.current?.click()} disabled={photoStage === "REVIEWING" || selected.done}>
+                    <input
+                      ref={cameraInput}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      hidden
+                      onChange={(event) => verifyPhoto(event.target.files?.[0])}
+                    />
+                    <input
+                      ref={albumInput}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(event) => verifyPhoto(event.target.files?.[0])}
+                    />
+                    <button
+                      className="primary"
+                      onClick={() => cameraInput.current?.click()}
+                      disabled={photoStage === "REVIEWING" || selected.done}
+                    >
                       사진 촬영하기
                     </button>
-                    <button className="secondary" onClick={() => albumInput.current?.click()} disabled={photoStage === "REVIEWING" || selected.done}>
+                    <button
+                      className="secondary"
+                      onClick={() => albumInput.current?.click()}
+                      disabled={photoStage === "REVIEWING" || selected.done}
+                    >
                       앨범에서 선택
                     </button>
                   </div>
@@ -839,9 +949,23 @@ export default function Home() {
                     <button
                       className="primary"
                       onClick={complete}
-                      disabled={selected.done || submitting || (selected.kind === "QUIZ" && !answer.trim())}
+                      disabled={
+                        selected.done ||
+                        submitting ||
+                        (selected.kind === "QUIZ" && !answer.trim())
+                      }
                     >
-                      {selected.done ? "완료한 미션이에요" : submitting ? "인증하고 있어요…" : selected.kind === "PLACE_VISIT" ? "현재 위치 인증하기" : selected.kind === "COMPOSITE" ? "GPS 체류 시작하기" : selected.kind === "QUIZ" ? "정답 제출하기" : "미션 완료하기"}
+                      {selected.done
+                        ? "완료한 미션이에요"
+                        : submitting
+                          ? "인증하고 있어요…"
+                          : selected.kind === "PLACE_VISIT"
+                            ? "현재 위치 인증하기"
+                            : selected.kind === "COMPOSITE"
+                              ? "GPS 체류 시작하기"
+                              : selected.kind === "QUIZ"
+                                ? "정답 제출하기"
+                                : "미션 완료하기"}
                     </button>
                   </>
                 )}

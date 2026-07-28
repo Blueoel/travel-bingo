@@ -123,6 +123,8 @@ test("supports the photo verification review and completion flow", async () => {
   assert.match(pageSource, /AI가 사진을 확인하고 있어요/);
   assert.match(pageSource, /사진 촬영하기/);
   assert.match(pageSource, /앨범에서 선택/);
+  assert.match(pageSource, /주변 사람의 얼굴이나/);
+  assert.match(pageSource, /차량번호가 나오지 않도록 촬영해주세요/);
   assert.match(pageSource, /다음 미션 보기/);
   assert.match(pageSource, /빙고판으로 돌아가기/);
 });
