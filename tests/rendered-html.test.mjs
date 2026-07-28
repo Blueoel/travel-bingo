@@ -85,3 +85,17 @@ test("celebrates newly completed bingo lines in API and demo modes", async () =>
   assert.match(pageSource, /result\.completedLineKeys\.filter/);
   assert.match(pageSource, /<strong>BINGO!<\/strong>/);
 });
+
+test("includes the contributed Daily missions and difficulty-based rewards", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /그림자를 따라/);
+  assert.match(pageSource, /쉼표/);
+  assert.match(pageSource, /같은 색 세 장면/);
+  assert.match(pageSource, /신호등 찾기/);
+  assert.match(pageSource, /사진 3장/);
+  assert.match(pageSource, /GPS 체류/);
+});

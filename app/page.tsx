@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type MissionKind = "CHECK_IN" | "QUIZ" | "PLACE_VISIT";
+type MissionKind = "CHECK_IN" | "QUIZ" | "PLACE_VISIT" | "PHOTO" | "COMPOSITE";
 type Mission = {
   id: string;
   title: string;
@@ -10,6 +10,9 @@ type Mission = {
   kind: MissionKind;
   points: number;
   done: boolean;
+  difficulty?: "쉬움" | "보통" | "어려움" | "특별";
+  estimatedTime?: string;
+  verificationLabel?: string;
 };
 type DailySession = {
   id: string;
@@ -24,6 +27,10 @@ type DailySession = {
       description: string;
       kind: MissionKind;
       points: number;
+      difficulty?: number;
+      estimatedMinutesMin?: number | null;
+      estimatedMinutesMax?: number | null;
+      targetValue?: string | null;
     };
   }>;
 };
@@ -63,7 +70,60 @@ const completedClientLineKeys = (missions: Mission[]) =>
       ? [`client-line-${index}`]
       : [],
   );
-const icon = { CHECK_IN: "✓", QUIZ: "?", PLACE_VISIT: "⌖" };
+const icon: Record<MissionKind, string> = {
+  CHECK_IN: "✓",
+  QUIZ: "?",
+  PLACE_VISIT: "⌖",
+  PHOTO: "▣",
+  COMPOSITE: "◷",
+};
+const contributedDemoMissions: Mission[] = [
+  {
+    id: "demo-shadow",
+    title: "그림자를 따라",
+    description: "오늘 가장 재미있는 그림자를 찾아 사진을 남겨보세요.",
+    kind: "PHOTO",
+    points: 20,
+    difficulty: "보통",
+    estimatedTime: "10분",
+    verificationLabel: "사진 1장",
+    done: false,
+  },
+  {
+    id: "demo-comma",
+    title: "쉼표",
+    description: "마음에 드는 장소를 발견했다면 10분 동안 머물러 보세요.",
+    kind: "COMPOSITE",
+    points: 10,
+    difficulty: "쉬움",
+    estimatedTime: "10분",
+    verificationLabel: "GPS 체류",
+    done: false,
+  },
+  {
+    id: "demo-same-color",
+    title: "같은 색 세 장면",
+    description:
+      "산책 중 같은 색을 가진 서로 다른 대상 세 가지를 발견해보세요. 같은 물건을 반복 촬영하면 인정되지 않아요.",
+    kind: "PHOTO",
+    points: 20,
+    difficulty: "보통",
+    estimatedTime: "10~20분",
+    verificationLabel: "사진 3장",
+    done: false,
+  },
+  {
+    id: "demo-traffic-light",
+    title: "신호등 찾기",
+    description: "신호등이 있는 교차로를 찾아 사진으로 남겨보세요.",
+    kind: "PHOTO",
+    points: 10,
+    difficulty: "쉬움",
+    estimatedTime: "3분",
+    verificationLabel: "사진 1장",
+    done: false,
+  },
+];
 const demoTitles = [
   "가볍게 스트레칭",
   "안성맞춤랜드 방문",
@@ -91,31 +151,34 @@ const demoTitles = [
   "종아리 스트레칭",
   "내일의 길 정하기",
 ];
-const demoMissions: Mission[] = demoTitles.map((title, index) => {
-  const kind: MissionKind =
-    title.includes("방문") ||
-    title.includes("기념관") ||
-    title.includes("풍물단")
-      ? "PLACE_VISIT"
-      : title.includes("퀴즈")
-        ? "QUIZ"
-        : "CHECK_IN";
-  return {
-    id: `demo-${index}`,
-    title,
-    description: "오늘의 산책 미션을 즐겁게 수행해보세요.",
-    kind,
-    points:
-      kind === "PLACE_VISIT"
-        ? 30
-        : kind === "QUIZ"
-          ? 20
-          : title === "FREE"
-            ? 0
-            : 10,
-    done: [0, 3, 12].includes(index),
-  };
-});
+const demoMissions: Mission[] = [
+  ...contributedDemoMissions,
+  ...demoTitles.slice(4).map((title, index) => {
+    const kind: MissionKind =
+      title.includes("방문") ||
+      title.includes("기념관") ||
+      title.includes("풍물단")
+        ? "PLACE_VISIT"
+        : title.includes("퀴즈")
+          ? "QUIZ"
+          : "CHECK_IN";
+    return {
+      id: `demo-${index + contributedDemoMissions.length}`,
+      title,
+      description: "오늘의 산책 미션을 즐겁게 수행해보세요.",
+      kind,
+      points:
+        kind === "PLACE_VISIT"
+          ? 30
+          : kind === "QUIZ"
+            ? 20
+            : title === "FREE"
+              ? 0
+              : 10,
+      done: [0, 8].includes(index),
+    };
+  }),
+];
 
 function friendlyError(code?: string): string {
   const messages: Record<string, string> = {
@@ -127,6 +190,28 @@ function friendlyError(code?: string): string {
     INVALID_COORDINATES: "현재 위치를 확인할 수 없어요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
+}
+
+function difficultyLabel(value?: number): Mission["difficulty"] {
+  return value === 1
+    ? "쉬움"
+    : value === 2
+      ? "보통"
+      : value === 3
+        ? "어려움"
+        : value === 4
+          ? "특별"
+          : undefined;
+}
+
+function estimatedTimeLabel(
+  minimum?: number | null,
+  maximum?: number | null,
+): string | undefined {
+  if (!minimum && !maximum) return undefined;
+  if (!minimum) return `${maximum}분`;
+  if (!maximum || minimum === maximum) return `${minimum}분`;
+  return `${minimum}~${maximum}분`;
 }
 
 export default function Home() {
@@ -164,6 +249,19 @@ export default function Home() {
           kind: cell.mission.kind,
           points: cell.mission.points,
           done: cell.status === "VERIFIED",
+          difficulty: difficultyLabel(cell.mission.difficulty),
+          estimatedTime: estimatedTimeLabel(
+            cell.mission.estimatedMinutesMin,
+            cell.mission.estimatedMinutesMax,
+          ),
+          verificationLabel:
+            cell.mission.kind === "PHOTO"
+              ? Number(cell.mission.targetValue ?? 1) > 1
+                ? `사진 ${cell.mission.targetValue}장`
+                : "사진 1장"
+              : cell.mission.kind === "COMPOSITE"
+                ? "GPS 체류"
+                : undefined,
         })),
     );
   };
@@ -446,6 +544,19 @@ export default function Home() {
             <p className="eyebrow">{selected.kind.replace("_", " ")}</p>
             <h2>{selected.title}</h2>
             <p className="description">{selected.description}</p>
+            {(selected.difficulty ||
+              selected.estimatedTime ||
+              selected.verificationLabel) && (
+              <div className="mission-meta" aria-label="미션 정보">
+                {selected.difficulty && <span>{selected.difficulty}</span>}
+                {selected.estimatedTime && (
+                  <span>약 {selected.estimatedTime}</span>
+                )}
+                {selected.verificationLabel && (
+                  <span>{selected.verificationLabel}</span>
+                )}
+              </div>
+            )}
             {selected.kind === "QUIZ" && !selected.done && (
               <input
                 className="answer-input"
@@ -474,9 +585,13 @@ export default function Home() {
                   ? "인증하고 있어요…"
                   : selected.kind === "PLACE_VISIT"
                     ? "현재 위치 인증하기"
-                    : selected.kind === "QUIZ"
-                      ? "정답 제출하기"
-                      : "미션 완료하기"}
+                    : selected.kind === "PHOTO"
+                      ? "사진 인증 준비하기"
+                      : selected.kind === "COMPOSITE"
+                        ? "GPS 체류 시작하기"
+                        : selected.kind === "QUIZ"
+                          ? "정답 제출하기"
+                          : "미션 완료하기"}
             </button>
           </section>
         </div>

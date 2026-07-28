@@ -365,6 +365,21 @@ nav .active {
   font-size: 14px;
   line-height: 1.55;
 }
+.mission-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 15px;
+}
+.mission-meta span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #eef3eb;
+  color: #42604c;
+  font-size: 12px;
+  font-weight: 750;
+}
 .answer-input {
   width: 100%;
   margin-top: 18px;
