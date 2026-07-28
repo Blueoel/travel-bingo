@@ -1297,6 +1297,10 @@ nav .active {
   font-weight: 700;
   text-align: center;
 }
+.auth-message.success {
+  background: #edf5e5;
+  color: #3f6639;
+}
 .auth-submit {
   min-height: 56px;
   border: 1px solid #385632;

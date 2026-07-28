@@ -21,17 +21,20 @@ export function AuthScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<"error" | "success">("error");
 
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
     setPassword("");
     setPasswordConfirm("");
     setMessage(null);
+    setMessageKind("error");
   };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setMessage(null);
+    setMessageKind("error");
     if (mode === "register" && password !== passwordConfirm) {
       setMessage("비밀번호가 서로 일치하지 않아요.");
       return;
@@ -66,8 +69,23 @@ export function AuthScreen({
               : "회원가입 정보를 다시 확인해주세요."),
         );
       }
+      if (mode === "register") {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+        });
+        setMode("login");
+        setName("");
+        setPassword("");
+        setPasswordConfirm("");
+        setAgreed(false);
+        setMessageKind("success");
+        setMessage("회원가입이 완료됐어요. 새 계정으로 로그인해주세요.");
+        return;
+      }
       await onAuthenticated();
     } catch (error) {
+      setMessageKind("error");
       setMessage(
         error instanceof Error
           ? error.message
@@ -208,7 +226,7 @@ export function AuthScreen({
         )}
 
         {message && (
-          <p className="auth-message" role="alert">
+          <p className={`auth-message ${messageKind}`} role="alert">
             {message}
           </p>
         )}

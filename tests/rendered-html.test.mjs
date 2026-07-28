@@ -75,6 +75,10 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
   assert.match(authSource, /Google로 계속하기/);
   assert.match(pageSource, /credentials:\s*"include"/);
   assert.match(authSource, /credentials:\s*"include"/);
+  assert.match(authSource, /mode === "register"/);
+  assert.match(authSource, /\/auth\/logout/);
+  assert.match(authSource, /회원가입이 완료됐어요\. 새 계정으로 로그인해주세요\./);
+  assert.match(authSource, /await onAuthenticated\(\)/);
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
 });
 
