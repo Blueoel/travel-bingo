@@ -57,11 +57,23 @@ export interface MissionCatalogInput {
   readonly changeNote?: string;
 }
 
+export interface DailyCollectionInput {
+  readonly missionIds: readonly string[];
+}
+
 @Injectable()
 export class MissionCatalogService {
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
   ) {}
+
+  async listRegions() {
+    return this.database.region.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  }
 
   async list(query: MissionCatalogQuery) {
     const where = {
@@ -200,6 +212,71 @@ export class MissionCatalogService {
       ]),
     ];
     return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+  }
+
+  async getDailyCollection() {
+    const collection = await this.database.missionCollection.findFirst({
+      where: { type: "DAILY", regionId: null },
+      include: {
+        items: {
+          orderBy: { displayOrder: "asc" },
+          include: {
+            mission: {
+              include: { regionLinks: { include: { region: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!collection) throw new NotFoundException("Daily collection not found.");
+    return {
+      id: collection.id,
+      name: collection.name,
+      description: collection.description,
+      missionIds: collection.items.map((item) => item.missionId),
+      items: collection.items.map((item) => toCatalogMission(item.mission)),
+    };
+  }
+
+  async updateDailyCollection(input: DailyCollectionInput) {
+    const missionIds = [...new Set(input.missionIds)];
+    if (missionIds.length < 9 || missionIds.length > 100) {
+      throw new BadRequestException(
+        "Daily collection requires between 9 and 100 unique missions.",
+      );
+    }
+    const eligibleCount = await this.database.mission.count({
+      where: {
+        id: { in: missionIds },
+        scope: "COMMON",
+        status: "ACTIVE",
+      },
+    });
+    if (eligibleCount !== missionIds.length) {
+      throw new BadRequestException(
+        "Daily collection only accepts active common missions.",
+      );
+    }
+    const collection = await this.database.missionCollection.findFirst({
+      where: { type: "DAILY", regionId: null },
+      select: { id: true },
+    });
+    if (!collection) throw new NotFoundException("Daily collection not found.");
+
+    await this.database.$transaction(async (transaction) => {
+      await transaction.missionCollectionItem.deleteMany({
+        where: { collectionId: collection.id },
+      });
+      await transaction.missionCollectionItem.createMany({
+        data: missionIds.map((missionId, displayOrder) => ({
+          collectionId: collection.id,
+          missionId,
+          displayOrder,
+          weight: 100,
+        })),
+      });
+    });
+    return this.getDailyCollection();
   }
 }
 

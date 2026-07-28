@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
 } from "@nestjs/common";
@@ -16,6 +17,7 @@ import {
   MissionCatalogService,
   type MissionCatalogInput,
   type MissionCatalogQuery,
+  type DailyCollectionInput,
 } from "./mission-catalog.service.js";
 
 interface CsvResponse {
@@ -28,6 +30,15 @@ export class MissionCatalogController {
     private readonly missions: MissionCatalogService,
     private readonly auth: AuthService,
   ) {}
+
+  @Get("regions")
+  async listRegions(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.listRegions();
+  }
 
   @Get()
   async list(
@@ -63,6 +74,25 @@ export class MissionCatalogController {
   ) {
     const adminId = await this.auth.requireAdminId(cookie, developmentUserId);
     return this.missions.create(body, adminId);
+  }
+
+  @Get("collections/daily")
+  async getDailyCollection(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.getDailyCollection();
+  }
+
+  @Put("collections/daily")
+  async updateDailyCollection(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Body() body: DailyCollectionInput,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.updateDailyCollection(body);
   }
 
   @Patch(":id")
