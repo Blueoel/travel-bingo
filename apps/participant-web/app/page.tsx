@@ -363,7 +363,9 @@ export default function Home() {
       applySession((await response.json()) as DailySession);
       setDemoMode(false);
     } catch {
-      setAuthStatus("authenticated");
+      setAuthStatus((current) =>
+        current === "checking" ? "unauthenticated" : "authenticated",
+      );
       setDemoMode(true);
       const basePoints = demoMissions
         .filter((item) => item.done)
