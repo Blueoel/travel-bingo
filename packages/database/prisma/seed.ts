@@ -693,8 +693,10 @@ const workbookMissions = [
     kind: "CHECK_IN" as const,
     category: "REST",
     difficulty: 1,
+    targetValue: 180,
+    targetUnit: "SECOND",
     similarityGroup: "REST_ACTION",
-    verificationPolicy: { type: "CHECK_IN" },
+    verificationPolicy: { type: "TIMER", durationSeconds: 180 },
   },
   {
     title: "지금, 당신의 기분",
@@ -703,7 +705,7 @@ const workbookMissions = [
     category: "RECORD",
     difficulty: 1,
     similarityGroup: "TEXT_RECORD",
-    verificationPolicy: { type: "CHECK_IN" },
+    verificationPolicy: { type: "TEXT", maxLength: 100 },
   },
   {
     title: "길 위의 글자",
@@ -712,7 +714,7 @@ const workbookMissions = [
     category: "EXPLORATION",
     difficulty: 1,
     similarityGroup: "TEXT_RECORD",
-    verificationPolicy: { type: "CHECK_IN" },
+    verificationPolicy: { type: "TEXT", maxLength: 100 },
   },
 ].map((mission) => ({
   ...mission,

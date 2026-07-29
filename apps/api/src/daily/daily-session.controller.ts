@@ -116,6 +116,23 @@ function parseEvidence(body: unknown): MissionEvidence {
   if (input.type === "QUIZ" && typeof input.answer === "string") {
     return { type: "QUIZ", answer: input.answer };
   }
+  if (input.type === "TEXT" && typeof input.text === "string") {
+    return { type: "TEXT", text: input.text };
+  }
+  if (
+    input.type === "TIMER" &&
+    typeof input.startedAt === "string" &&
+    typeof input.completedAt === "string"
+  ) {
+    const startedAt = new Date(input.startedAt);
+    const completedAt = new Date(input.completedAt);
+    if (
+      !Number.isNaN(startedAt.getTime()) &&
+      !Number.isNaN(completedAt.getTime())
+    ) {
+      return { type: "TIMER", startedAt, completedAt };
+    }
+  }
   if (
     input.type === "GPS" &&
     typeof input.latitude === "number" &&

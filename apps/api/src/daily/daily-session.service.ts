@@ -326,7 +326,29 @@ function toPublicMission(snapshot: unknown): unknown {
   if (typeof snapshot !== "object" || snapshot === null) {
     return snapshot;
   }
-  const { verificationPolicy: _privatePolicy, ...publicMission } =
-    snapshot as Record<string, unknown>;
-  return publicMission;
+  const { verificationPolicy, ...publicMission } = snapshot as Record<
+    string,
+    unknown
+  >;
+  const policy =
+    typeof verificationPolicy === "object" && verificationPolicy !== null
+      ? (verificationPolicy as Record<string, unknown>)
+      : null;
+  const interactionType =
+    policy?.type === "TEXT"
+      ? "TEXT"
+      : policy?.type === "TIMER"
+        ? "TIMER"
+        : undefined;
+  return {
+    ...publicMission,
+    ...(interactionType ? { interactionType } : {}),
+    ...(interactionType === "TIMER" &&
+    typeof policy?.durationSeconds === "number"
+      ? { timerSeconds: policy.durationSeconds }
+      : {}),
+    ...(interactionType === "TEXT" && typeof policy?.maxLength === "number"
+      ? { textMaxLength: policy.maxLength }
+      : {}),
+  };
 }

@@ -30,11 +30,7 @@ describe("activity mission verification", () => {
       reasonCode: "GPS_DISTANCE_REACHED",
     });
     expect(
-      evaluateMission(
-        mission,
-        { ...activity, distanceM: 990 },
-        now,
-      ),
+      evaluateMission(mission, { ...activity, distanceM: 990 }, now),
     ).toMatchObject({
       approved: false,
       reasonCode: "GPS_DISTANCE_NOT_REACHED",
@@ -76,5 +72,58 @@ describe("activity mission verification", () => {
       approved: false,
       reasonCode: "GPS_STAY_MOVED_TOO_FAR",
     });
+  });
+});
+
+describe("record and timer mission verification", () => {
+  it("accepts a short text record and rejects empty or oversized records", () => {
+    const mission = {
+      kind: "CHECK_IN",
+      verificationPolicy: { type: "TEXT", maxLength: 100 },
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        { type: "TEXT", text: "오늘은 바람이 좋았다." },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "TEXT_RECORDED" });
+    expect(
+      evaluateMission(mission, { type: "TEXT", text: "   " }, now),
+    ).toMatchObject({ approved: false, reasonCode: "TEXT_REQUIRED" });
+    expect(
+      evaluateMission(mission, { type: "TEXT", text: "가".repeat(101) }, now),
+    ).toMatchObject({ approved: false, reasonCode: "TEXT_TOO_LONG" });
+  });
+
+  it("approves a timer only after its configured duration", () => {
+    const mission = {
+      kind: "CHECK_IN",
+      verificationPolicy: { type: "TIMER", durationSeconds: 180 },
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "TIMER",
+          startedAt: new Date(now.getTime() - 180_000),
+          completedAt: now,
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "TIMER_COMPLETED" });
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "TIMER",
+          startedAt: new Date(now.getTime() - 179_000),
+          completedAt: now,
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: false, reasonCode: "TIMER_NOT_REACHED" });
   });
 });

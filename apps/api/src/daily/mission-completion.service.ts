@@ -29,6 +29,12 @@ export interface CompleteMissionCommand {
 
 export type MissionEvidence =
   | { readonly type: "CHECK_IN" }
+  | { readonly type: "TEXT"; readonly text: string }
+  | {
+      readonly type: "TIMER";
+      readonly startedAt: Date;
+      readonly completedAt: Date;
+    }
   | { readonly type: "QUIZ"; readonly answer: string }
   | { readonly type: "PHOTO"; readonly analysis: PhotoAnalysis }
   | {
@@ -162,12 +168,7 @@ export class MissionCompletionService {
             sessionCellId: cell.id,
             userId: command.userId,
             idempotencyKey: command.idempotencyKey,
-            type:
-              isGpsEvidence(evidence)
-                ? "GPS"
-                : evidence.type === "PHOTO"
-                  ? "PHOTO"
-                  : "QUIZ",
+            type: verificationType(evidence),
             status: "REJECTED",
             latitude: isGpsEvidence(evidence) ? evidence.latitude : null,
             longitude: isGpsEvidence(evidence) ? evidence.longitude : null,
@@ -228,14 +229,7 @@ export class MissionCompletionService {
           sessionCellId: cell.id,
           userId: command.userId,
           idempotencyKey: command.idempotencyKey,
-          type:
-            isGpsEvidence(evidence)
-              ? "GPS"
-              : evidence.type === "QUIZ"
-                ? "QUIZ"
-                : evidence.type === "PHOTO"
-                  ? "PHOTO"
-                  : "ADMIN",
+          type: verificationType(evidence),
           status: "APPROVED",
           latitude: isGpsEvidence(evidence) ? evidence.latitude : null,
           longitude: isGpsEvidence(evidence) ? evidence.longitude : null,
@@ -399,7 +393,47 @@ export function evaluateMission(
   receivedAt: Date,
 ): MissionDecision {
   if (mission.kind === "CHECK_IN" && evidence.type === "CHECK_IN") {
-    return { approved: true, reasonCode: "SELF_CHECK_IN" };
+    const policy = asRecord(mission.verificationPolicy);
+    if (!policy || policy.type === "CHECK_IN") {
+      return { approved: true, reasonCode: "SELF_CHECK_IN" };
+    }
+  }
+
+  if (mission.kind === "CHECK_IN" && evidence.type === "TEXT") {
+    const policy = asRecord(mission.verificationPolicy);
+    const maxLength = toFiniteNumber(policy?.maxLength) ?? 100;
+    const text = evidence.text.trim();
+    if (policy?.type !== "TEXT") {
+      throw new ConflictException("The text record policy is invalid.");
+    }
+    if (text.length < 1) {
+      return { approved: false, reasonCode: "TEXT_REQUIRED" };
+    }
+    return text.length <= maxLength
+      ? { approved: true, reasonCode: "TEXT_RECORDED" }
+      : { approved: false, reasonCode: "TEXT_TOO_LONG" };
+  }
+
+  if (mission.kind === "CHECK_IN" && evidence.type === "TIMER") {
+    const policy = asRecord(mission.verificationPolicy);
+    const durationSeconds = toFiniteNumber(policy?.durationSeconds);
+    if (
+      policy?.type !== "TIMER" ||
+      durationSeconds === null ||
+      durationSeconds <= 0
+    ) {
+      throw new ConflictException("The timer policy is invalid.");
+    }
+    const elapsedSeconds =
+      (evidence.completedAt.getTime() - evidence.startedAt.getTime()) / 1000;
+    if (
+      evidence.startedAt.getTime() > receivedAt.getTime() + 5_000 ||
+      evidence.completedAt.getTime() > receivedAt.getTime() + 5_000 ||
+      elapsedSeconds < durationSeconds
+    ) {
+      return { approved: false, reasonCode: "TIMER_NOT_REACHED" };
+    }
+    return { approved: true, reasonCode: "TIMER_COMPLETED" };
   }
 
   if (mission.kind === "QUIZ" && evidence.type === "QUIZ") {
@@ -581,6 +615,23 @@ function publicEvidence(
       model: evidence.analysis.model,
     };
   }
+  if (evidence.type === "TEXT") {
+    return {
+      method: evidence.type,
+      text: evidence.text.trim(),
+      characterCount: evidence.text.trim().length,
+    };
+  }
+  if (evidence.type === "TIMER") {
+    return {
+      method: evidence.type,
+      startedAt: evidence.startedAt.toISOString(),
+      completedAt: evidence.completedAt.toISOString(),
+      durationSeconds: Math.floor(
+        (evidence.completedAt.getTime() - evidence.startedAt.getTime()) / 1000,
+      ),
+    };
+  }
   if (evidence.type === "ACTIVITY") {
     return {
       method: evidence.type,
@@ -596,5 +647,15 @@ function isGpsEvidence(
   evidence: MissionEvidence,
 ): evidence is Extract<MissionEvidence, { type: "GPS" | "ACTIVITY" }> {
   return evidence.type === "GPS" || evidence.type === "ACTIVITY";
+}
+
+function verificationType(
+  evidence: MissionEvidence,
+): "GPS" | "QUIZ" | "PHOTO" | "COMPOSITE" | "ADMIN" {
+  if (isGpsEvidence(evidence)) return "GPS";
+  if (evidence.type === "QUIZ") return "QUIZ";
+  if (evidence.type === "PHOTO") return "PHOTO";
+  if (evidence.type === "TIMER") return "COMPOSITE";
+  return "ADMIN";
 }
 import { createHash } from "node:crypto";
