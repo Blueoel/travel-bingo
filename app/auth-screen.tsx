@@ -4,8 +4,7 @@ import { useState } from "react";
 
 type AuthMode = "login" | "register";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
+const API_BASE = "/api/backend";
 
 export function AuthScreen({
   onAuthenticated,
@@ -187,7 +186,9 @@ export function AuthScreen({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="비밀번호"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            autoComplete={
+              mode === "login" ? "current-password" : "new-password"
+            }
             minLength={8}
             required
           />
@@ -220,7 +221,9 @@ export function AuthScreen({
             type="button"
             className="forgot-password"
             onClick={() =>
-              setMessage("비밀번호 찾기는 이메일 발송 기능과 함께 연결할 예정이에요.")
+              setMessage(
+                "비밀번호 찾기는 이메일 발송 기능과 함께 연결할 예정이에요.",
+              )
             }
           >
             비밀번호 찾기
@@ -267,7 +270,9 @@ export function AuthScreen({
             </button>
             <button
               type="button"
-              onClick={() => setMessage("Google 로그인은 곧 연결할 예정이에요.")}
+              onClick={() =>
+                setMessage("Google 로그인은 곧 연결할 예정이에요.")
+              }
             >
               <b className="google-mark">G</b> Google로 계속하기
             </button>

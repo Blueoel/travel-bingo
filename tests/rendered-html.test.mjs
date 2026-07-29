@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -68,16 +70,35 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
     path.join(projectDirectory, "app", "auth-screen.tsx"),
     "utf8",
   );
+  const backendProxySource = await readFile(
+    path.join(
+      projectDirectory,
+      "app",
+      "api",
+      "backend",
+      "[...path]",
+      "route.ts",
+    ),
+    "utf8",
+  );
 
   assert.match(pageSource, /\/auth\/me/);
-  assert.match(authSource, /auth\/\$\{mode === "login" \? "login" : "register"\}/);
+  assert.match(pageSource, /const API_BASE = "\/api\/backend"/);
+  assert.match(authSource, /const API_BASE = "\/api\/backend"/);
+  assert.match(
+    authSource,
+    /auth\/\$\{mode === "login" \? "login" : "register"\}/,
+  );
   assert.match(authSource, /Apple로 계속하기/);
   assert.match(authSource, /Google로 계속하기/);
   assert.match(pageSource, /credentials:\s*"include"/);
   assert.match(authSource, /credentials:\s*"include"/);
   assert.match(authSource, /mode === "register"/);
   assert.match(authSource, /\/auth\/logout/);
-  assert.match(authSource, /회원가입이 완료됐어요\. 새 계정으로 로그인해주세요\./);
+  assert.match(
+    authSource,
+    /회원가입이 완료됐어요\. 새 계정으로 로그인해주세요\./,
+  );
   assert.match(authSource, /await onAuthenticated\(result\.user\)/);
   assert.match(pageSource, /const enterBingoAfterLogin = async/);
   assert.match(pageSource, /setActiveTab\("bingo"\)/);
@@ -86,7 +107,48 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
     pageSource,
     /<AuthScreen onAuthenticated=\{enterBingoAfterLogin\} \/>/,
   );
+  assert.match(backendProxySource, /process\.env\.BACKEND_API_BASE_URL/);
+  assert.match(backendProxySource, /request\.headers/);
+  assert.match(backendProxySource, /toFirstPartyCookie/);
+  assert.match(backendProxySource, /cache-control", "no-store"/);
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
+});
+
+test("proxies API sessions through the participant origin", async () => {
+  let receivedCookie = "";
+  const upstream = createServer((request, response) => {
+    receivedCookie = request.headers.cookie ?? "";
+    response.writeHead(200, {
+      "content-type": "application/json",
+      "set-cookie":
+        "travel_bingo_session=test-token; Path=/; HttpOnly; Secure; SameSite=None",
+    });
+    response.end(JSON.stringify({ path: request.url }));
+  });
+  upstream.listen(0, "127.0.0.1");
+  await once(upstream, "listening");
+  const address = upstream.address();
+  assert.ok(address && typeof address === "object");
+  process.env.BACKEND_API_BASE_URL = `http://127.0.0.1:${address.port}/api/v1`;
+
+  try {
+    const response = await render("/api/backend/auth/me?source=test");
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      path: "/api/v1/auth/me?source=test",
+    });
+    assert.equal(receivedCookie, "");
+    assert.match(
+      response.headers.get("set-cookie") ?? "",
+      /travel_bingo_session=test-token/,
+    );
+    assert.match(response.headers.get("set-cookie") ?? "", /SameSite=Lax/);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  } finally {
+    upstream.close();
+    await once(upstream, "close");
+    delete process.env.BACKEND_API_BASE_URL;
+  }
 });
 
 test("provides an account dashboard and logout flow", async () => {

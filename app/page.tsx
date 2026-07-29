@@ -65,8 +65,7 @@ type AccountUser = {
   role: "USER" | "ADMIN";
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
+const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
   fetch(`${API_BASE}${path}`, { ...init, credentials: "include" });
 const demoRanking: RankingEntry[] = [
