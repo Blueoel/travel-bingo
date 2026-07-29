@@ -613,6 +613,18 @@ mark {
   font-weight: 700;
   color: #58605b;
 }
+.modal label.verificationSetting {
+  padding: 12px;
+  border: 1px dashed #8ea58f;
+  border-radius: 10px;
+  background: #f5f8f3;
+  color: #244d32;
+}
+.verificationSetting small {
+  color: #728078;
+  font-weight: 500;
+  line-height: 1.45;
+}
 textarea {
   min-height: 80px;
   resize: vertical;

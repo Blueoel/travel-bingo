@@ -45,7 +45,8 @@ export interface MissionCatalogInput {
     | "PHOTO"
     | "CHECK_IN"
     | "COMPOSITE";
-  readonly verificationType?: "PHOTO" | "GPS" | "GPS_STAY" | "QUIZ" | "MANUAL";
+  readonly verificationType?:
+    "PHOTO" | "GPS" | "GPS_STAY" | "QUIZ" | "TEXT" | "TIMER" | "MANUAL";
   readonly scope: "COMMON" | "REGION" | "EVENT";
   readonly category: string;
   readonly difficulty: MissionDifficulty;
@@ -350,6 +351,36 @@ function validateInput(input: MissionCatalogInput): void {
   ) {
     throw new BadRequestException("Estimated minutes are invalid.");
   }
+  validateVerificationPolicy(input);
+}
+
+function validateVerificationPolicy(input: MissionCatalogInput): void {
+  const policy = input.verificationPolicy;
+  const type = policy?.type ?? input.verificationType;
+  if (type === "TEXT") {
+    const maxLength = policy?.maxLength;
+    if (
+      !Number.isInteger(maxLength) ||
+      Number(maxLength) < 1 ||
+      Number(maxLength) > 100
+    ) {
+      throw new BadRequestException(
+        "Text missions require maxLength between 1 and 100.",
+      );
+    }
+  }
+  if (type === "TIMER") {
+    const durationSeconds = policy?.durationSeconds;
+    if (
+      !Number.isInteger(durationSeconds) ||
+      Number(durationSeconds) < 60 ||
+      Number(durationSeconds) > 10_800
+    ) {
+      throw new BadRequestException(
+        "Timer missions require durationSeconds between 60 and 10800.",
+      );
+    }
+  }
 }
 
 function revisionSnapshot(mission: Record<string, unknown>) {
@@ -392,6 +423,7 @@ function verificationKind(
 ): NonNullable<MissionCatalogInput["kind"]> {
   if (value === "PHOTO") return "PHOTO";
   if (value === "QUIZ") return "QUIZ";
+  if (value === "TEXT" || value === "TIMER") return "CHECK_IN";
   if (value === "GPS" || value === "GPS_STAY") return "CHECK_IN";
   return "COMPOSITE";
 }

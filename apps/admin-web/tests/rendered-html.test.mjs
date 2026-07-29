@@ -56,4 +56,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /구성 보완이 필요합니다/);
   assert.match(pageSource, /쉬움 · 보통 · 어려움/);
   assert.match(pageSource, /한 판에는 최대 10개/);
+  assert.match(pageSource, /텍스트 기록/);
+  assert.match(pageSource, /최대 글자 수/);
+  assert.match(pageSource, /목표 시간\(분\)/);
+  assert.match(pageSource, /durationSeconds/);
+  assert.match(pageSource, /화면을 벗어나도 실제 경과 시간/);
 });

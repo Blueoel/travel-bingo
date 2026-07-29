@@ -12,7 +12,11 @@ type Mission = {
   status: "ACTIVE" | "INACTIVE" | "NEEDS_REVIEW";
   difficulty: number;
   kind: string;
-  verificationPolicy?: { type?: string };
+  verificationPolicy?: {
+    type?: string;
+    maxLength?: number;
+    durationSeconds?: number;
+  };
   estimatedMinutesMin?: number | null;
   estimatedMinutesMax?: number | null;
   similarityGroup?: string | null;
@@ -99,6 +103,7 @@ export default function AdminPage() {
   const [userLoading, setUserLoading] = useState(false);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const [formVerificationType, setFormVerificationType] = useState("PHOTO");
   const params = useMemo(() => {
     const p = new URLSearchParams({ pageSize: "100" });
     if (query) p.set("q", query);
@@ -148,11 +153,22 @@ export default function AdminPage() {
   }, [params]);
   function showForm(mission: Mission | null = null) {
     setEditing(mission);
+    setFormVerificationType(mission?.verificationPolicy?.type ?? "PHOTO");
     setOpen(true);
   }
   async function saveMission(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
+    const verificationType = String(data.verificationType);
+    const verificationPolicy =
+      verificationType === "TEXT"
+        ? { type: "TEXT", maxLength: Number(data.textMaxLength) }
+        : verificationType === "TIMER"
+          ? {
+              type: "TIMER",
+              durationSeconds: Number(data.timerMinutes) * 60,
+            }
+          : { type: verificationType };
     const result = await fetch(
       editing ? `${API}/admin/missions/${editing.id}` : `${API}/admin/missions`,
       {
@@ -162,6 +178,7 @@ export default function AdminPage() {
           ...data,
           estimatedMinutesMin: Number(data.estimatedMinutesMin),
           estimatedMinutesMax: Number(data.estimatedMinutesMax),
+          verificationPolicy,
           regionIds: data.regionId ? [data.regionId] : [],
           changeNote: editing ? "관리자 화면에서 수정" : "관리자 화면에서 생성",
         }),
@@ -312,9 +329,8 @@ export default function AdminPage() {
   const dailyHealth = useMemo(() => {
     const difficultyCounts = [1, 2, 3].map(
       (level) =>
-        selectedDailyMissions.filter(
-          (mission) => mission.difficulty === level,
-        ).length,
+        selectedDailyMissions.filter((mission) => mission.difficulty === level)
+          .length,
     );
     const photoCount = selectedDailyMissions.filter(
       (mission) => mission.kind === "PHOTO",
@@ -654,7 +670,9 @@ export default function AdminPage() {
               <article>
                 <span>전체 후보</span>
                 <b>{dailyIds.length}</b>
-                <small>{dailyIds.length >= 25 ? "빙고 생성 가능" : "25개 이상 필요"}</small>
+                <small>
+                  {dailyIds.length >= 25 ? "빙고 생성 가능" : "25개 이상 필요"}
+                </small>
               </article>
               <article>
                 <span>난이도 후보</span>
@@ -694,8 +712,8 @@ export default function AdminPage() {
                 </ul>
               ) : (
                 <p>
-                  현재 후보 풀로 사용자별 25칸과 권장 난이도 비율을 구성할
-                  수 있습니다.
+                  현재 후보 풀로 사용자별 25칸과 권장 난이도 비율을 구성할 수
+                  있습니다.
                 </p>
               )}
             </div>
@@ -1079,15 +1097,58 @@ export default function AdminPage() {
                 인증 방식
                 <select
                   name="verificationType"
-                  defaultValue={editing?.verificationPolicy?.type ?? "PHOTO"}
+                  value={formVerificationType}
+                  onChange={(event) =>
+                    setFormVerificationType(event.target.value)
+                  }
                 >
                   <option value="PHOTO">사진</option>
                   <option value="GPS">GPS</option>
                   <option value="GPS_STAY">GPS 체류</option>
                   <option value="QUIZ">문제</option>
+                  <option value="TEXT">텍스트 기록</option>
+                  <option value="TIMER">타이머</option>
                   <option value="MANUAL">직접 확인</option>
                 </select>
               </label>
+              {formVerificationType === "TEXT" && (
+                <label className="verificationSetting">
+                  최대 글자 수
+                  <input
+                    name="textMaxLength"
+                    type="number"
+                    min="1"
+                    max="100"
+                    required
+                    defaultValue={editing?.verificationPolicy?.maxLength ?? 100}
+                  />
+                  <small>
+                    짧은 문장 기록을 위해 최대 100자까지 설정할 수 있습니다.
+                  </small>
+                </label>
+              )}
+              {formVerificationType === "TIMER" && (
+                <label className="verificationSetting">
+                  목표 시간(분)
+                  <input
+                    name="timerMinutes"
+                    type="number"
+                    min="1"
+                    max="180"
+                    required
+                    defaultValue={Math.max(
+                      1,
+                      Math.round(
+                        (editing?.verificationPolicy?.durationSeconds ?? 600) /
+                          60,
+                      ),
+                    )}
+                  />
+                  <small>
+                    시작 후 화면을 벗어나도 실제 경과 시간으로 측정됩니다.
+                  </small>
+                </label>
+              )}
               <label>
                 최소 시간(분)
                 <input
