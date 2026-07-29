@@ -148,6 +148,18 @@ describeWithDatabase("DailySessionService integration", () => {
         first.cells.map((cell) => (cell.mission as { readonly id: string }).id),
       ).size,
     ).toBe(25);
+    const luckyCells = first.cells.filter(
+      (cell) => (cell.mission as { readonly title: string }).title === "Lucky!",
+    );
+    expect(luckyCells.length).toBeLessThanOrEqual(1);
+    expect(luckyCells.every((cell) => cell.status === "VERIFIED")).toBe(true);
+    expect(first.completedCellCount).toBe(luckyCells.length);
+    expect(first.totalPoints).toBe(luckyCells.length * 50);
+    expect(
+      luckyCells.every(
+        (cell) => (cell.mission as { readonly points: number }).points === 50,
+      ),
+    ).toBe(true);
 
     const today = await service.getToday({ userId, now });
     expect(today.id).toBe(first.id);
@@ -158,8 +170,12 @@ describeWithDatabase("DailySessionService integration", () => {
     const now = new Date("2026-07-27T03:00:00.000Z");
     const session = await service.getToday({ userId, now });
 
+    const firstRow = session.cells.slice(0, 5);
+    const cellsToComplete = firstRow.filter(
+      (cell) => cell.status !== "VERIFIED",
+    );
     let lastResult;
-    for (const cell of session.cells.slice(0, 5)) {
+    for (const cell of cellsToComplete) {
       lastResult = await completionService.completeCheckIn({
         userId,
         sessionId: session.id,
@@ -171,17 +187,24 @@ describeWithDatabase("DailySessionService integration", () => {
 
     expect(lastResult?.completedCellCount).toBe(5);
     expect(lastResult?.completedLineKeys).toContain("ROW_0");
+    const expectedMissionPoints = cellsToComplete.length * 10;
     expect(lastResult?.pointsEarned).toBe(110);
-    expect(lastResult?.totalPoints).toBe(150);
+    const luckyPoints = session.totalPoints;
+    expect(lastResult?.totalPoints).toBe(
+      luckyPoints + expectedMissionPoints + 100,
+    );
 
+    const repeatedCell = cellsToComplete.at(-1)!;
     const repeated = await completionService.completeCheckIn({
       userId,
       sessionId: session.id,
-      cellId: session.cells[4]!.id,
-      idempotencyKey: `complete-${session.cells[4]!.id}`,
+      cellId: repeatedCell.id,
+      idempotencyKey: `complete-${repeatedCell.id}`,
       now,
     });
-    expect(repeated.totalPoints).toBe(150);
+    expect(repeated.totalPoints).toBe(
+      luckyPoints + expectedMissionPoints + 100,
+    );
     expect(repeated.pointsEarned).toBe(0);
 
     const [verifications, lineRewards, ledgerEntries, outboxEvents] =
@@ -191,10 +214,12 @@ describeWithDatabase("DailySessionService integration", () => {
         database.pointLedger.count({ where: { sessionId: session.id } }),
         database.outboxEvent.count({ where: { aggregateId: { not: "" } } }),
       ]);
-    expect(verifications).toBe(5);
+    expect(verifications).toBe(cellsToComplete.length);
     expect(lineRewards).toBe(1);
-    expect(ledgerEntries).toBe(6);
-    expect(outboxEvents).toBeGreaterThanOrEqual(5);
+    expect(ledgerEntries).toBe(
+      cellsToComplete.length + 1 + (luckyPoints > 0 ? 1 : 0),
+    );
+    expect(outboxEvents).toBeGreaterThanOrEqual(cellsToComplete.length);
   });
 
   it("rejects invalid quiz/GPS evidence and approves valid retries", async () => {
@@ -208,6 +233,8 @@ describeWithDatabase("DailySessionService integration", () => {
       database.sessionCell.update({
         where: { id: quizCell.id },
         data: {
+          status: "AVAILABLE",
+          verifiedAt: null,
           missionSnapshot: {
             kind: "QUIZ",
             title: "안성 역사 퀴즈",
@@ -219,6 +246,8 @@ describeWithDatabase("DailySessionService integration", () => {
       database.sessionCell.update({
         where: { id: gpsCell.id },
         data: {
+          status: "AVAILABLE",
+          verifiedAt: null,
           missionSnapshot: {
             kind: "PLACE_VISIT",
             title: "안성 관광지 방문",
@@ -298,6 +327,6 @@ describeWithDatabase("DailySessionService integration", () => {
     );
     expect(insideGps.verificationStatus).toBe("APPROVED");
     expect(insideGps.pointsEarned).toBe(30);
-    expect(insideGps.totalPoints).toBe(200);
+    expect(insideGps.totalPoints).toBe(session.totalPoints + 50);
   });
 });

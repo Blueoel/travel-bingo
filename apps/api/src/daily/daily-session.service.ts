@@ -9,6 +9,7 @@ import {
   BOARD_CELL_COUNT,
   calculateBingoProgress,
   createDailyLayout,
+  selectDailyLuckyPosition,
   selectDailyLayoutVariant,
   toBoardPosition,
   type BingoLineKey,
@@ -134,6 +135,7 @@ export class DailySessionService {
     };
     const layout = createDailyLayout(identity);
     const layoutVariant = selectDailyLayoutVariant(identity);
+    const luckyPosition = selectDailyLuckyPosition(identity);
     const cellByCanonicalPosition = new Map(
       template.cells.map((cell) => [cell.position, cell]),
     );
@@ -147,8 +149,46 @@ export class DailySessionService {
             idempotencyKey: command.idempotencyKey,
             dailyDate,
             layoutVariant,
+            totalPoints: luckyPosition === null ? 0 : 50,
+            ...(luckyPosition === null
+              ? {}
+              : {
+                  pointLedger: {
+                    create: {
+                      userId: command.userId,
+                      referenceType: "DAILY_LUCKY",
+                      referenceId: `${date}:${command.userId}`,
+                      reason: "DAILY_LUCKY",
+                      points: 50,
+                    },
+                  },
+                }),
             cells: {
               create: layout.map((canonicalPosition, position) => {
+                if (position === luckyPosition) {
+                  return {
+                    position,
+                    status: "VERIFIED" as const,
+                    verifiedAt: now,
+                    missionSnapshot: {
+                      id: `lucky:${date}:${command.userId}`,
+                      kind: "CHECK_IN",
+                      title: "Lucky!",
+                      description:
+                        "오늘도 좋은 하루가 되길 바라요. 행운의 칸은 무료로 완료됩니다.",
+                      category: "LUCKY",
+                      targetValue: null,
+                      targetUnit: null,
+                      radiusM: null,
+                      points: 50,
+                      difficulty: 0,
+                      estimatedMinutesMin: null,
+                      estimatedMinutesMax: null,
+                      similarityGroup: "DAILY_LUCKY",
+                      place: null,
+                    },
+                  };
+                }
                 const source = cellByCanonicalPosition.get(canonicalPosition);
                 if (!source) {
                   throw new ConflictException(

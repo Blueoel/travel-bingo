@@ -199,6 +199,7 @@ test("includes the contributed Daily missions and difficulty-based rewards", asy
   assert.match(pageSource, /신호등 찾기/);
   assert.match(pageSource, /사진 3장/);
   assert.match(pageSource, /GPS 체류/);
+  assert.match(pageSource, /item\.title === "Lucky!"/);
 });
 
 test("supports the photo verification review and completion flow", async () => {

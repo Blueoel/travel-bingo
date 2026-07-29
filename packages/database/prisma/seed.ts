@@ -133,6 +133,155 @@ const contributedMissions = [
   },
 ] as const;
 
+const colorPhotoMissions = [
+  ["빨간색 찾기", "빨간색이 인상적인 대상을 찾아 사진으로 남겨보세요.", "RED"],
+  [
+    "주황색 찾기",
+    "주황색이 인상적인 대상을 찾아 사진으로 남겨보세요.",
+    "ORANGE",
+  ],
+  [
+    "노란색 찾기",
+    "노란색이 인상적인 대상을 찾아 사진으로 남겨보세요.",
+    "YELLOW",
+  ],
+  [
+    "초록색 찾기",
+    "초록색이 인상적인 대상을 찾아 사진으로 남겨보세요.",
+    "GREEN",
+  ],
+  ["파란색 찾기", "파란색이 인상적인 대상을 찾아 사진으로 남겨보세요.", "BLUE"],
+  ["남색 찾기", "남색이 인상적인 대상을 찾아 사진으로 남겨보세요.", "NAVY"],
+  [
+    "보라색 찾기",
+    "보라색이 인상적인 대상을 찾아 사진으로 남겨보세요.",
+    "PURPLE",
+  ],
+] as const;
+
+const spreadsheetMissions = [
+  {
+    title: "하늘",
+    description:
+      "오늘 하늘에서 가장 인상 깊은 모습을 찾아 사진으로 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION",
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "SKY_OBSERVATION",
+    status: "ACTIVE" as const,
+    verificationPolicy: { type: "PHOTO", requiredPhotoCount: 1 },
+  },
+  ...colorPhotoMissions.map(([title, description, color]) => ({
+    title,
+    description,
+    kind: "PHOTO" as const,
+    category: "COLOR_OBSERVATION",
+    points: 10,
+    difficulty: 1,
+    similarityGroup: `COLOR_${color}`,
+    status: "ACTIVE" as const,
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredColor: color,
+    },
+  })),
+  ...[
+    ["1km 걷기", 1, 10, 1],
+    ["2km 걷기", 2, 20, 2],
+    ["3km 걷기", 3, 30, 3],
+  ].map(([title, kilometers, points, difficulty]) => ({
+    title: String(title),
+    description: `산책하며 총 ${kilometers}km를 걸어보세요.`,
+    kind: "WALK_DISTANCE" as const,
+    category: "WALK",
+    points: Number(points),
+    difficulty: Number(difficulty),
+    targetValue: Number(kilometers),
+    targetUnit: "KILOMETER",
+    similarityGroup: "WALK_DISTANCE",
+    status: "NEEDS_REVIEW" as const,
+    verificationPolicy: {
+      type: "GPS_DISTANCE",
+      minimumKilometers: Number(kilometers),
+    },
+  })),
+  ...[
+    [
+      "주차 금지 표지판 찾기",
+      "주차 금지 표지판을 찾아 사진으로 남겨보세요.",
+      "ROAD_SIGN",
+    ],
+    [
+      "미끄럼틀 찾기",
+      "산책 중 미끄럼틀을 찾아 사진으로 남겨보세요.",
+      "PLAYGROUND",
+    ],
+    [
+      "버스 찾기",
+      "운행 중이거나 정차한 버스를 찾아 사진으로 남겨보세요.",
+      "BUS",
+    ],
+    ["택시 찾기", "산책 중 택시를 찾아 사진으로 남겨보세요.", "TAXI"],
+    ["맨홀 찾기", "길 위의 맨홀을 찾아 사진으로 남겨보세요.", "MANHOLE"],
+  ].map(([title, description, subject]) => ({
+    title,
+    description,
+    kind: "PHOTO" as const,
+    category: "EXPLORATION",
+    points: 10,
+    difficulty: 1,
+    similarityGroup: `OBJECT_${subject}`,
+    status: "ACTIVE" as const,
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: subject,
+    },
+  })),
+  {
+    title: "막다른 길",
+    description:
+      "안전한 보행로에서 막다른 길 표지나 길의 끝을 찾아 사진으로 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "EXPLORATION",
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "ROAD_END",
+    status: "ACTIVE" as const,
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "DEAD_END",
+    },
+  },
+  {
+    title: "계절 한 스푼",
+    description:
+      "오늘 느낀 계절을 가장 잘 표현하는 장면을 사진으로 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION",
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "SEASON_OBSERVATION",
+    status: "ACTIVE" as const,
+    verificationPolicy: { type: "PHOTO", requiredPhotoCount: 1 },
+  },
+  {
+    title: "동네 최고 포토스팟",
+    description:
+      "'여기가 우리 동네에서 제일 예쁘다'고 생각하는 장소를 찾아 사진으로 남겨보세요.",
+    kind: "PHOTO" as const,
+    category: "EXPLORATION",
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "LOCAL_PHOTO_SPOT",
+    status: "ACTIVE" as const,
+    verificationPolicy: { type: "PHOTO", requiredPhotoCount: 1 },
+  },
+] as const;
+
 function missionId(position: number): string {
   return `50000000-0000-4000-8000-${String(position + 1).padStart(12, "0")}`;
 }
@@ -288,12 +437,34 @@ async function seed(): Promise<void> {
     });
   }
 
+  for (const [index, mission] of spreadsheetMissions.entries()) {
+    const position =
+      places.length +
+      quizzes.length +
+      contributedMissions.length +
+      dailyCheckIns.length +
+      index;
+    await database.mission.upsert({
+      where: { id: missionId(position) },
+      update: mission,
+      create: {
+        id: missionId(position),
+        ...mission,
+      },
+    });
+  }
+
   const regionMissionIds = Array.from(
     { length: places.length + quizzes.length },
     (_, position) => missionId(position),
   );
   const commonMissionIds = Array.from(
-    { length: contributedMissions.length + dailyCheckIns.length },
+    {
+      length:
+        contributedMissions.length +
+        dailyCheckIns.length +
+        spreadsheetMissions.length,
+    },
     (_, index) => missionId(places.length + quizzes.length + index),
   );
   await database.mission.updateMany({

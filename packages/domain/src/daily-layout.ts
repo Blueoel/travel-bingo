@@ -6,6 +6,7 @@ import {
 } from "./bingo.js";
 
 export const DAILY_LAYOUT_VARIANT_COUNT = 8;
+export const DAILY_LUCKY_CHANCE_PERCENT = 20;
 
 export type DailyLayoutVariant = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -15,8 +16,8 @@ export interface DailyLayoutIdentity {
   readonly dailyVersion: number;
 }
 
-function hashIdentity(identity: DailyLayoutIdentity): number {
-  const input = `${identity.date}:${identity.userId}:${identity.dailyVersion}`;
+function hashIdentity(identity: DailyLayoutIdentity, salt = ""): number {
+  const input = `${identity.date}:${identity.userId}:${identity.dailyVersion}:${salt}`;
   let hash = 2_166_136_261;
 
   for (let index = 0; index < input.length; index += 1) {
@@ -32,6 +33,17 @@ export function selectDailyLayoutVariant(
 ): DailyLayoutVariant {
   return (hashIdentity(identity) %
     DAILY_LAYOUT_VARIANT_COUNT) as DailyLayoutVariant;
+}
+
+export function selectDailyLuckyPosition(
+  identity: DailyLayoutIdentity,
+): BoardPosition | null {
+  const luckyHash = hashIdentity(identity, "lucky");
+  if (luckyHash % 100 >= DAILY_LUCKY_CHANCE_PERCENT) return null;
+
+  return toBoardPosition(
+    hashIdentity(identity, "lucky-position") % BOARD_CELL_COUNT,
+  );
 }
 
 function rotateClockwise(

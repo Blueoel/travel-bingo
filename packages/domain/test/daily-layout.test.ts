@@ -4,6 +4,7 @@ import {
   BOARD_CELL_COUNT,
   createBingoLines,
   createDailyLayout,
+  selectDailyLuckyPosition,
   selectDailyLayoutVariant,
   toBoardPosition,
   transformBoardPosition,
@@ -35,6 +36,26 @@ describe("daily layout", () => {
     );
 
     expect(variants.size).toBeGreaterThan(1);
+  });
+
+  it("assigns one deterministic Lucky cell to about 20% of users", () => {
+    const positions = Array.from({ length: 1_000 }, (_, index) =>
+      selectDailyLuckyPosition({ ...identity, userId: `lucky-user-${index}` }),
+    );
+    const luckyPositions = positions.filter(
+      (position): position is NonNullable<typeof position> => position !== null,
+    );
+
+    expect(selectDailyLuckyPosition(identity)).toBe(
+      selectDailyLuckyPosition(identity),
+    );
+    expect(luckyPositions.length).toBeGreaterThanOrEqual(180);
+    expect(luckyPositions.length).toBeLessThanOrEqual(220);
+    expect(
+      luckyPositions.every(
+        (position) => position >= 0 && position < BOARD_CELL_COUNT,
+      ),
+    ).toBe(true);
   });
 
   it("contains every canonical mission exactly once", () => {

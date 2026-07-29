@@ -767,7 +767,7 @@ export default function Home() {
           {items.map((item) => (
             <button
               key={item.id}
-              className={`${item.done ? "done" : ""} ${item.title === "FREE" ? "free" : ""}`}
+              className={`${item.done ? "done" : ""} ${item.title === "Lucky!" || item.title === "FREE" ? "free" : ""}`}
               onClick={() => {
                 setSelected(item);
                 setMessage(null);

@@ -25,8 +25,10 @@ export {
 } from "./location.js";
 
 export {
+  DAILY_LUCKY_CHANCE_PERCENT,
   DAILY_LAYOUT_VARIANT_COUNT,
   createDailyLayout,
+  selectDailyLuckyPosition,
   selectDailyLayoutVariant,
   transformBoardPosition,
   type DailyLayoutIdentity,
