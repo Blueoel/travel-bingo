@@ -15,6 +15,10 @@ const KIND_LIMITS: Readonly<Record<string, number>> = {
   WALK_STEPS: 1,
 };
 
+const HARD_SIMILARITY_LIMITS: Readonly<Record<string, number>> = {
+  COLOR_SEARCH: 3,
+};
+
 export interface DailyMissionCandidate {
   readonly id: string;
   readonly difficulty: number;
@@ -53,12 +57,14 @@ export function selectPersonalizedDailyMissions<
       count,
       true,
       true,
+      true,
     );
   }
 
-  fill(selected, ordered, count, count, true, true);
-  fill(selected, ordered, count, count, true, false);
-  fill(selected, ordered, count, count, false, false);
+  fill(selected, ordered, count, count, true, true, true);
+  fill(selected, ordered, count, count, true, false, true);
+  fill(selected, ordered, count, count, false, false, true);
+  fill(selected, ordered, count, count, false, false, false);
 
   return selected.slice(0, count);
 }
@@ -70,6 +76,7 @@ function fill<T extends DailyMissionCandidate>(
   maximumCount: number,
   enforceSimilarityLimit: boolean,
   enforceKindLimit: boolean,
+  enforceHardSimilarityLimit: boolean,
 ): void {
   for (const candidate of candidates) {
     if (selected.length >= targetCount || selected.length >= maximumCount)
@@ -86,6 +93,20 @@ function fill<T extends DailyMissionCandidate>(
         (selectedMission) =>
           selectedMission.similarityGroup === candidate.similarityGroup,
       )
+    ) {
+      continue;
+    }
+    const similarityLimit = candidate.similarityGroup
+      ? HARD_SIMILARITY_LIMITS[candidate.similarityGroup]
+      : undefined;
+    if (
+      enforceHardSimilarityLimit &&
+      candidate.similarityGroup &&
+      similarityLimit !== undefined &&
+      selected.filter(
+        (selectedMission) =>
+          selectedMission.similarityGroup === candidate.similarityGroup,
+      ).length >= similarityLimit
     ) {
       continue;
     }

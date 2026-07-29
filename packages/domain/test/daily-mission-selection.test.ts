@@ -86,4 +86,28 @@ describe("personalized Daily mission selection", () => {
     expect(selected).toHaveLength(25);
     expect(selected.every((mission) => mission.difficulty !== 3)).toBe(true);
   });
+
+  it("keeps color missions to three when non-color alternatives can fill the board", () => {
+    const pool = [
+      ...Array.from({ length: 10 }, (_, index) => ({
+        id: `color-${index}`,
+        difficulty: index < 6 ? 1 : 2,
+        kind: "PHOTO",
+        similarityGroup: "COLOR_SEARCH",
+      })),
+      ...Array.from({ length: 22 }, (_, index) => ({
+        id: `other-${index}`,
+        difficulty: index < 12 ? 1 : index < 20 ? 2 : 3,
+        kind: "CHECK_IN",
+        similarityGroup: `OTHER_${index}`,
+      })),
+    ];
+
+    const selected = selectPersonalizedDailyMissions(identity, pool);
+
+    expect(selected).toHaveLength(25);
+    expect(
+      selected.filter((mission) => mission.similarityGroup === "COLOR_SEARCH"),
+    ).toHaveLength(3);
+  });
 });
