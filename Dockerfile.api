@@ -18,7 +18,10 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/domain/package.json packages/domain/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile \
+  --filter @travel-bingo/api... \
+  --filter @travel-bingo/database... \
+  --filter @travel-bingo/domain...
 
 FROM dependencies AS build
 
