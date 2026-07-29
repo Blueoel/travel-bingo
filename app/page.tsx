@@ -24,6 +24,9 @@ type Mission = {
   verificationLabel?: string;
   targetValue?: number | null;
   targetUnit?: string | null;
+  interactionType?: "TEXT" | "TIMER";
+  timerSeconds?: number | null;
+  textMaxLength?: number | null;
 };
 type DailySession = {
   id: string;
@@ -43,6 +46,9 @@ type DailySession = {
       estimatedMinutesMax?: number | null;
       targetValue?: string | null;
       targetUnit?: string | null;
+      interactionType?: "TEXT" | "TIMER";
+      timerSeconds?: number | null;
+      textMaxLength?: number | null;
     };
   }>;
 };
@@ -237,6 +243,9 @@ function friendlyError(code?: string): string {
     GPS_DURATION_NOT_REACHED: "목표 시간까지 산책을 이어가 주세요.",
     GPS_STAY_MOVED_TOO_FAR:
       "체류 범위를 벗어났어요. 한 장소에서 다시 시작해주세요.",
+    TEXT_REQUIRED: "오늘의 기록을 한 문장으로 남겨주세요.",
+    TEXT_TOO_LONG: "기록은 100자 이내로 작성해주세요.",
+    TIMER_NOT_REACHED: "목표 시간이 끝난 뒤 인증할 수 있어요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
 }
@@ -245,8 +254,13 @@ function verificationLabel(
   kind: MissionKind,
   targetValue?: string | null,
   targetUnit?: string | null,
+  interactionType?: "TEXT" | "TIMER",
 ): string | undefined {
   const target = Number(targetValue);
+  if (interactionType === "TEXT") return "텍스트 기록";
+  if (interactionType === "TIMER") {
+    return `타이머 ${Math.max(1, Math.round(target / 60))}분`;
+  }
   if (kind === "PHOTO") {
     return target > 1 ? `사진 ${target}장` : "사진 1장";
   }
@@ -335,6 +349,9 @@ export default function Home() {
   const [lineKeys, setLineKeys] = useState<string[]>([]);
   const [selected, setSelected] = useState<Mission | null>(null);
   const [answer, setAnswer] = useState("");
+  const [textRecord, setTextRecord] = useState("");
+  const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
+  const [timerNow, setTimerNow] = useState(Date.now());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
@@ -412,9 +429,13 @@ export default function Home() {
             cell.mission.kind,
             cell.mission.targetValue,
             cell.mission.targetUnit,
+            cell.mission.interactionType,
           ),
           targetValue: Number(cell.mission.targetValue) || null,
           targetUnit: cell.mission.targetUnit,
+          interactionType: cell.mission.interactionType,
+          timerSeconds: cell.mission.timerSeconds ?? null,
+          textMaxLength: cell.mission.textMaxLength ?? null,
         })),
     );
   };
@@ -554,6 +575,22 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [tracking.active]);
 
+  useEffect(() => {
+    if (!selected || selected.interactionType !== "TIMER") {
+      setTimerStartedAt(null);
+      return;
+    }
+    const storageKey = `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`;
+    setTimerStartedAt(window.localStorage.getItem(storageKey));
+    setTimerNow(Date.now());
+  }, [selected, sessionId]);
+
+  useEffect(() => {
+    if (!timerStartedAt) return;
+    const timer = window.setInterval(() => setTimerNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [timerStartedAt]);
+
   useEffect(
     () => () => {
       if (trackingWatchId.current !== null) {
@@ -624,7 +661,102 @@ export default function Home() {
     resetTracking();
     setPhotoPreview(null);
     setPhotoStage("DETAIL");
+    setTextRecord("");
     setSelected(null);
+  };
+
+  const startMissionTimer = () => {
+    if (!selected || selected.interactionType !== "TIMER") return;
+    const startedAt = new Date().toISOString();
+    window.localStorage.setItem(
+      `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`,
+      startedAt,
+    );
+    setTimerStartedAt(startedAt);
+    setTimerNow(Date.now());
+    setMessage(null);
+  };
+
+  const submitRecordMission = async () => {
+    if (!selected || selected.done || !selected.interactionType) return;
+    const trimmedText = textRecord.trim();
+    const timerTarget = selected.timerSeconds ?? selected.targetValue ?? 0;
+    const timerElapsed = timerStartedAt
+      ? Math.floor((timerNow - new Date(timerStartedAt).getTime()) / 1_000)
+      : 0;
+    if (selected.interactionType === "TEXT" && !trimmedText) {
+      setMessage("오늘의 기록을 한 문장으로 남겨주세요.");
+      return;
+    }
+    if (
+      selected.interactionType === "TIMER" &&
+      (!timerStartedAt || timerElapsed < timerTarget)
+    ) {
+      setMessage("목표 시간이 끝난 뒤 인증할 수 있어요.");
+      return;
+    }
+    if (demoMode || !sessionId) {
+      const nextItems = items.map((item) =>
+        item.id === selected.id ? { ...item, done: true } : item,
+      );
+      const nextLineKeys = completedClientLineKeys(nextItems);
+      celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
+      setItems(nextItems);
+      setLineKeys(nextLineKeys);
+      setPoints((current) => current + selected.points);
+      if (selected.interactionType === "TIMER") {
+        window.localStorage.removeItem(
+          `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`,
+        );
+      }
+      setSelected(null);
+      setTextRecord("");
+      return;
+    }
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const body =
+        selected.interactionType === "TEXT"
+          ? { type: "TEXT", text: trimmedText }
+          : {
+              type: "TIMER",
+              startedAt: timerStartedAt,
+              completedAt: new Date().toISOString(),
+            };
+      const response = await apiFetch(
+        `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "idempotency-key": `web-${selected.interactionType.toLowerCase()}-${crypto.randomUUID()}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        },
+      );
+      const result = (await response.json()) as VerificationResult;
+      if (!response.ok || result.verificationStatus === "REJECTED") {
+        setMessage(friendlyError(result.reasonCode));
+        return;
+      }
+      celebrate(
+        result.completedLineKeys.filter((key) => !lineKeys.includes(key))
+          .length,
+      );
+      if (selected.interactionType === "TIMER") {
+        window.localStorage.removeItem(
+          `travel-bingo-timer:${sessionId}:${selected.id}`,
+        );
+      }
+      setSelected(null);
+      setTextRecord("");
+      await loadDaily();
+    } catch {
+      setMessage("기록을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const startTracking = () => {
@@ -941,6 +1073,17 @@ export default function Home() {
     trackingTarget > 0
       ? Math.min(100, Math.round((trackingCurrent / trackingTarget) * 100))
       : 0;
+  const recordMission = selected?.interactionType === "TEXT";
+  const timerMission = selected?.interactionType === "TIMER";
+  const timerTarget = selected?.timerSeconds ?? selected?.targetValue ?? 0;
+  const timerElapsed = timerStartedAt
+    ? Math.max(
+        0,
+        Math.floor((timerNow - new Date(timerStartedAt).getTime()) / 1_000),
+      )
+    : 0;
+  const timerRemaining = Math.max(0, timerTarget - timerElapsed);
+  const timerReady = timerMission && timerTarget > 0 && timerRemaining === 0;
 
   if (authStatus === "checking") {
     return (
@@ -1223,7 +1366,7 @@ export default function Home() {
       {selected && (
         <div className="modal-backdrop" onClick={closeMission}>
           <section
-            className={`mission-sheet ${selected.kind === "PHOTO" ? "photo-sheet" : ""}`}
+            className={`mission-sheet ${selected.kind === "PHOTO" ? "photo-sheet" : ""} ${selected.interactionType ? "journal-sheet" : ""}`}
             onClick={(event) => event.stopPropagation()}
           >
             <button className="close" onClick={closeMission}>
@@ -1306,6 +1449,46 @@ export default function Home() {
                     placeholder="정답을 입력해주세요"
                   />
                 )}
+                {recordMission && !selected.done && (
+                  <div className="journal-paper">
+                    <label htmlFor="mission-record">오늘의 이야기</label>
+                    <textarea
+                      id="mission-record"
+                      value={textRecord}
+                      maxLength={selected.textMaxLength ?? 100}
+                      onChange={(event) => setTextRecord(event.target.value)}
+                      placeholder="지금 이 순간의 감정을 자유롭게 적어보세요."
+                    />
+                    <small>
+                      {textRecord.length} / {selected.textMaxLength ?? 100}자
+                    </small>
+                  </div>
+                )}
+                {timerMission && !selected.done && (
+                  <div
+                    className={`mission-timer ${timerReady ? "is-complete" : ""}`}
+                    aria-live="polite"
+                  >
+                    <span>{timerStartedAt ? "진행 중" : "시작 전"}</span>
+                    <div
+                      className="timer-ring"
+                      style={
+                        {
+                          "--timer-progress": `${timerTarget > 0 ? Math.min(100, (timerElapsed / timerTarget) * 100) : 0}%`,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <strong>{trackingTime(timerRemaining)}</strong>
+                    </div>
+                    <p>
+                      {timerReady
+                        ? "훌륭해요! 목표 시간을 모두 채웠어요."
+                        : timerStartedAt
+                          ? "화면을 벗어나도 타이머는 계속 이어져요."
+                          : "시작하기를 누르고 여유로운 시간을 가져보세요."}
+                    </p>
+                  </div>
+                )}
                 {message && <p className="error-message">{message}</p>}
                 {selected.kind === "PHOTO" ? (
                   <div className="photo-actions">
@@ -1369,11 +1552,47 @@ export default function Home() {
                         </small>
                       </div>
                     )}
-                    <div className="reward">
-                      <span>획득 보상</span>
-                      <b>+ {selected.points} Point</b>
-                    </div>
-                    {trackingMission ? (
+                    {!recordMission && !timerMission && (
+                      <div className="reward">
+                        <span>획득 보상</span>
+                        <b>+ {selected.points} Point</b>
+                      </div>
+                    )}
+                    {recordMission ? (
+                      <button
+                        className="primary journal-submit"
+                        onClick={submitRecordMission}
+                        disabled={
+                          selected.done ||
+                          submitting ||
+                          textRecord.trim().length === 0
+                        }
+                      >
+                        {submitting ? "기록하고 있어요…" : "✓ 인증하기"}
+                      </button>
+                    ) : timerMission ? (
+                      timerStartedAt ? (
+                        <button
+                          className="primary journal-submit"
+                          onClick={submitRecordMission}
+                          disabled={selected.done || submitting || !timerReady}
+                        >
+                          {submitting
+                            ? "인증하고 있어요…"
+                            : timerReady
+                              ? "✓ 인증하기"
+                              : "타이머 진행 중"}
+                        </button>
+                      ) : (
+                        <button
+                          className="primary timer-start"
+                          onClick={startMissionTimer}
+                          disabled={selected.done || submitting}
+                        >
+                          ▶ 시작하기
+                        </button>
+                      )
+                    ) : trackingMission ? (
                       <div className="tracking-actions">
                         {tracking.active ? (
                           <button
