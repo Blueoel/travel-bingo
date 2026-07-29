@@ -349,6 +349,53 @@ mark {
   font-size: 12px;
   font-weight: 800;
 }
+.dailyHealth {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dailyHealth article {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fafcfb;
+}
+.dailyHealth span,
+.dailyHealth small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.dailyHealth b {
+  font-size: 20px;
+}
+.dailyWarnings {
+  margin-bottom: 20px;
+  padding: 13px 15px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.dailyWarnings.warning {
+  border: 1px solid #ead7aa;
+  background: #fff8e8;
+  color: #755512;
+}
+.dailyWarnings.healthy {
+  border: 1px solid #bad9c4;
+  background: #eef8f1;
+  color: #246b48;
+}
+.dailyWarnings ul {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding-left: 18px;
+}
+.dailyWarnings p {
+  margin: 5px 0 0;
+}
 .candidateGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -613,6 +660,9 @@ textarea {
   .candidateGrid {
     grid-template-columns: 1fr 1fr;
   }
+  .dailyHealth {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (max-width: 560px) {
   header {
@@ -621,6 +671,9 @@ textarea {
   }
   .grid,
   .candidateGrid {
+    grid-template-columns: 1fr;
+  }
+  .dailyHealth {
     grid-template-columns: 1fr;
   }
 }

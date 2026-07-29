@@ -52,4 +52,8 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /유사 그룹 검색/);
   assert.match(pageSource, /Daily 후보 포함 여부/);
   assert.match(pageSource, /사용자별 빙고판을 만들 활성 공통 미션/);
+  assert.match(pageSource, /Daily 후보 구성 진단/);
+  assert.match(pageSource, /구성 보완이 필요합니다/);
+  assert.match(pageSource, /쉬움 · 보통 · 어려움/);
+  assert.match(pageSource, /한 판에는 최대 10개/);
 });
