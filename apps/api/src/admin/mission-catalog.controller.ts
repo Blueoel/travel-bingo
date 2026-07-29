@@ -118,6 +118,18 @@ function parseQuery(
     "INACTIVE",
     "NEEDS_REVIEW",
   ] as const);
+  const kind = oneOf(input.kind, [
+    "PLACE_VISIT",
+    "WALK_STEPS",
+    "WALK_DISTANCE",
+    "QUIZ",
+    "QR_SCAN",
+    "PHOTO",
+    "CHECK_IN",
+    "COMPOSITE",
+  ] as const);
+  const difficulty = optionalDifficulty(input.difficulty);
+  const dailyCandidate = optionalBoolean(input.dailyCandidate);
   return {
     page,
     pageSize,
@@ -126,14 +138,40 @@ function parseQuery(
     ...(input.regionId ? { regionId: input.regionId } : {}),
     ...(input.category ? { category: input.category } : {}),
     ...(status ? { status } : {}),
+    ...(difficulty ? { difficulty } : {}),
+    ...(kind ? { kind } : {}),
+    ...(input.similarityGroup
+      ? { similarityGroup: input.similarityGroup }
+      : {}),
+    ...(dailyCandidate === undefined ? {} : { dailyCandidate }),
   };
+}
+
+function optionalDifficulty(
+  value: string | undefined,
+): 1 | 2 | 3 | 4 | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (![1, 2, 3, 4].includes(parsed)) {
+    throw new BadRequestException("Invalid difficulty filter.");
+  }
+  return parsed as 1 | 2 | 3 | 4;
+}
+
+function optionalBoolean(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new BadRequestException("Invalid boolean filter.");
 }
 
 function positiveInteger(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new BadRequestException("Pagination values must be positive integers.");
+    throw new BadRequestException(
+      "Pagination values must be positive integers.",
+    );
   }
   return parsed;
 }

@@ -25,6 +25,10 @@ export interface MissionCatalogQuery {
   readonly regionId?: string;
   readonly category?: string;
   readonly status?: "ACTIVE" | "INACTIVE" | "NEEDS_REVIEW";
+  readonly difficulty?: 1 | 2 | 3 | 4;
+  readonly kind?: MissionCatalogInput["kind"];
+  readonly similarityGroup?: string;
+  readonly dailyCandidate?: boolean;
   readonly page: number;
   readonly pageSize: number;
 }
@@ -93,6 +97,24 @@ export class MissionCatalogService {
       ...(query.scope ? { scope: query.scope } : {}),
       ...(query.category ? { category: query.category } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(query.difficulty ? { difficulty: query.difficulty } : {}),
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.similarityGroup
+        ? { similarityGroup: query.similarityGroup }
+        : {}),
+      ...(query.dailyCandidate === true
+        ? {
+            collectionItems: {
+              some: { collection: { type: "DAILY", regionId: null } },
+            },
+          }
+        : query.dailyCandidate === false
+          ? {
+              collectionItems: {
+                none: { collection: { type: "DAILY", regionId: null } },
+              },
+            }
+          : {}),
       ...(query.regionId
         ? { regionLinks: { some: { regionId: query.regionId } } }
         : {}),
@@ -292,8 +314,9 @@ function missionData(input: MissionCatalogInput) {
     estimatedMinutesMin: input.estimatedMinutesMin ?? null,
     estimatedMinutesMax: input.estimatedMinutesMax ?? null,
     similarityGroup: input.similarityGroup?.trim() || null,
-    verificationPolicy:
-      input.verificationPolicy ?? { type: input.verificationType ?? "MANUAL" },
+    verificationPolicy: input.verificationPolicy ?? {
+      type: input.verificationType ?? "MANUAL",
+    },
     targetValue: input.targetValue ?? null,
     targetUnit: input.targetUnit?.trim() || null,
     radiusM: input.radiusM ?? null,

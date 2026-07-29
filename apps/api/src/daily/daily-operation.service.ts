@@ -75,7 +75,7 @@ export class DailyOperationService {
           by: ["userId"],
           where: {
             createdAt: { gte: previousStartsAt, lt: cycle.startsAt },
-            reason: { not: "DAILY_RANK_REWARD" },
+            reason: { notIn: ["DAILY_RANK_REWARD", "DAILY_LUCKY"] },
           },
           _sum: { points: true },
         });
@@ -108,17 +108,14 @@ export class DailyOperationService {
           return {
             ...entry,
             rank,
-            rewardPoints:
-              REWARD_BY_RANK[rank] ?? (rank <= 10 ? 30 : 10),
+            rewardPoints: REWARD_BY_RANK[rank] ?? (rank <= 10 ? 30 : 10),
           };
         });
         if (rankings.length > 0) {
           await transaction.dailyRankingSnapshot.createMany({
             data: rankings.map((entry) => ({
               cycleDate: toDatabaseDate(
-                getDailyCycle(
-                  new Date(cycle.startsAt.getTime() - 1),
-                ).date,
+                getDailyCycle(new Date(cycle.startsAt.getTime() - 1)).date,
               ),
               ...entry,
             })),
@@ -152,12 +149,16 @@ export class DailyOperationService {
           },
         });
         if (!collection || collection.items.length < 25) {
-          throw new Error("At least 25 active Daily candidate missions are required.");
+          throw new Error(
+            "At least 25 active Daily candidate missions are required.",
+          );
         }
         const missionIds = collection.items
           .map((item) => item.mission.id)
           .sort((left, right) =>
-            dailyHash(cycle.date, left).localeCompare(dailyHash(cycle.date, right)),
+            dailyHash(cycle.date, left).localeCompare(
+              dailyHash(cycle.date, right),
+            ),
           )
           .slice(0, 25);
 

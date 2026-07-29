@@ -23,8 +23,10 @@ export class RankingService {
     const grouped = await this.database.pointLedger.groupBy({
       by: ["userId"],
       where: {
-        reason: { not: "DAILY_RANK_REWARD" },
-        ...(window.startsAt ? { createdAt: { gte: window.startsAt, lt: window.endsAt } } : {}),
+        reason: { notIn: ["DAILY_RANK_REWARD", "DAILY_LUCKY"] },
+        ...(window.startsAt
+          ? { createdAt: { gte: window.startsAt, lt: window.endsAt } }
+          : {}),
         ...(scope === "COMMON"
           ? { session: { template: { type: "DAILY" } } }
           : scope === "REGION"
@@ -49,7 +51,9 @@ export class RankingService {
         points: entry._sum.points ?? 0,
       }))
       .filter(
-        (entry): entry is { userId: string; nickname: string; points: number } =>
+        (
+          entry,
+        ): entry is { userId: string; nickname: string; points: number } =>
           Boolean(entry.nickname) && entry.points > 0,
       )
       .sort((left, right) =>
@@ -67,14 +71,21 @@ export class RankingService {
     });
     const me =
       entries.find((entry) => entry.userId === userId) ??
-      (await this.database.user.findUnique({
-        where: { id: userId },
-        select: { id: true, nickname: true },
-      }).then((user) =>
-        user
-          ? { userId: user.id, nickname: user.nickname, points: 0, rank: entries.length + 1 }
-          : null,
-      ));
+      (await this.database.user
+        .findUnique({
+          where: { id: userId },
+          select: { id: true, nickname: true },
+        })
+        .then((user) =>
+          user
+            ? {
+                userId: user.id,
+                nickname: user.nickname,
+                points: 0,
+                rank: entries.length + 1,
+              }
+            : null,
+        ));
 
     return {
       period,

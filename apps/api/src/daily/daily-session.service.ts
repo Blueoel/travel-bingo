@@ -11,6 +11,7 @@ import {
   createDailyLayout,
   selectDailyLuckyPosition,
   selectDailyLayoutVariant,
+  selectPersonalizedDailyMissions,
   toBoardPosition,
   type BingoLineKey,
   type DailyLayoutIdentity,
@@ -89,26 +90,10 @@ export class DailySessionService {
         OR: [{ endsAt: null }, { endsAt: { gt: now } }],
       },
       orderBy: [{ version: "desc" }, { publishedAt: "desc" }],
-      include: {
-        cells: {
-          orderBy: { position: "asc" },
-          include: {
-            mission: {
-              include: { place: true },
-            },
-          },
-        },
-      },
     });
 
     if (!template) {
       throw new NotFoundException("오늘 공개된 Daily 빙고가 없습니다.");
-    }
-
-    if (template.cells.length !== BOARD_CELL_COUNT) {
-      throw new ConflictException(
-        `Daily 빙고에는 ${BOARD_CELL_COUNT}개의 미션이 필요합니다.`,
-      );
     }
 
     const existing = await this.database.bingoSession.findUnique({
@@ -128,6 +113,31 @@ export class DailySessionService {
       return this.toResult(existing, date);
     }
 
+    const collection = await this.database.missionCollection.findFirst({
+      where: { type: "DAILY", regionId: null, status: "ACTIVE" },
+      include: {
+        items: {
+          where: {
+            mission: {
+              scope: "COMMON",
+              status: "ACTIVE",
+              difficulty: { in: [1, 2, 3] },
+            },
+          },
+          include: {
+            mission: {
+              include: { place: true },
+            },
+          },
+        },
+      },
+    });
+    if (!collection || collection.items.length < BOARD_CELL_COUNT) {
+      throw new ConflictException(
+        `Daily 후보에는 활성 공통 미션이 ${BOARD_CELL_COUNT}개 이상 필요합니다.`,
+      );
+    }
+
     const identity: DailyLayoutIdentity = {
       date,
       userId: command.userId,
@@ -136,9 +146,15 @@ export class DailySessionService {
     const layout = createDailyLayout(identity);
     const layoutVariant = selectDailyLayoutVariant(identity);
     const luckyPosition = selectDailyLuckyPosition(identity);
-    const cellByCanonicalPosition = new Map(
-      template.cells.map((cell) => [cell.position, cell]),
+    const selectedMissions = selectPersonalizedDailyMissions(
+      identity,
+      collection.items.map((item) => item.mission),
     );
+    if (selectedMissions.length !== BOARD_CELL_COUNT) {
+      throw new ConflictException(
+        `Daily 미션 ${BOARD_CELL_COUNT}개를 구성할 수 없습니다.`,
+      );
+    }
 
     const session = await (async () => {
       try {
@@ -189,36 +205,36 @@ export class DailySessionService {
                     },
                   };
                 }
-                const source = cellByCanonicalPosition.get(canonicalPosition);
+                const source = selectedMissions[canonicalPosition];
                 if (!source) {
                   throw new ConflictException(
-                    `Daily 템플릿의 ${canonicalPosition}번 칸이 없습니다.`,
+                    `Daily 선택 결과의 ${canonicalPosition}번 칸이 없습니다.`,
                   );
                 }
 
                 return {
                   position,
                   missionSnapshot: {
-                    id: source.mission.id,
-                    kind: source.mission.kind,
-                    title: source.mission.title,
-                    description: source.mission.description,
-                    category: source.mission.category,
-                    verificationPolicy: source.mission.verificationPolicy,
-                    targetValue: source.mission.targetValue?.toString() ?? null,
-                    targetUnit: source.mission.targetUnit,
-                    radiusM: source.mission.radiusM,
-                    points: source.mission.points,
-                    difficulty: source.mission.difficulty,
-                    estimatedMinutesMin: source.mission.estimatedMinutesMin,
-                    estimatedMinutesMax: source.mission.estimatedMinutesMax,
-                    similarityGroup: source.mission.similarityGroup,
-                    place: source.mission.place
+                    id: source.id,
+                    kind: source.kind,
+                    title: source.title,
+                    description: source.description,
+                    category: source.category,
+                    verificationPolicy: source.verificationPolicy,
+                    targetValue: source.targetValue?.toString() ?? null,
+                    targetUnit: source.targetUnit,
+                    radiusM: source.radiusM,
+                    points: source.points,
+                    difficulty: source.difficulty,
+                    estimatedMinutesMin: source.estimatedMinutesMin,
+                    estimatedMinutesMax: source.estimatedMinutesMax,
+                    similarityGroup: source.similarityGroup,
+                    place: source.place
                       ? {
-                          id: source.mission.place.id,
-                          title: source.mission.place.title,
-                          latitude: source.mission.place.latitude.toString(),
-                          longitude: source.mission.place.longitude.toString(),
+                          id: source.place.id,
+                          title: source.place.title,
+                          latitude: source.place.latitude.toString(),
+                          longitude: source.place.longitude.toString(),
                         }
                       : null,
                   },

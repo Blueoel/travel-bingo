@@ -80,12 +80,27 @@ describeWithDatabase("RankingService integration", () => {
           createdAt: new Date("2026-07-28T03:00:00.000Z"),
         },
       });
+      await database.pointLedger.create({
+        data: {
+          userId: user.id,
+          sessionId: session.id,
+          referenceType: "DAILY_LUCKY",
+          referenceId: `ranking-lucky-${suffix}-${index}`,
+          reason: "DAILY_LUCKY",
+          points: 50,
+          createdAt: new Date("2026-07-28T03:00:00.000Z"),
+        },
+      });
     }
   });
 
   afterAll(async () => {
-    await database.pointLedger.deleteMany({ where: { userId: { in: userIds } } });
-    await database.bingoSession.deleteMany({ where: { id: { in: sessionIds } } });
+    await database.pointLedger.deleteMany({
+      where: { userId: { in: userIds } },
+    });
+    await database.bingoSession.deleteMany({
+      where: { id: { in: sessionIds } },
+    });
     await database.bingoTemplate.delete({ where: { id: templateId } });
     await database.bingoTheme.delete({ where: { id: themeId } });
     await database.region.delete({ where: { id: regionId } });
@@ -100,7 +115,9 @@ describeWithDatabase("RankingService integration", () => {
       "COMMON",
       new Date("2026-07-28T05:00:00.000Z"),
     );
-    const fixtures = result.entries.filter((entry) => userIds.includes(entry.userId));
+    const fixtures = result.entries.filter((entry) =>
+      userIds.includes(entry.userId),
+    );
     expect(fixtures.map((entry) => entry.points)).toEqual([200, 100]);
     expect(result.me?.userId).toBe(userIds[1]);
     expect(result.me?.points).toBe(100);

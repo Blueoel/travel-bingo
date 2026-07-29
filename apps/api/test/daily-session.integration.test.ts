@@ -25,6 +25,7 @@ describeWithDatabase("DailySessionService integration", () => {
   let completionService: MissionCompletionService;
   let userId: string;
   let templateId: string;
+  let collectionId: string;
   let themeId: string;
   let regionId: string;
   let missionIds: string[];
@@ -87,8 +88,21 @@ describeWithDatabase("DailySessionService integration", () => {
           },
         },
       });
+      const collection = await transaction.missionCollection.create({
+        data: {
+          name: `Daily 후보 ${suffix}`,
+          type: "DAILY",
+          status: "ACTIVE",
+          items: {
+            create: missions.map((mission, displayOrder) => ({
+              missionId: mission.id,
+              displayOrder,
+            })),
+          },
+        },
+      });
 
-      return { user, region, theme, missions, template };
+      return { user, region, theme, missions, template, collection };
     });
 
     userId = fixture.user.id;
@@ -96,6 +110,7 @@ describeWithDatabase("DailySessionService integration", () => {
     themeId = fixture.theme.id;
     missionIds = fixture.missions.map((mission) => mission.id);
     templateId = fixture.template.id;
+    collectionId = fixture.collection.id;
   });
 
   afterAll(async () => {
@@ -114,6 +129,7 @@ describeWithDatabase("DailySessionService integration", () => {
     });
     await database.verification.deleteMany({ where: { userId } });
     await database.bingoSession.deleteMany({ where: { templateId } });
+    await database.missionCollection.delete({ where: { id: collectionId } });
     await database.bingoTemplate.delete({ where: { id: templateId } });
     await database.mission.deleteMany({ where: { id: { in: missionIds } } });
     await database.bingoTheme.delete({ where: { id: themeId } });

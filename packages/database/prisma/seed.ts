@@ -179,7 +179,7 @@ const spreadsheetMissions = [
     category: "COLOR_OBSERVATION",
     points: 10,
     difficulty: 1,
-    similarityGroup: `COLOR_${color}`,
+    similarityGroup: "COLOR_SEARCH",
     status: "ACTIVE" as const,
     verificationPolicy: {
       type: "PHOTO",
@@ -232,7 +232,10 @@ const spreadsheetMissions = [
     category: "EXPLORATION",
     points: 10,
     difficulty: 1,
-    similarityGroup: `OBJECT_${subject}`,
+    similarityGroup:
+      subject === "BUS" || subject === "TAXI"
+        ? "TRANSPORT_SEARCH"
+        : "ROAD_FACILITY",
     status: "ACTIVE" as const,
     verificationPolicy: {
       type: "PHOTO",

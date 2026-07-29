@@ -36,6 +36,12 @@ export {
 } from "./daily-layout.js";
 
 export {
+  DAILY_DIFFICULTY_QUOTAS,
+  selectPersonalizedDailyMissions,
+  type DailyMissionCandidate,
+} from "./daily-mission-selection.js";
+
+export {
   MISSION_POINTS,
   pointsForDifficulty,
   type MissionDifficulty,
