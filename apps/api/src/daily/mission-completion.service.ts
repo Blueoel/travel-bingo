@@ -37,6 +37,15 @@ export type MissionEvidence =
       readonly longitude: number;
       readonly accuracyM: number;
       readonly measuredAt: Date;
+    }
+  | {
+      readonly type: "ACTIVITY";
+      readonly distanceM: number;
+      readonly durationSeconds: number;
+      readonly latitude: number;
+      readonly longitude: number;
+      readonly accuracyM: number;
+      readonly measuredAt: Date;
     };
 
 export interface MissionCompletionResult {
@@ -56,6 +65,8 @@ type MissionSnapshot = {
   readonly kind?: unknown;
   readonly points?: unknown;
   readonly radiusM?: unknown;
+  readonly targetValue?: unknown;
+  readonly targetUnit?: unknown;
   readonly verificationPolicy?: unknown;
   readonly place?: {
     readonly latitude?: unknown;
@@ -152,16 +163,16 @@ export class MissionCompletionService {
             userId: command.userId,
             idempotencyKey: command.idempotencyKey,
             type:
-              evidence.type === "GPS"
+              isGpsEvidence(evidence)
                 ? "GPS"
                 : evidence.type === "PHOTO"
                   ? "PHOTO"
                   : "QUIZ",
             status: "REJECTED",
-            latitude: evidence.type === "GPS" ? evidence.latitude : null,
-            longitude: evidence.type === "GPS" ? evidence.longitude : null,
-            accuracyM: evidence.type === "GPS" ? evidence.accuracyM : null,
-            measuredAt: evidence.type === "GPS" ? evidence.measuredAt : null,
+            latitude: isGpsEvidence(evidence) ? evidence.latitude : null,
+            longitude: isGpsEvidence(evidence) ? evidence.longitude : null,
+            accuracyM: isGpsEvidence(evidence) ? evidence.accuracyM : null,
+            measuredAt: isGpsEvidence(evidence) ? evidence.measuredAt : null,
             distanceM: decision.distanceM ?? null,
             evidence: publicEvidence(evidence),
             reasonCode: decision.reasonCode,
@@ -218,7 +229,7 @@ export class MissionCompletionService {
           userId: command.userId,
           idempotencyKey: command.idempotencyKey,
           type:
-            evidence.type === "GPS"
+            isGpsEvidence(evidence)
               ? "GPS"
               : evidence.type === "QUIZ"
                 ? "QUIZ"
@@ -226,10 +237,10 @@ export class MissionCompletionService {
                   ? "PHOTO"
                   : "ADMIN",
           status: "APPROVED",
-          latitude: evidence.type === "GPS" ? evidence.latitude : null,
-          longitude: evidence.type === "GPS" ? evidence.longitude : null,
-          accuracyM: evidence.type === "GPS" ? evidence.accuracyM : null,
-          measuredAt: evidence.type === "GPS" ? evidence.measuredAt : null,
+          latitude: isGpsEvidence(evidence) ? evidence.latitude : null,
+          longitude: isGpsEvidence(evidence) ? evidence.longitude : null,
+          accuracyM: isGpsEvidence(evidence) ? evidence.accuracyM : null,
+          measuredAt: isGpsEvidence(evidence) ? evidence.measuredAt : null,
           distanceM: decision.distanceM ?? null,
           reasonCode: decision.reasonCode,
           decidedAt: command.now ?? new Date(),
@@ -382,7 +393,7 @@ export class MissionCompletionService {
   }
 }
 
-function evaluateMission(
+export function evaluateMission(
   mission: MissionSnapshot,
   evidence: MissionEvidence,
   receivedAt: Date,
@@ -441,6 +452,74 @@ function evaluateMission(
             ? { distanceM: result.distanceM }
             : {}),
         };
+  }
+
+  if (mission.kind === "WALK_DISTANCE" && evidence.type === "ACTIVITY") {
+    const policy = asRecord(mission.verificationPolicy);
+    const minimumKilometers =
+      toFiniteNumber(policy?.minimumKilometers) ??
+      (mission.targetUnit === "KILOMETER"
+        ? toFiniteNumber(mission.targetValue)
+        : null);
+    if (minimumKilometers === null || minimumKilometers <= 0) {
+      throw new ConflictException("The walking distance policy is invalid.");
+    }
+    const targetDistanceM = minimumKilometers * 1_000;
+    return evidence.distanceM >= targetDistanceM
+      ? {
+          approved: true,
+          reasonCode: "GPS_DISTANCE_REACHED",
+          distanceM: evidence.distanceM,
+        }
+      : {
+          approved: false,
+          reasonCode: "GPS_DISTANCE_NOT_REACHED",
+          distanceM: evidence.distanceM,
+        };
+  }
+
+  if (mission.kind === "COMPOSITE" && evidence.type === "ACTIVITY") {
+    const policy = asRecord(mission.verificationPolicy);
+    const policyType = policy?.type;
+    const minimumSeconds =
+      toFiniteNumber(policy?.minimumSeconds) ??
+      toFiniteNumber(policy?.durationSeconds) ??
+      (mission.targetUnit === "SECOND"
+        ? toFiniteNumber(mission.targetValue)
+        : null);
+    if (
+      (policyType !== "GPS_DURATION" && policyType !== "GPS_STAY") ||
+      minimumSeconds === null ||
+      minimumSeconds <= 0
+    ) {
+      throw new ConflictException("The GPS duration policy is invalid.");
+    }
+    if (evidence.durationSeconds < minimumSeconds) {
+      return {
+        approved: false,
+        reasonCode: "GPS_DURATION_NOT_REACHED",
+        distanceM: evidence.distanceM,
+      };
+    }
+    const allowedDriftM = toFiniteNumber(policy?.allowedDriftM) ?? 50;
+    if (
+      policyType === "GPS_STAY" &&
+      evidence.distanceM > Math.max(allowedDriftM * 2, 100)
+    ) {
+      return {
+        approved: false,
+        reasonCode: "GPS_STAY_MOVED_TOO_FAR",
+        distanceM: evidence.distanceM,
+      };
+    }
+    return {
+      approved: true,
+      reasonCode:
+        policyType === "GPS_STAY"
+          ? "GPS_STAY_COMPLETED"
+          : "GPS_DURATION_REACHED",
+      distanceM: evidence.distanceM,
+    };
   }
 
   if (mission.kind === "PHOTO" && evidence.type === "PHOTO") {
@@ -502,6 +581,20 @@ function publicEvidence(
       model: evidence.analysis.model,
     };
   }
+  if (evidence.type === "ACTIVITY") {
+    return {
+      method: evidence.type,
+      distanceM: Math.round(evidence.distanceM),
+      durationSeconds: Math.round(evidence.durationSeconds),
+      accuracyM: Math.round(evidence.accuracyM),
+    };
+  }
   return { method: evidence.type };
+}
+
+function isGpsEvidence(
+  evidence: MissionEvidence,
+): evidence is Extract<MissionEvidence, { type: "GPS" | "ACTIVITY" }> {
+  return evidence.type === "GPS" || evidence.type === "ACTIVITY";
 }
 import { createHash } from "node:crypto";

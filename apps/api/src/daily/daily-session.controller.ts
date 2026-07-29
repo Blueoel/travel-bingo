@@ -134,6 +134,32 @@ function parseEvidence(body: unknown): MissionEvidence {
       };
     }
   }
+  if (
+    input.type === "ACTIVITY" &&
+    typeof input.distanceM === "number" &&
+    typeof input.durationSeconds === "number" &&
+    typeof input.latitude === "number" &&
+    typeof input.longitude === "number" &&
+    typeof input.accuracyM === "number" &&
+    typeof input.measuredAt === "string"
+  ) {
+    const measuredAt = new Date(input.measuredAt);
+    if (
+      !Number.isNaN(measuredAt.getTime()) &&
+      input.distanceM >= 0 &&
+      input.durationSeconds >= 0
+    ) {
+      return {
+        type: "ACTIVITY",
+        distanceM: input.distanceM,
+        durationSeconds: input.durationSeconds,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        accuracyM: input.accuracyM,
+        measuredAt,
+      };
+    }
+  }
   throw new BadRequestException("The mission evidence body is invalid.");
 }
 
