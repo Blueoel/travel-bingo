@@ -7,7 +7,7 @@ export const DAILY_DIFFICULTY_QUOTAS = {
 } as const;
 
 const KIND_LIMITS: Readonly<Record<string, number>> = {
-  PHOTO: 10,
+  PHOTO: 20,
   COMPOSITE: 4,
   QUIZ: 4,
   PLACE_VISIT: 4,

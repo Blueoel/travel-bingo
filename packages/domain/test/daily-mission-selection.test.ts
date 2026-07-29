@@ -50,7 +50,7 @@ describe("personalized Daily mission selection", () => {
     );
     expect(
       selected.filter((mission) => mission.kind === "PHOTO").length,
-    ).toBeLessThanOrEqual(10);
+    ).toBeLessThanOrEqual(20);
   });
 
   it("selects different missions for different users and remains deterministic", () => {
@@ -109,5 +109,48 @@ describe("personalized Daily mission selection", () => {
     expect(
       selected.filter((mission) => mission.similarityGroup === "COLOR_SEARCH"),
     ).toHaveLength(3);
+  });
+
+  it("builds a complete board from the current 50-mission catalog shape", () => {
+    const pool = [
+      ...Array.from({ length: 29 }, (_, index) => ({
+        id: `catalog-easy-${index}`,
+        difficulty: 1,
+        kind: index < 23 ? "PHOTO" : "CHECK_IN",
+        similarityGroup: index < 6 ? "COLOR_SEARCH" : `CATALOG_EASY_${index}`,
+      })),
+      ...Array.from({ length: 16 }, (_, index) => ({
+        id: `catalog-normal-${index}`,
+        difficulty: 2,
+        kind: index < 13 ? "PHOTO" : "COMPOSITE",
+        similarityGroup: index < 2 ? "COLOR_SEARCH" : `CATALOG_NORMAL_${index}`,
+      })),
+      ...Array.from({ length: 5 }, (_, index) => ({
+        id: `catalog-hard-${index}`,
+        difficulty: 3,
+        kind: index < 4 ? "PHOTO" : "WALK_DISTANCE",
+        similarityGroup: `CATALOG_HARD_${index}`,
+      })),
+    ];
+
+    const selected = selectPersonalizedDailyMissions(identity, pool);
+
+    expect(selected).toHaveLength(25);
+    expect(selected.filter((mission) => mission.difficulty === 1)).toHaveLength(
+      13,
+    );
+    expect(selected.filter((mission) => mission.difficulty === 2)).toHaveLength(
+      9,
+    );
+    expect(selected.filter((mission) => mission.difficulty === 3)).toHaveLength(
+      3,
+    );
+    expect(
+      selected.filter((mission) => mission.similarityGroup === "COLOR_SEARCH"),
+    ).toHaveLength(1);
+    expect(
+      selected.filter((mission) => mission.kind !== "PHOTO").length,
+    ).toBeGreaterThanOrEqual(5);
+    expect(new Set(selected.map(({ id }) => id)).size).toBe(25);
   });
 });
