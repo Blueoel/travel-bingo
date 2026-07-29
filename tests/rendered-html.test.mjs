@@ -40,8 +40,16 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /인증 조건/);
   assert.match(pageSource, /photoZoom/);
   assert.match(pageSource, /가입 사용자/);
-  assert.match(pageSource, /비밀번호는 저장된 해시를 포함해 관리자 화면에 표시하지/);
+  assert.match(
+    pageSource,
+    /비밀번호는 저장된 해시를 포함해 관리자 화면에 표시하지/,
+  );
   assert.match(pageSource, /manageUser/);
   assert.match(pageSource, /탈퇴 처리/);
   assert.match(pageSource, /개인정보를 익명화/);
+  assert.match(pageSource, /모든 난이도/);
+  assert.match(pageSource, /모든 인증 방식/);
+  assert.match(pageSource, /유사 그룹 검색/);
+  assert.match(pageSource, /Daily 후보 포함 여부/);
+  assert.match(pageSource, /사용자별 빙고판을 만들 활성 공통 미션/);
 });

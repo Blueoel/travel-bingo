@@ -17,6 +17,7 @@ type Mission = {
   estimatedMinutesMax?: number | null;
   similarityGroup?: string | null;
   regions: Region[];
+  collections?: { id: string; name: string; type: string }[];
 };
 type PhotoReview = {
   id: string;
@@ -66,10 +67,15 @@ export default function AdminPage() {
     [dailyIds, setDailyIds] = useState<string[]>([]);
   const [query, setQuery] = useState(""),
     [scope, setScope] = useState(""),
-    [regionId, setRegionId] = useState("");
-  const [view, setView] = useState<
-    "catalog" | "daily" | "reviews" | "users"
-  >("catalog"),
+    [regionId, setRegionId] = useState(""),
+    [missionStatus, setMissionStatus] = useState(""),
+    [difficulty, setDifficulty] = useState(""),
+    [kind, setKind] = useState(""),
+    [similarityGroup, setSimilarityGroup] = useState(""),
+    [dailyCandidate, setDailyCandidate] = useState("");
+  const [view, setView] = useState<"catalog" | "daily" | "reviews" | "users">(
+      "catalog",
+    ),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<PhotoReview[]>([]);
@@ -97,8 +103,22 @@ export default function AdminPage() {
     if (query) p.set("q", query);
     if (scope) p.set("scope", scope);
     if (regionId) p.set("regionId", regionId);
+    if (missionStatus) p.set("status", missionStatus);
+    if (difficulty) p.set("difficulty", difficulty);
+    if (kind) p.set("kind", kind);
+    if (similarityGroup) p.set("similarityGroup", similarityGroup);
+    if (dailyCandidate) p.set("dailyCandidate", dailyCandidate);
     return p;
-  }, [query, scope, regionId]);
+  }, [
+    query,
+    scope,
+    regionId,
+    missionStatus,
+    difficulty,
+    kind,
+    similarityGroup,
+    dailyCandidate,
+  ]);
   async function load() {
     try {
       const headers = { "x-user-id": ADMIN };
@@ -429,6 +449,57 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
+                <select
+                  aria-label="상태"
+                  value={missionStatus}
+                  onChange={(e) => setMissionStatus(e.target.value)}
+                >
+                  <option value="">모든 상태</option>
+                  <option value="ACTIVE">활성</option>
+                  <option value="INACTIVE">비활성</option>
+                  <option value="NEEDS_REVIEW">검토 필요</option>
+                </select>
+                <select
+                  aria-label="난이도"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                >
+                  <option value="">모든 난이도</option>
+                  <option value="1">쉬움</option>
+                  <option value="2">보통</option>
+                  <option value="3">어려움</option>
+                  <option value="4">특별</option>
+                </select>
+                <select
+                  aria-label="인증 방식"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                >
+                  <option value="">모든 인증 방식</option>
+                  <option value="PHOTO">사진</option>
+                  <option value="CHECK_IN">직접 완료</option>
+                  <option value="PLACE_VISIT">GPS 방문</option>
+                  <option value="COMPOSITE">GPS 체류·복합</option>
+                  <option value="QUIZ">퀴즈</option>
+                  <option value="WALK_DISTANCE">걷기 거리</option>
+                  <option value="WALK_STEPS">걸음 수</option>
+                  <option value="QR_SCAN">QR</option>
+                </select>
+                <input
+                  aria-label="유사 미션 그룹"
+                  placeholder="유사 그룹 검색"
+                  value={similarityGroup}
+                  onChange={(e) => setSimilarityGroup(e.target.value)}
+                />
+                <select
+                  aria-label="Daily 후보 포함 여부"
+                  value={dailyCandidate}
+                  onChange={(e) => setDailyCandidate(e.target.value)}
+                >
+                  <option value="">Daily 포함 여부 전체</option>
+                  <option value="true">Daily 후보</option>
+                  <option value="false">Daily 후보 아님</option>
+                </select>
               </div>
               <div className="table">
                 <table>
@@ -451,6 +522,9 @@ export default function AdminPage() {
                           <td>
                             <b>{m.title}</b>
                             <small>{m.description}</small>
+                            {m.similarityGroup && (
+                              <small>유사 그룹 · {m.similarityGroup}</small>
+                            )}
                           </td>
                           <td>
                             <mark className={m.scope.toLowerCase()}>
@@ -507,7 +581,7 @@ export default function AdminPage() {
               <div>
                 <h2>Daily 후보 미션</h2>
                 <p>
-                  활성 공통 미션 중 최소 25개를 선택하세요. 현재{" "}
+                  사용자별 빙고판을 만들 활성 공통 미션을 선택하세요. 현재{" "}
                   <b>{dailyIds.length}개</b>가 선택되었습니다.
                 </p>
               </div>
@@ -537,6 +611,7 @@ export default function AdminPage() {
                       <small>
                         {m.category} · {difficultyName[m.difficulty]} ·{" "}
                         {m.points}P
+                        {m.similarityGroup ? ` · ${m.similarityGroup}` : ""}
                       </small>
                     </span>
                     <i>{checked ? "✓" : "+"}</i>
@@ -773,7 +848,9 @@ export default function AdminPage() {
                             {user.role === "ADMIN" ||
                             user.status === "DELETED" ? (
                               <span className="protectedUser">
-                                {user.role === "ADMIN" ? "보호 계정" : "처리 완료"}
+                                {user.role === "ADMIN"
+                                  ? "보호 계정"
+                                  : "처리 완료"}
                               </span>
                             ) : (
                               <div className="userActions">
@@ -794,9 +871,7 @@ export default function AdminPage() {
                                 </button>
                                 <button
                                   className="withdrawButton"
-                                  onClick={() =>
-                                    manageUser(user, "WITHDRAW")
-                                  }
+                                  onClick={() => manageUser(user, "WITHDRAW")}
                                 >
                                   탈퇴 처리
                                 </button>
