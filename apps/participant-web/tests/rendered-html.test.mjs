@@ -162,6 +162,16 @@ test("provides an account dashboard and logout flow", async () => {
   assert.match(pageSource, /여행 기록/);
   assert.match(pageSource, /획득 배지/);
   assert.match(pageSource, /로그아웃/);
+
+  const logoutSource = pageSource.slice(
+    pageSource.indexOf("const logout ="),
+    pageSource.indexOf("const celebrate ="),
+  );
+  assert.ok(
+    logoutSource.indexOf('setAuthStatus("unauthenticated")') <
+      logoutSource.indexOf('apiFetch("/auth/logout"'),
+  );
+  assert.doesNotMatch(logoutSource, /await apiFetch/);
 });
 
 test("celebrates newly completed bingo lines in API and demo modes", async () => {

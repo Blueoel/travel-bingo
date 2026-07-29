@@ -472,16 +472,18 @@ export default function Home() {
     setInstallPrompt(null);
   };
 
-  const logout = async () => {
+  const logout = () => {
     setMessage(null);
-    try {
-      await apiFetch("/auth/logout", { method: "POST" });
-    } finally {
-      setAccount(null);
-      setSessionId(null);
-      setActiveTab("bingo");
-      setAuthStatus("unauthenticated");
-    }
+    setAccount(null);
+    setSessionId(null);
+    setSelected(null);
+    setActiveTab("bingo");
+    setAuthStatus("unauthenticated");
+
+    void apiFetch("/auth/logout", { method: "POST" }).catch(() => {
+      // The local session is already cleared. A failed server request will be
+      // reconciled by /auth/me on the next page load.
+    });
   };
 
   const celebrate = (count: number) => {
