@@ -1,9 +1,10 @@
 # Travel Bingo 기술계획서
 
-> 문서 버전: v1.0  
+> 문서 버전: v1.1  
 > 작성일: 2026-07-16  
+> 최종 수정일: 2026-07-29  
 > 대상: 2026 관광데이터 활용 공모전 ②-2 웹·앱 구현 부문 출품용 MVP  
-> 프로젝트 상태: 신규 구축(현재 저장소에 구현 소스 없음)
+> 프로젝트 상태: MVP 구현 진행 중
 
 ## 1. 프로젝트 개요
 
@@ -92,11 +93,13 @@ Travel Bingo의 해결 논리는 `관광정보 제공 → 지역 미션 수행 �
 ### 3.2 지역 운영자
 
 1. 지역과 테마 선택
-2. 관광 API 검색 결과에서 장소 후보 수집
-3. 미션 문구·인증 방식·허용 반경·점수 편집
-4. 25칸의 장소·유형·난이도 분포 검증
-5. 미리보기 후 공식 빙고 공개
-6. 참여·인증·완주·장소별 방문 전환 확인
+2. 관리자 대시보드의 관광지 추천에서 한국관광공사 OpenAPI 지역·콘텐츠 유형별 후보 조회
+3. 대표 이미지·주소·좌표·상세 설명을 비교하고 장소 선택
+4. 선택한 장소를 GPS 지역 미션 초안으로 변환
+5. 미션 문구·인증 방식·허용 반경·난이도·점수 편집
+6. 초안 보관함에서 검토하고 25칸의 장소·유형·난이도 분포 검증
+7. 미리보기 후 공식 빙고 공개
+8. 참여·인증·완주·장소별 방문 전환 확인
 
 ### 3.3 관리자
 
@@ -241,6 +244,8 @@ Travel Bingo의 해결 논리는 `관광정보 제공 → 지역 미션 수행 �
 | 이벤트 | 예약 | 신청·시작·종료 시각, 자동 시작·종료, 예약 공지 설정 |
 | 지역 | 빙고 생성 | 지역별 상시·테마·기간 한정 5×5 빙고 생성 |
 | 지역 | 미션 생성 | 제목, 설명, 장소, 점수, 난이도, 인증 정책 설정 |
+| 지역 | 관광지 추천 | 한국관광공사 OpenAPI로 지역·콘텐츠 유형별 후보 검색 및 상세 비교 |
+| 지역 | 미션 초안 보관함 | 관광지를 GPS 지역 미션 초안으로 변환하고 검토·수정·등록 |
 | 지역 | GPS 등록 | 장소 좌표, 허용 반경, 정확도 기준, 안전 안내 설정 |
 | 지역 | QR 등록 | 미션용 서명 QR 발급, 유효기간·회전·폐기 관리 |
 | 사용자 | 통계 | 가입·활성·재방문·지역·빙고·이벤트 참여 지표 |
@@ -546,7 +551,43 @@ PlaceRepository (내부 Place 모델)
 - 조회 결과는 Redis와 DB에 캐시한다. 상세정보는 24시간, 검색 결과는 1~6시간을 기본값으로 하고 공모전 규정과 데이터 특성에 맞게 조정한다.
 - 빈 응답·필드 누락·좌표 이상·중복 콘텐츠를 별도 수집 지표로 남긴다.
 
-### 6.3 장애 대응
+### 6.3 관리자 지역 미션 제작 보조 도구
+
+한국관광공사 OpenAPI를 참가자 화면의 관광정보 제공뿐 아니라 관리자 대시보드의 `지역 미션 제작 보조 도구`에도 사용한다. 지역 운영자가 모든 장소 정보를 직접 조사하고 좌표를 입력하는 부담을 줄이고, 공신력 있는 관광데이터를 실제 미션으로 전환하는 것이 목적이다.
+
+#### 관리자 작업 흐름
+
+1. 시·도와 시·군·구를 선택한다.
+2. `지역 기반 관광정보`로 관광지·문화시설·축제·음식점 등 장소 후보를 조회한다.
+3. 필요한 경우 `키워드 검색`으로 후보를 추가 탐색한다.
+4. `관광정보 상세 조회`로 대표 이미지, 주소, 좌표, 소개, 운영 관련 정보를 확인한다.
+5. 관리자가 장소를 선택하면 내부 `Place`로 정규화하고 지역 미션 초안을 생성한다.
+6. 관리자가 제목, 설명, 인증 방식, 허용 반경, 난이도와 포인트를 검토·수정한다.
+7. 초안을 저장한 뒤 지역 빙고에 배치하거나 정식 지역 미션으로 등록한다.
+
+#### 화면 구성
+
+| 화면 | 주요 기능 |
+|---|---|
+| 관광지 추천 | 지역·콘텐츠 유형·키워드 필터, 목록/카드 보기, 대표 이미지와 주소 표시 |
+| 관광지 상세 | 소개, 좌표, 이미지, 콘텐츠 유형, 데이터 출처와 마지막 동기화 시각 확인 |
+| 미션 초안 편집 | 미션명·설명·유형·인증 방식·GPS 반경·난이도·포인트 편집 |
+| 미션 초안 보관함 | 미작성·검토 중·등록 완료 상태 관리, 지역·테마별 필터 |
+
+#### 자동 입력 및 관리자 확정 항목
+
+| 구분 | 자동 입력 | 관리자 확인·수정 |
+|---|---|---|
+| 장소 정보 | 관광공사 콘텐츠 ID, 명칭, 주소, 좌표, 대표 이미지, 콘텐츠 유형 | 장소 적합성, 최신성, 안전성 |
+| 미션 기본값 | 장소명을 활용한 제목·설명 템플릿, GPS 인증 방식 | 최종 문구와 미션 유형 |
+| 인증 정책 | 콘텐츠 유형별 기본 허용 반경 | 실제 출입구·현장 환경을 고려한 반경 |
+| 난이도·보상 | 이동·인증 복잡도 기반 추천값 | 난이도와 최종 포인트 |
+
+MVP에서는 장소 선택 후 `GPS 지역 미션 초안`으로 변환하는 규칙 기반 기능을 우선 구현한다. 이후 관광지 소개정보를 바탕으로 사진 미션이나 퀴즈 문구를 제안하는 생성형 AI 기능을 추가할 수 있다. AI가 생성한 내용은 바로 공개하지 않고 반드시 관리자 검토를 거치며, 장소 식별자·좌표·주소 등 사실 데이터는 한국관광공사 OpenAPI 또는 관리자 확인값만 사용한다.
+
+미션에는 `source`, `externalContentId`, `sourceUpdatedAt`, `draftCreatedBy`를 저장해 데이터 출처와 생성 이력을 추적한다. 동일한 관광 콘텐츠로 지역 미션을 중복 생성할 때는 경고하되, 서로 다른 테마에서 의도적으로 재사용하는 경우 관리자가 사유를 남기고 허용할 수 있다.
+
+### 6.4 장애 대응
 
 | 장애 | 처리 |
 |---|---|
@@ -568,6 +609,7 @@ PlaceRepository (내부 Place 모델)
 | BingoTheme | id, regionId, name, category, isRequiredForRegionCompletion, status, displayOrder |
 | BingoTemplate | id, regionId, themeId, title, type, startsAt, endsAt, status, version, ownerId |
 | Mission | id, placeId, title, description, category, verificationPolicy, radiusM, points |
+| MissionDraft | id, regionId, placeId, sourceContentId, title, description, verificationPolicy, radiusM, difficulty, points, status, createdBy |
 | MissionQuiz | missionId, question, answerHash, choices, explanation, version |
 | MissionQrToken | missionId, tokenHash, validFrom, validTo, rotationVersion |
 | TemplateCell | templateId, missionId, position, sortOrder |
@@ -651,6 +693,12 @@ PlaceRepository (내부 Place 모델)
 | DELETE | `/api/v1/admin/templates/{id}` | 미사용 초안 삭제 또는 사용 템플릿 보관 |
 | PUT | `/api/v1/admin/templates/{id}/cells` | 25칸 편집 |
 | POST | `/api/v1/admin/missions` | 장소·점수·인증정책을 포함한 미션 생성 |
+| GET | `/api/v1/admin/regions/{id}/tour-recommendations` | 관광공사 지역 기반 관광지 추천 조회 |
+| GET | `/api/v1/admin/tour-contents/{contentId}` | 관광지 상세·이미지·좌표 조회 및 내부 표준 모델 반환 |
+| POST | `/api/v1/admin/mission-drafts/from-tour-content` | 선택한 관광지를 지역 미션 초안으로 변환 |
+| GET | `/api/v1/admin/mission-drafts` | 지역·테마·상태별 미션 초안 목록 조회 |
+| PATCH | `/api/v1/admin/mission-drafts/{id}` | 미션 초안 문구·인증정책·난이도·포인트 수정 |
+| POST | `/api/v1/admin/mission-drafts/{id}/publish` | 검토된 초안을 정식 지역 미션으로 등록 |
 | PUT | `/api/v1/admin/missions/{id}/gps-policy` | 좌표·반경·정확도 기준 등록 |
 | POST | `/api/v1/admin/missions/{id}/qr-tokens` | 서명 QR 발급·회전 |
 | DELETE | `/api/v1/admin/missions/{id}/qr-tokens/{tokenId}` | QR 폐기 |
