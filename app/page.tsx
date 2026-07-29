@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { AuthScreen } from "./auth-screen";
 
-type MissionKind = "CHECK_IN" | "QUIZ" | "PLACE_VISIT" | "PHOTO" | "COMPOSITE";
+type MissionKind =
+  | "CHECK_IN"
+  | "QUIZ"
+  | "PLACE_VISIT"
+  | "PHOTO"
+  | "COMPOSITE"
+  | "WALK_DISTANCE"
+  | "WALK_STEPS";
 type Mission = {
   id: string;
   title: string;
@@ -15,6 +22,8 @@ type Mission = {
   difficulty?: "쉬움" | "보통" | "어려움" | "특별";
   estimatedTime?: string;
   verificationLabel?: string;
+  targetValue?: number | null;
+  targetUnit?: string | null;
 };
 type DailySession = {
   id: string;
@@ -33,6 +42,7 @@ type DailySession = {
       estimatedMinutesMin?: number | null;
       estimatedMinutesMax?: number | null;
       targetValue?: string | null;
+      targetUnit?: string | null;
     };
   }>;
 };
@@ -103,6 +113,8 @@ const icon: Record<MissionKind, string> = {
   PLACE_VISIT: "⌖",
   PHOTO: "▣",
   COMPOSITE: "◷",
+  WALK_DISTANCE: "↝",
+  WALK_STEPS: "♟",
 };
 const contributedDemoMissions: Mission[] = [
   {
@@ -221,8 +233,51 @@ function friendlyError(code?: string): string {
     UNSAFE_IMAGE:
       "이 사진은 인증에 사용할 수 없어요. 다른 사진을 선택해주세요.",
     AI_NOT_CONFIGURED: "사진 AI 인증이 아직 설정되지 않았어요.",
+    GPS_DISTANCE_NOT_REACHED: "목표 거리까지 조금 더 걸어주세요.",
+    GPS_DURATION_NOT_REACHED: "목표 시간까지 산책을 이어가 주세요.",
+    GPS_STAY_MOVED_TOO_FAR:
+      "체류 범위를 벗어났어요. 한 장소에서 다시 시작해주세요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
+}
+
+function verificationLabel(
+  kind: MissionKind,
+  targetValue?: string | null,
+  targetUnit?: string | null,
+): string | undefined {
+  const target = Number(targetValue);
+  if (kind === "PHOTO") {
+    return target > 1 ? `사진 ${target}장` : "사진 1장";
+  }
+  if (kind === "WALK_DISTANCE" && targetUnit === "KILOMETER") {
+    return `GPS 거리 ${target}km`;
+  }
+  if (kind === "COMPOSITE" && targetUnit === "SECOND") {
+    return `GPS ${Math.round(target / 60)}분 기록`;
+  }
+  if (kind === "PLACE_VISIT") return "현재 위치 GPS";
+  return undefined;
+}
+
+function distanceBetween(
+  first: { latitude: number; longitude: number },
+  second: { latitude: number; longitude: number },
+): number {
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const latitudeDelta = radians(second.latitude - first.latitude);
+  const longitudeDelta = radians(second.longitude - first.longitude);
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(radians(first.latitude)) *
+      Math.cos(radians(second.latitude)) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function trackingTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function difficultyLabel(value?: number): Mission["difficulty"] {
@@ -309,8 +364,30 @@ export default function Home() {
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<{
+    active: boolean;
+    elapsedSeconds: number;
+    distanceM: number;
+    latest: {
+      latitude: number;
+      longitude: number;
+      accuracyM: number;
+      measuredAt: string;
+    } | null;
+  }>({
+    active: false,
+    elapsedSeconds: 0,
+    distanceM: 0,
+    latest: null,
+  });
   const cameraInput = useRef<HTMLInputElement>(null);
   const albumInput = useRef<HTMLInputElement>(null);
+  const trackingWatchId = useRef<number | null>(null);
+  const trackingStartedAt = useRef<number | null>(null);
+  const lastTrackingPosition = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const applySession = (session: DailySession) => {
     setSessionId(session.id);
@@ -331,14 +408,13 @@ export default function Home() {
             cell.mission.estimatedMinutesMin,
             cell.mission.estimatedMinutesMax,
           ),
-          verificationLabel:
-            cell.mission.kind === "PHOTO"
-              ? Number(cell.mission.targetValue ?? 1) > 1
-                ? `사진 ${cell.mission.targetValue}장`
-                : "사진 1장"
-              : cell.mission.kind === "COMPOSITE"
-                ? "GPS 체류"
-                : undefined,
+          verificationLabel: verificationLabel(
+            cell.mission.kind,
+            cell.mission.targetValue,
+            cell.mission.targetUnit,
+          ),
+          targetValue: Number(cell.mission.targetValue) || null,
+          targetUnit: cell.mission.targetUnit,
         })),
     );
   };
@@ -465,6 +541,28 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [activeTab, rankingPeriod, rankingScope, nickname]);
 
+  useEffect(() => {
+    if (!tracking.active) return;
+    const timer = window.setInterval(() => {
+      const startedAt = trackingStartedAt.current;
+      if (!startedAt) return;
+      setTracking((current) => ({
+        ...current,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+      }));
+    }, 1_000);
+    return () => window.clearInterval(timer);
+  }, [tracking.active]);
+
+  useEffect(
+    () => () => {
+      if (trackingWatchId.current !== null) {
+        navigator.geolocation.clearWatch(trackingWatchId.current);
+      }
+    },
+    [],
+  );
+
   const installApp = async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -501,11 +599,153 @@ export default function Home() {
       }),
     );
 
+  const stopTracking = () => {
+    if (trackingWatchId.current !== null) {
+      navigator.geolocation.clearWatch(trackingWatchId.current);
+      trackingWatchId.current = null;
+    }
+    setTracking((current) => ({ ...current, active: false }));
+  };
+
+  const resetTracking = () => {
+    stopTracking();
+    trackingStartedAt.current = null;
+    lastTrackingPosition.current = null;
+    setTracking({
+      active: false,
+      elapsedSeconds: 0,
+      distanceM: 0,
+      latest: null,
+    });
+  };
+
   const closeMission = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
+    resetTracking();
     setPhotoPreview(null);
     setPhotoStage("DETAIL");
     setSelected(null);
+  };
+
+  const startTracking = () => {
+    if (!selected || !navigator.geolocation) {
+      setMessage("이 기기에서는 GPS 기록을 사용할 수 없어요.");
+      return;
+    }
+    setMessage(null);
+    trackingStartedAt.current = Date.now();
+    lastTrackingPosition.current = null;
+    setTracking({
+      active: true,
+      elapsedSeconds: 0,
+      distanceM: 0,
+      latest: null,
+    });
+    trackingWatchId.current = navigator.geolocation.watchPosition(
+      ({ coords, timestamp }) => {
+        const currentPosition = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+        setTracking((current) => {
+          let nextDistance = current.distanceM;
+          if (coords.accuracy <= 50 && lastTrackingPosition.current) {
+            const segment = distanceBetween(
+              lastTrackingPosition.current,
+              currentPosition,
+            );
+            if (segment >= 2 && segment <= 200) nextDistance += segment;
+          }
+          if (coords.accuracy <= 50) {
+            lastTrackingPosition.current = currentPosition;
+          }
+          return {
+            ...current,
+            distanceM: nextDistance,
+            latest: {
+              ...currentPosition,
+              accuracyM: coords.accuracy,
+              measuredAt: new Date(timestamp).toISOString(),
+            },
+          };
+        });
+      },
+      () => {
+        stopTracking();
+        setMessage("위치 권한을 허용한 뒤 다시 시작해주세요.");
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
+  };
+
+  const submitTracking = async () => {
+    if (!selected || !tracking.latest) {
+      setMessage("GPS 위치가 확인될 때까지 잠시 기다려주세요.");
+      return;
+    }
+    const target = selected.targetValue ?? 0;
+    const reached =
+      selected.kind === "WALK_DISTANCE"
+        ? tracking.distanceM >= target * 1_000
+        : tracking.elapsedSeconds >= target;
+    if (!reached) {
+      setMessage(
+        selected.kind === "WALK_DISTANCE"
+          ? "목표 거리까지 조금 더 걸어주세요."
+          : "목표 시간까지 기록을 이어가 주세요.",
+      );
+      return;
+    }
+    if (demoMode || !sessionId) {
+      stopTracking();
+      const nextItems = items.map((item) =>
+        item.id === selected.id ? { ...item, done: true } : item,
+      );
+      const nextLineKeys = completedClientLineKeys(nextItems);
+      celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
+      setItems(nextItems);
+      setLineKeys(nextLineKeys);
+      setPoints((current) => current + selected.points);
+      setSelected(null);
+      resetTracking();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await apiFetch(
+        `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "idempotency-key": `web-activity-${crypto.randomUUID()}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "ACTIVITY",
+            distanceM: tracking.distanceM,
+            durationSeconds: tracking.elapsedSeconds,
+            ...tracking.latest,
+          }),
+        },
+      );
+      const result = (await response.json()) as VerificationResult;
+      if (!response.ok || result.verificationStatus === "REJECTED") {
+        setMessage(friendlyError(result.reasonCode));
+        return;
+      }
+      stopTracking();
+      celebrate(
+        result.completedLineKeys.filter((key) => !lineKeys.includes(key))
+          .length,
+      );
+      setSelected(null);
+      resetTracking();
+      await loadDaily();
+    } catch {
+      setMessage("GPS 기록을 서버에 전송하지 못했어요. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const verifyPhoto = async (file?: File) => {
@@ -688,6 +928,19 @@ export default function Home() {
   };
 
   const completeCount = items.filter((item) => item.done).length;
+  const trackingMission =
+    selected?.kind === "WALK_DISTANCE" || selected?.kind === "COMPOSITE";
+  const trackingTarget = selected?.targetValue ?? 0;
+  const trackingCurrent =
+    selected?.kind === "WALK_DISTANCE"
+      ? tracking.distanceM / 1_000
+      : tracking.elapsedSeconds;
+  const trackingReady =
+    trackingMission && trackingTarget > 0 && trackingCurrent >= trackingTarget;
+  const trackingProgress =
+    trackingTarget > 0
+      ? Math.min(100, Math.round((trackingCurrent / trackingTarget) * 100))
+      : 0;
 
   if (authStatus === "checking") {
     return (
@@ -1088,31 +1341,94 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
+                    {trackingMission && (
+                      <div className="gps-tracker" aria-live="polite">
+                        <div>
+                          <span>
+                            {selected.kind === "WALK_DISTANCE"
+                              ? "이동 거리"
+                              : "기록 시간"}
+                          </span>
+                          <b>
+                            {selected.kind === "WALK_DISTANCE"
+                              ? `${(tracking.distanceM / 1_000).toFixed(2)} / ${trackingTarget} km`
+                              : `${trackingTime(tracking.elapsedSeconds)} / ${trackingTime(trackingTarget)}`}
+                          </b>
+                        </div>
+                        <div className="track">
+                          <i style={{ width: `${trackingProgress}%` }} />
+                        </div>
+                        <small>
+                          {tracking.active
+                            ? tracking.latest
+                              ? `GPS 정확도 약 ${Math.round(tracking.latest.accuracyM)}m`
+                              : "GPS 신호를 찾고 있어요…"
+                            : trackingReady
+                              ? "목표를 달성했어요. 인증을 완료해주세요."
+                              : "화면을 켜둔 상태에서 GPS 기록을 진행해주세요."}
+                        </small>
+                      </div>
+                    )}
                     <div className="reward">
                       <span>획득 보상</span>
                       <b>+ {selected.points} Point</b>
                     </div>
-                    <button
-                      className="primary"
-                      onClick={complete}
-                      disabled={
-                        selected.done ||
-                        submitting ||
-                        (selected.kind === "QUIZ" && !answer.trim())
-                      }
-                    >
-                      {selected.done
-                        ? "완료한 미션이에요"
-                        : submitting
-                          ? "인증하고 있어요…"
-                          : selected.kind === "PLACE_VISIT"
-                            ? "현재 위치 인증하기"
-                            : selected.kind === "COMPOSITE"
-                              ? "GPS 체류 시작하기"
+                    {trackingMission ? (
+                      <div className="tracking-actions">
+                        {tracking.active ? (
+                          <button
+                            className="secondary"
+                            onClick={stopTracking}
+                            disabled={submitting}
+                          >
+                            기록 일시정지
+                          </button>
+                        ) : (
+                          <button
+                            className="secondary"
+                            onClick={startTracking}
+                            disabled={selected.done || submitting}
+                          >
+                            {tracking.elapsedSeconds > 0
+                              ? "처음부터 다시 기록"
+                              : "GPS 기록 시작하기"}
+                          </button>
+                        )}
+                        <button
+                          className="primary"
+                          onClick={submitTracking}
+                          disabled={
+                            selected.done || submitting || !trackingReady
+                          }
+                        >
+                          {submitting
+                            ? "인증하고 있어요…"
+                            : trackingReady
+                              ? "미션 인증 완료하기"
+                              : "목표 달성 후 인증 가능"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="primary"
+                        onClick={complete}
+                        disabled={
+                          selected.done ||
+                          submitting ||
+                          (selected.kind === "QUIZ" && !answer.trim())
+                        }
+                      >
+                        {selected.done
+                          ? "완료한 미션이에요"
+                          : submitting
+                            ? "인증하고 있어요…"
+                            : selected.kind === "PLACE_VISIT"
+                              ? "현재 위치 인증하기"
                               : selected.kind === "QUIZ"
                                 ? "정답 제출하기"
                                 : "미션 완료하기"}
-                    </button>
+                      </button>
+                    )}
                   </>
                 )}
               </>

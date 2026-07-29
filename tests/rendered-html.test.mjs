@@ -236,6 +236,19 @@ test("supports the photo verification review and completion flow", async () => {
   assert.match(pageSource, /빙고판으로 돌아가기/);
 });
 
+test("tracks GPS distance and duration missions before server verification", async () => {
+  const pageSource = await readFile(
+    new URL("../app/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(pageSource, /navigator\.geolocation\.watchPosition/);
+  assert.match(pageSource, /GPS 기록 시작하기/);
+  assert.match(pageSource, /GPS_DISTANCE_NOT_REACHED/);
+  assert.match(pageSource, /GPS_DURATION_NOT_REACHED/);
+  assert.match(pageSource, /type: "ACTIVITY"/);
+  assert.match(pageSource, /목표 달성 후 인증 가능/);
+});
+
 test("persists photo verdicts and prevents duplicate daily rewards", async () => {
   const hostingConfig = JSON.parse(
     await readFile(

@@ -889,6 +889,45 @@ nav .active {
 .reward b {
   color: var(--green);
 }
+.gps-tracker {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid #d9e4da;
+  border-radius: 14px;
+  background: #f4f8f2;
+}
+.gps-tracker > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.gps-tracker b {
+  color: var(--green);
+}
+.gps-tracker small {
+  color: #68736b;
+  font-size: 11px;
+}
+.gps-tracker .track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #dfe7df;
+}
+.gps-tracker .track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4c8c58, #9bbd4b);
+  transition: width 0.35s ease;
+}
+.tracking-actions {
+  display: grid;
+  gap: 8px;
+}
 .primary {
   width: 100%;
   border: 0;
