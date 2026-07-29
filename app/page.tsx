@@ -64,7 +64,8 @@ const difficultyValue = ["EASY", "EASY", "NORMAL", "HARD", "SPECIAL"];
 export default function AdminPage() {
   const [missions, setMissions] = useState<Mission[]>([]),
     [regions, setRegions] = useState<Region[]>([]),
-    [dailyIds, setDailyIds] = useState<string[]>([]);
+    [dailyIds, setDailyIds] = useState<string[]>([]),
+    [dailyMissions, setDailyMissions] = useState<Mission[]>([]);
   const [query, setQuery] = useState(""),
     [scope, setScope] = useState(""),
     [regionId, setRegionId] = useState(""),
@@ -131,7 +132,12 @@ export default function AdminPage() {
         throw new Error("관리자 API에 연결할 수 없습니다.");
       setMissions(((await a.json()) as { items: Mission[] }).items);
       setRegions(await b.json());
-      setDailyIds(((await c.json()) as { missionIds: string[] }).missionIds);
+      const daily = (await c.json()) as {
+        missionIds: string[];
+        items: Mission[];
+      };
+      setDailyIds(daily.missionIds);
+      setDailyMissions(daily.items);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.");
@@ -292,6 +298,63 @@ export default function AdminPage() {
     dailyCandidates = missions.filter(
       (m) => m.scope === "COMMON" && m.status === "ACTIVE",
     );
+  const selectedDailyMissions = useMemo(() => {
+    const available = new Map(
+      [...dailyMissions, ...dailyCandidates].map((mission) => [
+        mission.id,
+        mission,
+      ]),
+    );
+    return dailyIds
+      .map((id) => available.get(id))
+      .filter((mission): mission is Mission => Boolean(mission));
+  }, [dailyCandidates, dailyIds, dailyMissions]);
+  const dailyHealth = useMemo(() => {
+    const difficultyCounts = [1, 2, 3].map(
+      (level) =>
+        selectedDailyMissions.filter(
+          (mission) => mission.difficulty === level,
+        ).length,
+    );
+    const photoCount = selectedDailyMissions.filter(
+      (mission) => mission.kind === "PHOTO",
+    ).length;
+    const grouped = new Map<string, number>();
+    selectedDailyMissions.forEach((mission) => {
+      if (!mission.similarityGroup) return;
+      grouped.set(
+        mission.similarityGroup,
+        (grouped.get(mission.similarityGroup) ?? 0) + 1,
+      );
+    });
+    const repeatedGroups = [...grouped.entries()]
+      .filter(([, count]) => count > 1)
+      .sort((a, b) => b[1] - a[1]);
+    const warnings = [
+      dailyIds.length < 25
+        ? `후보가 ${25 - dailyIds.length}개 부족합니다.`
+        : "",
+      difficultyCounts[0] < 13
+        ? `쉬움 미션을 ${13 - difficultyCounts[0]}개 더 추가하면 권장 비율을 맞출 수 있습니다.`
+        : "",
+      difficultyCounts[1] < 9
+        ? `보통 미션을 ${9 - difficultyCounts[1]}개 더 추가하면 권장 비율을 맞출 수 있습니다.`
+        : "",
+      difficultyCounts[2] < 3
+        ? `어려움 미션을 ${3 - difficultyCounts[2]}개 더 추가하면 권장 비율을 맞출 수 있습니다.`
+        : "",
+      photoCount > Math.floor(selectedDailyMissions.length * 0.6)
+        ? "사진 인증 미션 비중이 높습니다. 다른 인증 방식을 보강해 주세요."
+        : "",
+      ...repeatedGroups
+        .filter(([, count]) => count >= 5)
+        .map(
+          ([group, count]) =>
+            `${group} 유사 그룹이 ${count}개입니다. 같은 판에는 최대 1개만 우선 배치됩니다.`,
+        ),
+    ].filter(Boolean);
+    return { difficultyCounts, photoCount, repeatedGroups, warnings };
+  }, [dailyIds.length, selectedDailyMissions]);
   return (
     <div className="shell">
       <aside>
@@ -586,6 +649,55 @@ export default function AdminPage() {
                 </p>
               </div>
               <span>{dailyIds.length}/100</span>
+            </div>
+            <div className="dailyHealth" aria-label="Daily 후보 구성 진단">
+              <article>
+                <span>전체 후보</span>
+                <b>{dailyIds.length}</b>
+                <small>{dailyIds.length >= 25 ? "빙고 생성 가능" : "25개 이상 필요"}</small>
+              </article>
+              <article>
+                <span>난이도 후보</span>
+                <b>
+                  {dailyHealth.difficultyCounts[0]} ·{" "}
+                  {dailyHealth.difficultyCounts[1]} ·{" "}
+                  {dailyHealth.difficultyCounts[2]}
+                </b>
+                <small>쉬움 · 보통 · 어려움</small>
+              </article>
+              <article>
+                <span>사진 인증</span>
+                <b>{dailyHealth.photoCount}</b>
+                <small>한 판에는 최대 10개 우선 적용</small>
+              </article>
+              <article>
+                <span>중복 유사 그룹</span>
+                <b>{dailyHealth.repeatedGroups.length}</b>
+                <small>같은 판에는 최대 1개 우선 적용</small>
+              </article>
+            </div>
+            <div
+              className={`dailyWarnings ${
+                dailyHealth.warnings.length ? "warning" : "healthy"
+              }`}
+            >
+              <b>
+                {dailyHealth.warnings.length
+                  ? "구성 보완이 필요합니다"
+                  : "권장 Daily 구성을 충족합니다"}
+              </b>
+              {dailyHealth.warnings.length ? (
+                <ul>
+                  {dailyHealth.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>
+                  현재 후보 풀로 사용자별 25칸과 권장 난이도 비율을 구성할
+                  수 있습니다.
+                </p>
+              )}
             </div>
             <div className="candidateGrid">
               {dailyCandidates.map((m) => {
