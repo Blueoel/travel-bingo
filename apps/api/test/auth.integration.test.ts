@@ -43,6 +43,9 @@ describeWithDatabase("AuthService integration", () => {
     const stored = await database.authSession.findFirstOrThrow({
       where: { userId: created.user.id },
     });
+    expect(stored.lastSeenAt.getTime()).toBeGreaterThanOrEqual(
+      stored.createdAt.getTime(),
+    );
     expect(stored.tokenHash).not.toContain(created.token);
     expect(stored.tokenHash).toHaveLength(64);
 

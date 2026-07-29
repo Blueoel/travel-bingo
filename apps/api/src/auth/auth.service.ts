@@ -129,9 +129,7 @@ export class AuthService {
     });
   }
 
-  async getUser(
-    cookieHeader: string | undefined,
-  ): Promise<{
+  async getUser(cookieHeader: string | undefined): Promise<{
     readonly id: string;
     readonly nickname: string;
     readonly email: string | null;
@@ -152,6 +150,12 @@ export class AuthService {
         },
       },
     });
+    if (session) {
+      await this.database.authSession.update({
+        where: { id: session.id },
+        data: { lastSeenAt: new Date() },
+      });
+    }
     return session?.user ?? null;
   }
 
@@ -188,7 +192,9 @@ export class AuthService {
       throw new ForbiddenException("Administrator access is required.");
     }
 
-    throw new UnauthorizedException("A valid administrator session is required.");
+    throw new UnauthorizedException(
+      "A valid administrator session is required.",
+    );
   }
 
   async revoke(cookieHeader: string | undefined): Promise<void> {

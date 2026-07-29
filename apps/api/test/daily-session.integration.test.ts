@@ -124,16 +124,18 @@ describeWithDatabase("DailySessionService integration", () => {
 
   it("creates 25 personalized cells and returns the same Daily session", async () => {
     const now = new Date("2026-07-27T03:00:00.000Z");
-    const first = await service.createOrGet({
-      userId,
-      idempotencyKey: `daily-first-${crypto.randomUUID()}`,
-      now,
-    });
-    const second = await service.createOrGet({
-      userId,
-      idempotencyKey: `daily-retry-${crypto.randomUUID()}`,
-      now,
-    });
+    const [first, second] = await Promise.all([
+      service.createOrGet({
+        userId,
+        idempotencyKey: `daily-first-${crypto.randomUUID()}`,
+        now,
+      }),
+      service.createOrGet({
+        userId,
+        idempotencyKey: `daily-retry-${crypto.randomUUID()}`,
+        now,
+      }),
+    ]);
 
     expect(first.id).toBe(second.id);
     expect(first.date).toBe("2026-07-27");

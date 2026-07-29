@@ -138,56 +138,76 @@ export class DailySessionService {
       template.cells.map((cell) => [cell.position, cell]),
     );
 
-    const session = await this.database.bingoSession.create({
-      data: {
-        userId: command.userId,
-        templateId: template.id,
-        idempotencyKey: command.idempotencyKey,
-        dailyDate,
-        layoutVariant,
-        cells: {
-          create: layout.map((canonicalPosition, position) => {
-            const source = cellByCanonicalPosition.get(canonicalPosition);
-            if (!source) {
-              throw new ConflictException(
-                `Daily 템플릿의 ${canonicalPosition}번 칸이 없습니다.`,
-              );
-            }
+    const session = await (async () => {
+      try {
+        return await this.database.bingoSession.create({
+          data: {
+            userId: command.userId,
+            templateId: template.id,
+            idempotencyKey: command.idempotencyKey,
+            dailyDate,
+            layoutVariant,
+            cells: {
+              create: layout.map((canonicalPosition, position) => {
+                const source = cellByCanonicalPosition.get(canonicalPosition);
+                if (!source) {
+                  throw new ConflictException(
+                    `Daily 템플릿의 ${canonicalPosition}번 칸이 없습니다.`,
+                  );
+                }
 
-            return {
-              position,
-              missionSnapshot: {
-                id: source.mission.id,
-                kind: source.mission.kind,
-                title: source.mission.title,
-                description: source.mission.description,
-                category: source.mission.category,
-                verificationPolicy: source.mission.verificationPolicy,
-                targetValue: source.mission.targetValue?.toString() ?? null,
-                targetUnit: source.mission.targetUnit,
-                radiusM: source.mission.radiusM,
-                points: source.mission.points,
-                difficulty: source.mission.difficulty,
-                estimatedMinutesMin: source.mission.estimatedMinutesMin,
-                estimatedMinutesMax: source.mission.estimatedMinutesMax,
-                similarityGroup: source.mission.similarityGroup,
-                place: source.mission.place
-                  ? {
-                      id: source.mission.place.id,
-                      title: source.mission.place.title,
-                      latitude: source.mission.place.latitude.toString(),
-                      longitude: source.mission.place.longitude.toString(),
-                    }
-                  : null,
-              },
-            };
-          }),
-        },
-      },
-      include: {
-        cells: { orderBy: { position: "asc" } },
-      },
-    });
+                return {
+                  position,
+                  missionSnapshot: {
+                    id: source.mission.id,
+                    kind: source.mission.kind,
+                    title: source.mission.title,
+                    description: source.mission.description,
+                    category: source.mission.category,
+                    verificationPolicy: source.mission.verificationPolicy,
+                    targetValue: source.mission.targetValue?.toString() ?? null,
+                    targetUnit: source.mission.targetUnit,
+                    radiusM: source.mission.radiusM,
+                    points: source.mission.points,
+                    difficulty: source.mission.difficulty,
+                    estimatedMinutesMin: source.mission.estimatedMinutesMin,
+                    estimatedMinutesMax: source.mission.estimatedMinutesMax,
+                    similarityGroup: source.mission.similarityGroup,
+                    place: source.mission.place
+                      ? {
+                          id: source.mission.place.id,
+                          title: source.mission.place.title,
+                          latitude: source.mission.place.latitude.toString(),
+                          longitude: source.mission.place.longitude.toString(),
+                        }
+                      : null,
+                  },
+                };
+              }),
+            },
+          },
+          include: {
+            cells: { orderBy: { position: "asc" } },
+          },
+        });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) throw error;
+        const concurrentSession = await this.database.bingoSession.findUnique({
+          where: {
+            userId_templateId_dailyDate: {
+              userId: command.userId,
+              templateId: template.id,
+              dailyDate,
+            },
+          },
+          include: {
+            cells: { orderBy: { position: "asc" } },
+          },
+        });
+        if (!concurrentSession) throw error;
+        return concurrentSession;
+      }
+    })();
 
     return this.toResult(session, date);
   }
@@ -235,6 +255,15 @@ export class DailySessionService {
       })),
     };
   }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
 }
 
 function toPublicMission(snapshot: unknown): unknown {
