@@ -44,6 +44,17 @@ const checkIns = [
   "내일 걷고 싶은 길 정하기",
 ] as const;
 
+const additionalCheckIns = [
+  "산책 중 둥근 모양 세 가지 찾기",
+  "평소 지나치던 골목 한 곳 관찰하기",
+  "오늘의 하늘을 한 문장으로 기록하기",
+  "주변에서 계절의 흔적 하나 찾기",
+  "안전한 장소에서 가볍게 스트레칭하기",
+  "걷는 동안 고마웠던 일 하나 떠올리기",
+] as const;
+
+const dailyCheckIns = [...checkIns, ...additionalCheckIns] as const;
+
 const quizzes = [
   ["안성의 대표 남사당 인물은?", "바우덕이"],
   ["안성이 속한 도는?", "경기도"],
@@ -246,8 +257,7 @@ async function seed(): Promise<void> {
     });
   }
 
-  for (const [index, title] of checkIns.entries()) {
-    if (index >= 11) break;
+  for (const [index, title] of dailyCheckIns.entries()) {
     const position =
       places.length + quizzes.length + contributedMissions.length + index;
     await database.mission.upsert({
@@ -283,7 +293,7 @@ async function seed(): Promise<void> {
     (_, position) => missionId(position),
   );
   const commonMissionIds = Array.from(
-    { length: contributedMissions.length + 11 },
+    { length: contributedMissions.length + dailyCheckIns.length },
     (_, index) => missionId(places.length + quizzes.length + index),
   );
   await database.mission.updateMany({
@@ -319,9 +329,9 @@ async function seed(): Promise<void> {
     where: { collectionId: ids.collection },
   });
   await database.missionCollectionItem.createMany({
-    data: Array.from({ length: 25 }, (_, position) => ({
+    data: commonMissionIds.map((missionIdValue, position) => ({
       collectionId: ids.collection,
-      missionId: missionId(position),
+      missionId: missionIdValue,
       displayOrder: position,
     })),
   });
