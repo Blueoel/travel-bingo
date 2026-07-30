@@ -1841,8 +1841,10 @@ export default function Home() {
           <span>♧</span>탐험
         </button>
         <button
-          className={activeTab === "bingo" ? "active" : ""}
-          onClick={() => setActiveTab("bingo")}
+          className={
+            activeTab === "catalog" || activeTab === "bingo" ? "active" : ""
+          }
+          onClick={() => setActiveTab("catalog")}
         >
           <span>▦</span>빙고
         </button>
