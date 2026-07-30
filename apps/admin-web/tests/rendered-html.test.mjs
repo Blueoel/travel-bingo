@@ -77,4 +77,9 @@ test("renders mission editing and Daily composition controls", async () => {
   );
   assert.match(proxySource, /BACKEND_API_BASE_URL/);
   assert.match(proxySource, /ADMIN_API_KEY/);
+  assert.match(pageSource, /GPS 방문 인증 장소/);
+  assert.match(pageSource, /인증 반경\(m\)/);
+  assert.match(pageSource, /maximumAccuracyM/);
+  assert.match(pageSource, /latitude/);
+  assert.match(pageSource, /longitude/);
 });

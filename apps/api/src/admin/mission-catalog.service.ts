@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import type { DatabaseClient } from "@travel-bingo/database";
 import {
   pointsForDifficulty,
@@ -57,6 +58,16 @@ export interface MissionCatalogInput {
   readonly targetValue?: number | null;
   readonly targetUnit?: string | null;
   readonly radiusM?: number | null;
+  readonly place?: {
+    readonly title: string;
+    readonly address?: string | null;
+    readonly latitude: number;
+    readonly longitude: number;
+    readonly externalContentId?: string | null;
+    readonly contentType?: string | null;
+    readonly imageUrl?: string | null;
+    readonly source?: "ADMIN" | "KTO";
+  } | null;
   readonly regionIds: readonly string[];
   readonly status?: "ACTIVE" | "INACTIVE" | "NEEDS_REVIEW";
   readonly changeNote?: string;
@@ -187,6 +198,7 @@ export class MissionCatalogService {
         include: {
           regionLinks: { include: { region: true } },
           collectionItems: { include: { collection: true } },
+          place: true,
         },
       }),
       this.database.mission.count({ where }),
@@ -202,14 +214,16 @@ export class MissionCatalogService {
   async create(input: MissionCatalogInput, adminId: string) {
     validateInput(input);
     const mission = await this.database.$transaction(async (transaction) => {
+      const placeId = await resolvePlaceId(transaction, input);
       const created = await transaction.mission.create({
         data: {
           ...missionData(input),
+          placeId,
           regionLinks: {
             create: input.regionIds.map((regionId) => ({ regionId })),
           },
         } as any,
-        include: { regionLinks: { include: { region: true } } },
+        include: { regionLinks: { include: { region: true } }, place: true },
       });
       await transaction.missionRevision.create({
         data: {
@@ -235,16 +249,18 @@ export class MissionCatalogService {
         where: { missionId: id },
         _max: { revision: true },
       });
+      const placeId = await resolvePlaceId(transaction, input, existing.placeId);
       await transaction.missionRegion.deleteMany({ where: { missionId: id } });
       const updated = await transaction.mission.update({
         where: { id },
         data: {
           ...missionData(input),
+          placeId,
           regionLinks: {
             create: input.regionIds.map((regionId) => ({ regionId })),
           },
         } as any,
-        include: { regionLinks: { include: { region: true } } },
+        include: { regionLinks: { include: { region: true } }, place: true },
       });
       await transaction.missionRevision.create({
         data: {
@@ -439,6 +455,70 @@ function validateVerificationPolicy(input: MissionCatalogInput): void {
       );
     }
   }
+  if (type === "GPS") {
+    const place = input.place;
+    if (
+      input.scope !== "REGION" ||
+      input.regionIds.length !== 1 ||
+      !place?.title.trim() ||
+      !Number.isFinite(place.latitude) ||
+      place.latitude < -90 ||
+      place.latitude > 90 ||
+      !Number.isFinite(place.longitude) ||
+      place.longitude < -180 ||
+      place.longitude > 180 ||
+      !Number.isInteger(input.radiusM) ||
+      Number(input.radiusM) < 30 ||
+      Number(input.radiusM) > 1000
+    ) {
+      throw new BadRequestException(
+        "GPS missions require one region, valid place coordinates, and a radius between 30 and 1000 meters.",
+      );
+    }
+  }
+}
+
+async function resolvePlaceId(
+  transaction: any,
+  input: MissionCatalogInput,
+  existingPlaceId?: string | null,
+): Promise<string | null> {
+  if (!input.place) return null;
+  const placeData = {
+    regionId: input.regionIds[0],
+    source: input.place.source ?? "ADMIN",
+    externalContentId:
+      input.place.externalContentId?.trim() || `admin-${randomUUID()}`,
+    contentType: input.place.contentType?.trim() || "TOURIST_SPOT",
+    title: input.place.title.trim(),
+    address: input.place.address?.trim() || null,
+    latitude: input.place.latitude,
+    longitude: input.place.longitude,
+    imageUrl: input.place.imageUrl?.trim() || null,
+    status: "ACTIVE",
+    syncedAt: new Date(),
+  };
+  if (existingPlaceId) {
+    const updated = await transaction.place.update({
+      where: { id: existingPlaceId },
+      data: placeData,
+      select: { id: true },
+    });
+    return updated.id;
+  }
+  const created = await transaction.place.upsert({
+    where: {
+      source_externalContentId_contentType: {
+        source: placeData.source,
+        externalContentId: placeData.externalContentId,
+        contentType: placeData.contentType,
+      },
+    },
+    update: placeData,
+    create: placeData,
+    select: { id: true },
+  });
+  return created.id;
 }
 
 function revisionSnapshot(mission: Record<string, unknown>) {
@@ -482,7 +562,8 @@ function verificationKind(
   if (value === "PHOTO") return "PHOTO";
   if (value === "QUIZ") return "QUIZ";
   if (value === "TEXT" || value === "TIMER") return "CHECK_IN";
-  if (value === "GPS" || value === "GPS_STAY") return "CHECK_IN";
+  if (value === "GPS") return "PLACE_VISIT";
+  if (value === "GPS_STAY") return "COMPOSITE";
   return "COMPOSITE";
 }
 

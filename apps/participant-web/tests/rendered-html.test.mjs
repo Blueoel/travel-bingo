@@ -357,3 +357,14 @@ test("provides an owner-only photo review queue", async () => {
   assert.match(storageSource, /env\.PHOTOS/);
   assert.match(storageSource, /bucket\.put/);
 });
+
+test("shows GPS place and permission guidance for visit missions", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  assert.match(pageSource, /인증 반경/);
+  assert.match(pageSource, /위치 권한/);
+  assert.match(pageSource, /selected\.place/);
+  assert.match(pageSource, /navigator\.geolocation\.getCurrentPosition/);
+});

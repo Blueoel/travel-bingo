@@ -27,6 +27,12 @@ type Mission = {
   interactionType?: "TEXT" | "TIMER";
   timerSeconds?: number | null;
   textMaxLength?: number | null;
+  radiusM?: number | null;
+  place?: {
+    title: string;
+    latitude: string;
+    longitude: string;
+  } | null;
 };
 type DailySession = {
   id: string;
@@ -53,6 +59,12 @@ type DailySession = {
       interactionType?: "TEXT" | "TIMER";
       timerSeconds?: number | null;
       textMaxLength?: number | null;
+      radiusM?: number | null;
+      place?: {
+        title: string;
+        latitude: string;
+        longitude: string;
+      } | null;
     };
   }>;
 };
@@ -491,6 +503,8 @@ export default function Home() {
           interactionType: cell.mission.interactionType,
           timerSeconds: cell.mission.timerSeconds ?? null,
           textMaxLength: cell.mission.textMaxLength ?? null,
+          radiusM: cell.mission.radiusM ?? null,
+          place: cell.mission.place ?? null,
         })),
     );
   };
@@ -1222,7 +1236,7 @@ export default function Home() {
       await reloadCurrentBingo();
     } catch (error) {
       setMessage(
-        error instanceof GeolocationPositionError
+        typeof error === "object" && error !== null && "code" in error
           ? "위치 권한을 허용한 뒤 다시 시도해주세요."
           : "서버와 연결하지 못했어요. 잠시 후 다시 시도해주세요.",
       );
@@ -1855,6 +1869,19 @@ export default function Home() {
                     <b>획득 점수</b>
                     <em>{selected.points} Point</em>
                   </p>
+                  {selected.kind === "PLACE_VISIT" && selected.place && (
+                    <>
+                      <p>
+                        <span>위치</span>
+                        <b>{selected.place.title}</b>
+                        <em>인증 반경 {selected.radiusM ?? 100}m</em>
+                      </p>
+                      <p className="gps-guidance">
+                        GPS를 켜고 장소 가까이에서 인증해주세요. 위치 권한이
+                        꺼져 있거나 오차가 크면 인증할 수 없습니다.
+                      </p>
+                    </>
+                  )}
                   {selected.kind === "PHOTO" && (
                     <p className="privacy-warning">
                       <strong>

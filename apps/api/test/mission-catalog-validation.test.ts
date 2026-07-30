@@ -42,4 +42,29 @@ describe("admin mission verification settings", () => {
       ),
     ).rejects.toThrow(/durationSeconds between 60 and 10800/);
   });
+
+  it("rejects a GPS place mission without a safe verification radius", async () => {
+    await expect(
+      service.create(
+        {
+          ...baseMission,
+          scope: "REGION",
+          regionIds: ["10000000-0000-4000-8000-000000000010"],
+          verificationType: "GPS",
+          verificationPolicy: {
+            type: "GPS",
+            maximumAccuracyM: 50,
+            maximumAgeMs: 60_000,
+          },
+          radiusM: 10,
+          place: {
+            title: "안성맞춤랜드",
+            latitude: 37.03,
+            longitude: 127.31,
+          },
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(/radius between 30 and 1000 meters/);
+  });
 });
