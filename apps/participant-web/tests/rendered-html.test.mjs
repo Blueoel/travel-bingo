@@ -9,6 +9,47 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectDirectory = path.resolve(testDirectory, "..");
 
+test("ships an interactive nationwide administrative SVG map", async () => {
+  const svg = await readFile(
+    path.join(projectDirectory, "public", "maps", "korea-sigungu.svg"),
+    "utf8",
+  );
+  const metadata = JSON.parse(
+    await readFile(
+      path.join(
+        projectDirectory,
+        "public",
+        "maps",
+        "korea-sigungu.meta.json",
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(svg, /viewBox="0 0 900 1260"/);
+  assert.match(svg, /id="region-31220"/);
+  assert.match(svg, /data-name="안성시"/);
+  assert.match(svg, /data-tier="bronze"/);
+  assert.equal((svg.match(/<path\b/g) ?? []).length, 250);
+  assert.equal(metadata.regionCount, 250);
+  assert.deepEqual(
+    metadata.regions.find((region) => region.id === "region-31220"),
+    {
+      code: "31220",
+      name: "안성시",
+      province: "경기도",
+      id: "region-31220",
+      bounds: {
+        minX: 315.39,
+        minY: 442.14,
+        maxX: 363.86,
+        maxY: 480.37,
+      },
+      center: [339.63, 461.26],
+    },
+  );
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);
