@@ -30,6 +30,10 @@ type Mission = {
 };
 type DailySession = {
   id: string;
+  templateId?: string;
+  type?: "DAILY" | "REGION" | "EVENT";
+  title?: string;
+  regionName?: string;
   totalPoints: number;
   completedLineKeys: string[];
   cells: Array<{
@@ -373,6 +377,15 @@ export default function Home() {
   const [items, setItems] = useState<Mission[]>(demoMissions);
   const completeCount = items.filter((item) => item.done).length;
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [currentBingo, setCurrentBingo] = useState<{
+    type: "DAILY" | "REGION" | "EVENT";
+    title: string;
+    regionName: string | null;
+  }>({
+    type: "DAILY",
+    title: "오늘의 산책 빙고",
+    regionName: null,
+  });
   const [points, setPoints] = useState(0);
   const [lineKeys, setLineKeys] = useState<string[]>([]);
   const [selected, setSelected] = useState<Mission | null>(null);
@@ -443,6 +456,13 @@ export default function Home() {
 
   const applySession = (session: DailySession) => {
     setSessionId(session.id);
+    if (session.type && session.title) {
+      setCurrentBingo({
+        type: session.type,
+        title: session.title,
+        regionName: session.regionName ?? null,
+      });
+    }
     setPoints(session.totalPoints);
     setLineKeys(session.completedLineKeys);
     setItems(
@@ -506,6 +526,11 @@ export default function Home() {
         });
       }
       if (!response.ok) throw new Error("Daily API unavailable");
+      setCurrentBingo({
+        type: "DAILY",
+        title: "오늘의 산책 빙고",
+        regionName: null,
+      });
       applySession((await response.json()) as DailySession);
       setDemoMode(false);
     } catch {
@@ -553,6 +578,39 @@ export default function Home() {
     setLoading(true);
     setAuthStatus("authenticated");
     await loadDaily(true);
+  };
+
+  const openCatalogBingo = async (bingo: BingoCatalogItem) => {
+    setBingoCatalogLoading(true);
+    setMessage(null);
+    try {
+      const response = bingo.sessionId
+        ? await apiFetch(`/bingos/sessions/${bingo.sessionId}`)
+        : await apiFetch(`/bingos/${bingo.templateId}/sessions`, {
+            method: "POST",
+            headers: {
+              "idempotency-key": `web-bingo-${crypto.randomUUID()}`,
+            },
+          });
+      if (!response.ok) throw new Error("Bingo session unavailable");
+      applySession((await response.json()) as DailySession);
+      setSelected(null);
+      setActiveTab("bingo");
+    } catch {
+      setMessage("빙고판을 열지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setBingoCatalogLoading(false);
+    }
+  };
+
+  const reloadCurrentBingo = async () => {
+    if (currentBingo.type === "DAILY" || !sessionId) {
+      await loadDaily();
+      return;
+    }
+    const response = await apiFetch(`/bingos/sessions/${sessionId}`);
+    if (!response.ok) throw new Error("Bingo session unavailable");
+    applySession((await response.json()) as DailySession);
   };
 
   useEffect(() => {
@@ -865,7 +923,7 @@ export default function Home() {
       }
       setSelected(null);
       setTextRecord("");
-      await loadDaily();
+      await reloadCurrentBingo();
     } catch {
       setMessage("기록을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -986,7 +1044,7 @@ export default function Home() {
       );
       setSelected(null);
       resetTracking();
-      await loadDaily();
+      await reloadCurrentBingo();
     } catch {
       setMessage("GPS 기록을 서버에 전송하지 못했어요. 다시 시도해주세요.");
     } finally {
@@ -1161,7 +1219,7 @@ export default function Home() {
       );
       setSelected(null);
       setAnswer("");
-      await loadDaily();
+      await reloadCurrentBingo();
     } catch (error) {
       setMessage(
         error instanceof GeolocationPositionError
@@ -1213,10 +1271,16 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      {activeTab === "bingo" && (
+        <>
       <header>
         <div>
-          <p className="eyebrow">오늘 · 안성</p>
-          <h1>오늘의 산책 빙고</h1>
+          <p className="eyebrow">
+            {currentBingo.type === "DAILY"
+              ? "오늘 · Daily"
+              : `${currentBingo.type === "EVENT" ? "이벤트" : "지역"} · ${currentBingo.regionName ?? "Travel Bingo"}`}
+          </p>
+          <h1>{currentBingo.title}</h1>
         </div>
         <button className="profile" aria-label="내 프로필">
           {nickname.slice(0, 1)}
@@ -1241,13 +1305,25 @@ export default function Home() {
       )}
       <section className="hero">
         <div className="hero-copy">
-          <span className="pill">DAILY WALK</span>
+          <span className="pill">
+            {currentBingo.type === "DAILY"
+              ? "DAILY WALK"
+              : currentBingo.type === "EVENT"
+                ? "EVENT BINGO"
+                : "REGION BINGO"}
+          </span>
           <h2>
-            천천히 걸으며
+            {currentBingo.type === "DAILY" ? "천천히 걸으며" : currentBingo.title}
             <br />
-            오늘을 발견해요
+            {currentBingo.type === "DAILY"
+              ? "오늘을 발견해요"
+              : "새로운 장소를 발견해요"}
           </h2>
-          <p>매일 같은 미션, 나만의 새로운 배치</p>
+          <p>
+            {currentBingo.type === "DAILY"
+              ? "매일 같은 미션, 나만의 새로운 배치"
+              : `${currentBingo.regionName ?? "여행지"}의 이야기를 빙고로 만나보세요`}
+          </p>
         </div>
         <div className="score">
           <strong>{points}</strong>
@@ -1302,6 +1378,8 @@ export default function Home() {
           해가 지기 전 20분 산책은 기분 전환에 좋아요.
         </p>
       </aside>
+        </>
+      )}
       {activeTab === "home" && (
         <section className="home-screen">
           <header className="home-topbar">
@@ -1491,15 +1569,7 @@ export default function Home() {
                     className={`catalog-card ${bingo.type.toLowerCase()}`}
                     type="button"
                     key={bingo.id}
-                    onClick={() => {
-                      if (bingo.type === "DAILY") {
-                        setActiveTab("bingo");
-                        return;
-                      }
-                      setMessage(
-                        `${bingo.title} 빙고판 생성 기능을 이어서 연결할게요.`,
-                      );
-                    }}
+                    onClick={() => void openCatalogBingo(bingo)}
                   >
                     <span className="catalog-card-icon" aria-hidden="true">
                       {bingo.type === "DAILY"

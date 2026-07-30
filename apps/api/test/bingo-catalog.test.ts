@@ -113,4 +113,83 @@ describe("BingoCatalogService", () => {
       sessionId: "region-session",
     });
   });
+
+  it("creates a 25-cell region session and returns its board", async () => {
+    const templateCells = Array.from({ length: 25 }, (_, position) => ({
+      position,
+      mission: {
+        id: `mission-${position}`,
+        kind: "CHECK_IN",
+        title: `지역 미션 ${position + 1}`,
+        description: "지역을 발견해보세요.",
+        category: "REGION",
+        verificationPolicy: { type: "CHECK_IN" },
+        targetValue: null,
+        targetUnit: null,
+        radiusM: null,
+        points: 10,
+        difficulty: 1,
+        estimatedMinutesMin: null,
+        estimatedMinutesMax: null,
+        similarityGroup: null,
+        place: null,
+      },
+    }));
+    const createdBoard = {
+      id: "region-session",
+      status: "ACTIVE",
+      totalPoints: 0,
+      template: {
+        id: "region-template",
+        type: "REGION",
+        title: "안성 원도심 빙고",
+        region: { name: "경기도 안성시" },
+      },
+      cells: templateCells.map(({ position, mission }) => ({
+        id: `cell-${position}`,
+        position,
+        status: "AVAILABLE",
+        missionSnapshot: mission,
+      })),
+    };
+    const database = {
+      bingoSession: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(createdBoard),
+        create: vi.fn().mockResolvedValue({ id: "region-session" }),
+      },
+      bingoTemplate: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "region-template",
+          cells: templateCells,
+        }),
+      },
+    };
+
+    const result = await new BingoCatalogService(database as never)
+      .createOrGetSession({
+        userId: "user-1",
+        templateId: "region-template",
+        idempotencyKey: "region-start-1",
+      });
+
+    expect(database.bingoSession.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          templateId: "region-template",
+          cells: { create: expect.arrayContaining([expect.any(Object)]) },
+        }),
+      }),
+    );
+    expect(result).toMatchObject({
+      id: "region-session",
+      type: "REGION",
+      title: "안성 원도심 빙고",
+      totalPoints: 0,
+      completedCellCount: 0,
+    });
+    expect(result.cells).toHaveLength(25);
+  });
 });
