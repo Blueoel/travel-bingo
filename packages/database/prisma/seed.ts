@@ -15,6 +15,8 @@ const ids = {
   region: "20000000-0000-4000-8000-000000000001",
   theme: "30000000-0000-4000-8000-000000000001",
   template: "40000000-0000-4000-8000-000000000001",
+  regionTheme: "30000000-0000-4000-8000-000000000002",
+  regionTemplate: "40000000-0000-4000-8000-000000000002",
   collection: "70000000-0000-4000-8000-000000000001",
 };
 
@@ -61,6 +63,206 @@ const quizzes = [
   ["안성의 대표 농축산 체험 관광지는?", "안성팜랜드"],
   ["3·1운동기념관의 핵심 역사 주제는?", "독립운동"],
   ["칠장사의 시설 유형은?", "사찰"],
+] as const;
+
+const anseongExperienceMissions = [
+  {
+    title: "안성의 오늘 풍경",
+    description:
+      "지금 있는 안성의 풍경을 한 장 남겨보세요. 사람의 얼굴이나 차량번호가 나오지 않도록 촬영해주세요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "안성 지역의 거리, 공원, 자연 또는 건축물이 담긴 풍경",
+    },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_SCENERY",
+  },
+  {
+    title: "안성맞춤 글자 찾기",
+    description:
+      "간판이나 안내판에서 '안성' 또는 '안성맞춤' 글자를 찾아 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "EXPLORATION",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "안성 또는 안성맞춤 글자가 보이는 간판이나 안내판",
+    },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_SIGN",
+  },
+  {
+    title: "안성의 농촌 풍경",
+    description:
+      "논, 밭, 과수원처럼 안성의 농촌 분위기를 느낄 수 있는 풍경을 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "NATURE",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "논, 밭, 과수원 등 농촌 풍경",
+    },
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "ANSEONG_RURAL",
+  },
+  {
+    title: "안성의 공공미술 찾기",
+    description:
+      "거리의 조형물, 벽화 또는 공공미술 작품을 찾아 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "CULTURE",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "공공 조형물, 벽화 또는 야외 미술 작품",
+    },
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "ANSEONG_PUBLIC_ART",
+  },
+  {
+    title: "안성 산책로 표지판",
+    description:
+      "공원이나 산책길의 안내 표지판을 찾아 주변 풍경과 함께 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "WALK",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "안성 지역 공원 또는 산책로 안내 표지판",
+    },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_TRAIL_SIGN",
+  },
+  {
+    title: "안성의 오래된 흔적",
+    description:
+      "오래된 건물, 비석, 전통 장식 등 시간의 흔적이 느껴지는 대상을 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "HISTORY",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "역사성이나 전통적인 특징이 보이는 건물, 비석 또는 장식",
+    },
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "ANSEONG_HISTORY",
+  },
+  {
+    title: "안성의 자연색 세 가지",
+    description:
+      "안성의 야외 공간에서 서로 다른 자연색 세 가지가 한 화면에 보이도록 촬영해보세요.",
+    kind: "PHOTO" as const,
+    category: "OBSERVATION",
+    verificationPolicy: {
+      type: "PHOTO",
+      requiredPhotoCount: 1,
+      requiredSubject: "서로 구분되는 자연색 세 가지가 함께 담긴 야외 풍경",
+    },
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "COLOR_COLLECTION",
+  },
+  {
+    title: "다시 오고 싶은 안성의 장소",
+    description:
+      "오늘 다시 방문하고 싶다고 느낀 안성의 장소와 그 이유를 짧게 기록해보세요.",
+    kind: "CHECK_IN" as const,
+    category: "RECORD",
+    verificationPolicy: { type: "TEXT", maxLength: 100 },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_TEXT_RECORD",
+  },
+  {
+    title: "안성에서 발견한 한 문장",
+    description:
+      "안내판이나 간판에서 기억에 남는 문장을 찾아 100자 이내로 기록해보세요.",
+    kind: "CHECK_IN" as const,
+    category: "RECORD",
+    verificationPolicy: { type: "TEXT", maxLength: 100 },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_TEXT_RECORD",
+  },
+  {
+    title: "안성에서 5분 쉬어가기",
+    description:
+      "안전한 벤치나 쉼터에 머물며 주변 풍경을 5분 동안 천천히 감상해보세요.",
+    kind: "CHECK_IN" as const,
+    category: "REST",
+    verificationPolicy: { type: "TIMER", durationSeconds: 300 },
+    targetValue: 300,
+    targetUnit: "SECOND",
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_TIMER",
+  },
+  {
+    title: "안성길 10분 산책",
+    description:
+      "현재 있는 안성의 길을 안전하게 10분 동안 걸어보세요.",
+    kind: "CHECK_IN" as const,
+    category: "WALK",
+    verificationPolicy: { type: "TIMER", durationSeconds: 600 },
+    targetValue: 600,
+    targetUnit: "SECOND",
+    points: 20,
+    difficulty: 2,
+    similarityGroup: "ANSEONG_TIMER",
+  },
+  {
+    title: "안성 관광 안내 확인하기",
+    description:
+      "주변 관광 안내판이나 온라인 관광 정보를 확인하고 완료 버튼을 눌러주세요.",
+    kind: "CHECK_IN" as const,
+    category: "EXPLORATION",
+    verificationPolicy: { type: "CHECK_IN" },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_DISCOVERY",
+  },
+  {
+    title: "안성의 안전한 보행로 찾기",
+    description:
+      "보도, 횡단보도 또는 산책로처럼 안전하게 걸을 수 있는 길을 찾아 걸어보세요.",
+    kind: "CHECK_IN" as const,
+    category: "SAFETY",
+    verificationPolicy: { type: "CHECK_IN" },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_SAFETY",
+  },
+  {
+    title: "안성에서 작은 친절 실천",
+    description:
+      "길을 양보하거나 주변을 정돈하는 등 여행지에서 할 수 있는 작은 친절을 실천해보세요.",
+    kind: "CHECK_IN" as const,
+    category: "COMMUNITY",
+    verificationPolicy: { type: "CHECK_IN" },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_COMMUNITY",
+  },
+  {
+    title: "안성 여행 한 줄 소감",
+    description:
+      "오늘 안성에서 느낀 점을 한 문장으로 기록해보세요.",
+    kind: "CHECK_IN" as const,
+    category: "RECORD",
+    verificationPolicy: { type: "TEXT", maxLength: 100 },
+    points: 10,
+    difficulty: 1,
+    similarityGroup: "ANSEONG_TRAVEL_NOTE",
+  },
 ] as const;
 
 const contributedMissions = [
@@ -744,6 +946,10 @@ function workbookMissionId(position: number): string {
   );
 }
 
+function anseongExperienceMissionId(position: number): string {
+  return `80000000-0000-4000-8000-${String(position + 1).padStart(12, "0")}`;
+}
+
 function answerHash(answer: string): string {
   return createHash("sha256")
     .update(answer.trim().toLocaleLowerCase("ko-KR").normalize("NFC"))
@@ -860,6 +1066,23 @@ async function seed(): Promise<void> {
     });
   }
 
+  for (const [index, mission] of anseongExperienceMissions.entries()) {
+    await database.mission.upsert({
+      where: { id: anseongExperienceMissionId(index) },
+      update: {
+        ...mission,
+        scope: "REGION",
+        status: "ACTIVE",
+      },
+      create: {
+        id: anseongExperienceMissionId(index),
+        ...mission,
+        scope: "REGION",
+        status: "ACTIVE",
+      },
+    });
+  }
+
   for (const [index, title] of dailyCheckIns.entries()) {
     const position =
       places.length + quizzes.length + contributedMissions.length + index;
@@ -906,10 +1129,20 @@ async function seed(): Promise<void> {
     });
   }
 
-  const regionMissionIds = Array.from(
-    { length: places.length + quizzes.length },
-    (_, position) => missionId(position),
-  );
+  const regionMissionIds = [
+    ...Array.from(
+      { length: places.length + quizzes.length },
+      (_, position) => missionId(position),
+    ),
+    ...anseongExperienceMissions.map((_, position) =>
+      anseongExperienceMissionId(position),
+    ),
+  ];
+  if (regionMissionIds.length !== 25) {
+    throw new Error(
+      `Anseong region board requires exactly 25 missions; received ${regionMissionIds.length}.`,
+    );
+  }
   const commonMissionIds = workbookMissions.map((_, index) =>
     workbookMissionId(index),
   );
@@ -927,6 +1160,24 @@ async function seed(): Promise<void> {
       regionId: ids.region,
     })),
     skipDuplicates: true,
+  });
+  await database.bingoTheme.upsert({
+    where: { id: ids.regionTheme },
+    update: {
+      name: "안성 실전 여행 빙고",
+      category: "REGION",
+      status: "ACTIVE",
+      isRequiredForRegionCompletion: true,
+    },
+    create: {
+      id: ids.regionTheme,
+      regionId: ids.region,
+      name: "안성 실전 여행 빙고",
+      category: "REGION",
+      status: "ACTIVE",
+      isRequiredForRegionCompletion: true,
+      displayOrder: 1,
+    },
   });
   await database.missionCollection.upsert({
     where: { id: ids.collection },
@@ -985,7 +1236,42 @@ async function seed(): Promise<void> {
     })),
   });
 
-  console.log(`Seed complete. Demo user: ${ids.user}`);
+  await database.bingoTemplate.upsert({
+    where: { id: ids.regionTemplate },
+    update: {
+      title: "안성 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      startsAt: new Date("2020-01-01T00:00:00.000Z"),
+      endsAt: null,
+      publishedAt: new Date(),
+    },
+    create: {
+      id: ids.regionTemplate,
+      regionId: ids.region,
+      themeId: ids.regionTheme,
+      title: "안성 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      version: 1,
+      startsAt: new Date("2020-01-01T00:00:00.000Z"),
+      publishedAt: new Date(),
+    },
+  });
+  await database.templateCell.deleteMany({
+    where: { templateId: ids.regionTemplate },
+  });
+  await database.templateCell.createMany({
+    data: regionMissionIds.map((missionIdValue, position) => ({
+      templateId: ids.regionTemplate,
+      missionId: missionIdValue,
+      position,
+    })),
+  });
+
+  console.log(
+    `Seed complete. Demo user: ${ids.user}; Anseong region board: ${regionMissionIds.length} missions`,
+  );
 }
 
 try {
