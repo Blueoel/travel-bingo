@@ -68,11 +68,41 @@ type DailySession = {
     };
   }>;
 };
+type SessionCell = DailySession["cells"][number];
 type VerificationResult = {
   verificationStatus?: "APPROVED" | "REJECTED";
   reasonCode?: string;
   completedLineKeys: string[];
 };
+
+function toMission(cell: SessionCell): Mission {
+  return {
+    id: cell.id,
+    title: cell.mission.title,
+    description: cell.mission.description,
+    kind: cell.mission.kind,
+    points: cell.mission.points,
+    done: cell.status === "VERIFIED",
+    difficulty: difficultyLabel(cell.mission.difficulty),
+    estimatedTime: estimatedTimeLabel(
+      cell.mission.estimatedMinutesMin,
+      cell.mission.estimatedMinutesMax,
+    ),
+    verificationLabel: verificationLabel(
+      cell.mission.kind,
+      cell.mission.targetValue,
+      cell.mission.targetUnit,
+      cell.mission.interactionType,
+    ),
+    targetValue: Number(cell.mission.targetValue) || null,
+    targetUnit: cell.mission.targetUnit,
+    interactionType: cell.mission.interactionType,
+    timerSeconds: cell.mission.timerSeconds ?? null,
+    textMaxLength: cell.mission.textMaxLength ?? null,
+    radiusM: cell.mission.radiusM ?? null,
+    place: cell.mission.place ?? null,
+  };
+}
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -469,6 +499,10 @@ export default function Home() {
   const [trackingMissionId, setTrackingMissionId] = useState<string | null>(
     null,
   );
+  const [trackingSessionId, setTrackingSessionId] = useState<string | null>(
+    null,
+  );
+  const [trackingHydrated, setTrackingHydrated] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const albumInput = useRef<HTMLInputElement>(null);
   const trackingWatchId = useRef<number | null>(null);
@@ -492,32 +526,7 @@ export default function Home() {
     setItems(
       session.cells
         .sort((a, b) => a.position - b.position)
-        .map((cell) => ({
-          id: cell.id,
-          title: cell.mission.title,
-          description: cell.mission.description,
-          kind: cell.mission.kind,
-          points: cell.mission.points,
-          done: cell.status === "VERIFIED",
-          difficulty: difficultyLabel(cell.mission.difficulty),
-          estimatedTime: estimatedTimeLabel(
-            cell.mission.estimatedMinutesMin,
-            cell.mission.estimatedMinutesMax,
-          ),
-          verificationLabel: verificationLabel(
-            cell.mission.kind,
-            cell.mission.targetValue,
-            cell.mission.targetUnit,
-            cell.mission.interactionType,
-          ),
-          targetValue: Number(cell.mission.targetValue) || null,
-          targetUnit: cell.mission.targetUnit,
-          interactionType: cell.mission.interactionType,
-          timerSeconds: cell.mission.timerSeconds ?? null,
-          textMaxLength: cell.mission.textMaxLength ?? null,
-          radiusM: cell.mission.radiusM ?? null,
-          place: cell.mission.place ?? null,
-        })),
+        .map(toMission),
     );
   };
 
@@ -742,6 +751,80 @@ export default function Home() {
   }, [authStatus]);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("travel-bingo-active-gps");
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        missionId?: string;
+        sessionId?: string | null;
+        startedAt?: number;
+        distanceM?: number;
+        latest?: typeof tracking.latest;
+        lastPosition?: { latitude: number; longitude: number } | null;
+        active?: boolean;
+      };
+      if (!saved.missionId || !saved.startedAt) return;
+      trackingStartedAt.current = saved.startedAt;
+      lastTrackingPosition.current = saved.lastPosition ?? null;
+      setTrackingMissionId(saved.missionId);
+      setTrackingSessionId(saved.sessionId ?? null);
+      setTracking({
+        active: saved.active !== false,
+        elapsedSeconds: Math.max(
+          0,
+          Math.floor((Date.now() - saved.startedAt) / 1_000),
+        ),
+        distanceM: Math.max(0, Number(saved.distanceM) || 0),
+        latest: saved.latest ?? null,
+      });
+      if (saved.active !== false) beginTrackingWatch();
+    } catch {
+      window.localStorage.removeItem("travel-bingo-active-gps");
+    } finally {
+      setTrackingHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!trackingHydrated) return;
+    if (!trackingMissionId || !trackingStartedAt.current) {
+      window.localStorage.removeItem("travel-bingo-active-gps");
+      return;
+    }
+    window.localStorage.setItem(
+      "travel-bingo-active-gps",
+      JSON.stringify({
+        missionId: trackingMissionId,
+        sessionId: trackingSessionId,
+        startedAt: trackingStartedAt.current,
+        distanceM: tracking.distanceM,
+        latest: tracking.latest,
+        lastPosition: lastTrackingPosition.current,
+        active: tracking.active,
+      }),
+    );
+  }, [
+    tracking,
+    trackingHydrated,
+    trackingMissionId,
+    trackingSessionId,
+  ]);
+
+  useEffect(() => {
+    const resumeWatch = () => {
+      if (
+        document.visibilityState === "visible" &&
+        tracking.active &&
+        trackingWatchId.current === null
+      ) {
+        beginTrackingWatch();
+      }
+    };
+    document.addEventListener("visibilitychange", resumeWatch);
+    return () => document.removeEventListener("visibilitychange", resumeWatch);
+  }, [tracking.active]);
+
+  useEffect(() => {
     if (!tracking.active) return;
     const timer = window.setInterval(() => {
       const startedAt = trackingStartedAt.current;
@@ -788,6 +871,7 @@ export default function Home() {
 
   const logout = () => {
     setMessage(null);
+    resetTracking();
     setAccount(null);
     setSessionId(null);
     setSelected(null);
@@ -887,6 +971,8 @@ export default function Home() {
       latest: null,
     });
     setTrackingMissionId(null);
+    setTrackingSessionId(null);
+    window.localStorage.removeItem("travel-bingo-active-gps");
   };
 
   const closeMission = () => {
@@ -991,31 +1077,8 @@ export default function Home() {
     }
   };
 
-  const startTracking = () => {
-    if (!selected || !navigator.geolocation) {
-      setMessage("이 기기에서는 GPS 기록을 사용할 수 없어요.");
-      return;
-    }
-    if (
-      tracking.active &&
-      trackingMissionId &&
-      trackingMissionId !== selected.id
-    ) {
-      setMessage(
-        "다른 미션의 GPS 기록이 진행 중이에요. 진행 중인 미션을 먼저 완료해주세요.",
-      );
-      return;
-    }
-    setMessage(null);
-    trackingStartedAt.current = Date.now();
-    lastTrackingPosition.current = null;
-    setTrackingMissionId(selected.id);
-    setTracking({
-      active: true,
-      elapsedSeconds: 0,
-      distanceM: 0,
-      latest: null,
-    });
+  const beginTrackingWatch = () => {
+    if (!navigator.geolocation || trackingWatchId.current !== null) return;
     trackingWatchId.current = navigator.geolocation.watchPosition(
       ({ coords, timestamp }) => {
         const currentPosition = {
@@ -1051,6 +1114,35 @@ export default function Home() {
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
+  };
+
+  const startTracking = () => {
+    if (!selected || !navigator.geolocation) {
+      setMessage("이 기기에서는 GPS 기록을 사용할 수 없어요.");
+      return;
+    }
+    if (
+      tracking.active &&
+      trackingMissionId &&
+      trackingMissionId !== selected.id
+    ) {
+      setMessage(
+        "다른 미션의 GPS 기록이 진행 중이에요. 진행 중인 미션을 먼저 완료해주세요.",
+      );
+      return;
+    }
+    setMessage(null);
+    trackingStartedAt.current = Date.now();
+    lastTrackingPosition.current = null;
+    setTrackingMissionId(selected.id);
+    setTrackingSessionId(sessionId);
+    setTracking({
+      active: true,
+      elapsedSeconds: 0,
+      distanceM: 0,
+      latest: null,
+    });
+    beginTrackingWatch();
   };
 
   const submitTracking = async () => {
@@ -1300,6 +1392,39 @@ export default function Home() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const reopenTrackingMission = async () => {
+    if (!trackingMissionId) return;
+    let mission = items.find((item) => item.id === trackingMissionId);
+    if (
+      !mission &&
+      trackingSessionId &&
+      trackingSessionId !== sessionId &&
+      !demoMode
+    ) {
+      try {
+        const response = await apiFetch(
+          `/bingos/sessions/${trackingSessionId}`,
+        );
+        if (!response.ok) throw new Error("Tracking session unavailable");
+        const restoredSession = (await response.json()) as DailySession;
+        const restoredItems = restoredSession.cells
+          .sort((a, b) => a.position - b.position)
+          .map(toMission);
+        mission = restoredItems.find((item) => item.id === trackingMissionId);
+        applySession(restoredSession);
+      } catch {
+        setMessage("진행 중인 GPS 미션을 다시 열지 못했어요.");
+        return;
+      }
+    }
+    if (!mission) {
+      setMessage("진행 중인 GPS 미션을 찾지 못했어요.");
+      return;
+    }
+    setSelected(mission);
+    setActiveTab("bingo");
   };
 
   const trackingMission =
@@ -1829,6 +1954,18 @@ export default function Home() {
             <b>♧</b>
           </div>
         </section>
+      )}
+      {trackingMissionId && tracking.active && (
+        <button
+          type="button"
+          className="active-gps-banner"
+          onClick={() => void reopenTrackingMission()}
+        >
+          <span aria-hidden="true">●</span>
+          <b>GPS 기록 중</b>
+          <em>{trackingTime(tracking.elapsedSeconds)}</em>
+          <strong>미션으로 돌아가기 ›</strong>
+        </button>
       )}
       <nav>
         <button
