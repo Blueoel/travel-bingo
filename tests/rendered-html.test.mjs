@@ -69,4 +69,12 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /관광지 추천/);
   assert.match(pageSource, /createMissionFromAttraction/);
   assert.match(pageSource, /이 장소로 미션 만들기/);
+  assert.match(pageSource, /const API = "\/api\/backend"/);
+
+  const proxySource = await readFile(
+    new URL("../app/api/backend/[...path]/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(proxySource, /BACKEND_API_BASE_URL/);
+  assert.match(proxySource, /ADMIN_API_KEY/);
 });
