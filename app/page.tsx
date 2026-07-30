@@ -441,6 +441,15 @@ export default function Home() {
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [gpsCheck, setGpsCheck] = useState<{
+    status: "idle" | "checking" | "ready" | "error";
+    accuracyM: number | null;
+    message: string;
+  }>({
+    status: "idle",
+    accuracyM: null,
+    message: "현장에서 GPS 수신 상태를 미리 확인할 수 있어요.",
+  });
   const [tracking, setTracking] = useState<{
     active: boolean;
     elapsedSeconds: number;
@@ -802,6 +811,40 @@ export default function Home() {
         maximumAge: 0,
       }),
     );
+
+  const checkGpsStatus = async () => {
+    if (!navigator.geolocation) {
+      setGpsCheck({
+        status: "error",
+        accuracyM: null,
+        message: "이 기기에서는 위치 기능을 사용할 수 없어요.",
+      });
+      return;
+    }
+    setGpsCheck({
+      status: "checking",
+      accuracyM: null,
+      message: "현재 위치와 GPS 정확도를 확인하고 있어요…",
+    });
+    try {
+      const position = await getGps();
+      const accuracyM = Math.round(position.coords.accuracy);
+      setGpsCheck({
+        status: "ready",
+        accuracyM,
+        message:
+          accuracyM <= 50
+            ? "GPS 상태가 좋아요. 지금 위치에서 인증을 시도할 수 있어요."
+            : "GPS 오차가 커요. 야외의 탁 트인 곳에서 다시 확인해주세요.",
+      });
+    } catch {
+      setGpsCheck({
+        status: "error",
+        accuracyM: null,
+        message: "휴대전화 설정에서 위치 권한을 허용한 뒤 다시 확인해주세요.",
+      });
+    }
+  };
 
   const recommendNearbyRegions = async () => {
     if (!navigator.geolocation) {
@@ -1367,9 +1410,15 @@ export default function Home() {
             <button
               key={item.id}
               className={`${item.done ? "done" : ""} ${item.title === "Lucky!" || item.title === "FREE" ? "free" : ""}`}
+              title={item.title}
               onClick={() => {
                 setSelected(item);
                 setMessage(null);
+                setGpsCheck({
+                  status: "idle",
+                  accuracyM: null,
+                  message: "현장에서 GPS 수신 상태를 미리 확인할 수 있어요.",
+                });
                 setAnswer("");
                 setPhotoStage("DETAIL");
                 setPhotoPreview(null);
@@ -1880,6 +1929,27 @@ export default function Home() {
                         GPS를 켜고 장소 가까이에서 인증해주세요. 위치 권한이
                         꺼져 있거나 오차가 크면 인증할 수 없습니다.
                       </p>
+                      <div
+                        className={`gps-preflight ${gpsCheck.status}`}
+                        aria-live="polite"
+                      >
+                        <div>
+                          <b>GPS 사전 점검</b>
+                          {gpsCheck.accuracyM !== null && (
+                            <strong>오차 약 {gpsCheck.accuracyM}m</strong>
+                          )}
+                        </div>
+                        <p>{gpsCheck.message}</p>
+                        <button
+                          type="button"
+                          onClick={() => void checkGpsStatus()}
+                          disabled={gpsCheck.status === "checking"}
+                        >
+                          {gpsCheck.status === "checking"
+                            ? "확인 중…"
+                            : "현재 위치 점검"}
+                        </button>
+                      </div>
                     </>
                   )}
                   {selected.kind === "PHOTO" && (

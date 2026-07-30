@@ -363,8 +363,19 @@ test("shows GPS place and permission guidance for visit missions", async () => {
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
   );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
   assert.match(pageSource, /인증 반경/);
   assert.match(pageSource, /위치 권한/);
   assert.match(pageSource, /selected\.place/);
   assert.match(pageSource, /navigator\.geolocation\.getCurrentPosition/);
+  assert.match(pageSource, /GPS 사전 점검/);
+  assert.match(pageSource, /현재 위치 점검/);
+  assert.match(pageSource, /오차 약/);
+  assert.match(stylesSource, /repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(stylesSource, /overflow-wrap: anywhere/);
+  assert.match(stylesSource, /-webkit-line-clamp: 3/);
+  assert.match(pageSource, /title=\{item\.title\}/);
 });
