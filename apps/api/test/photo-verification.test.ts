@@ -15,6 +15,10 @@ const database = {
         title: "신호등 찾기",
         description: "교차로의 신호등을 촬영하세요.",
         targetValue: "1",
+        verificationPolicy: {
+          type: "PHOTO",
+          requiredSubject: "TRAFFIC_LIGHT",
+        },
       },
     })),
   },
@@ -49,6 +53,32 @@ describe("PhotoVerificationService", () => {
         imageDataUrl: image,
       }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it("accepts a free-form record photo without calling AI", async () => {
+    database.sessionCell.findFirst.mockResolvedValueOnce({
+      missionSnapshot: {
+        kind: "PHOTO",
+        title: "오늘의 동네 한 장",
+        description: "오늘 기억하고 싶은 동네 풍경을 남겨보세요.",
+        verificationPolicy: {
+          type: "PHOTO",
+          photoVerificationMode: "RECORD",
+        },
+      },
+    } as never);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const service = new PhotoVerificationService(database as never);
+    const result = await service.analyze({
+      userId: "user",
+      sessionId: "session",
+      cellId: "cell",
+      imageDataUrl: image,
+    });
+
+    expect(result.decision).toBe("APPROVED");
+    expect(result.model).toBe("record-only");
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("returns a structured verdict from the Gemini vision check", async () => {

@@ -466,6 +466,9 @@ export default function Home() {
     distanceM: 0,
     latest: null,
   });
+  const [trackingMissionId, setTrackingMissionId] = useState<string | null>(
+    null,
+  );
   const cameraInput = useRef<HTMLInputElement>(null);
   const albumInput = useRef<HTMLInputElement>(null);
   const trackingWatchId = useRef<number | null>(null);
@@ -883,11 +886,11 @@ export default function Home() {
       distanceM: 0,
       latest: null,
     });
+    setTrackingMissionId(null);
   };
 
   const closeMission = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
-    resetTracking();
     setPhotoPreview(null);
     setPhotoStage("DETAIL");
     setTextRecord("");
@@ -993,9 +996,20 @@ export default function Home() {
       setMessage("이 기기에서는 GPS 기록을 사용할 수 없어요.");
       return;
     }
+    if (
+      tracking.active &&
+      trackingMissionId &&
+      trackingMissionId !== selected.id
+    ) {
+      setMessage(
+        "다른 미션의 GPS 기록이 진행 중이에요. 진행 중인 미션을 먼저 완료해주세요.",
+      );
+      return;
+    }
     setMessage(null);
     trackingStartedAt.current = Date.now();
     lastTrackingPosition.current = null;
+    setTrackingMissionId(selected.id);
     setTracking({
       active: true,
       elapsedSeconds: 0,
@@ -1291,10 +1305,14 @@ export default function Home() {
   const trackingMission =
     selected?.kind === "WALK_DISTANCE" || selected?.kind === "COMPOSITE";
   const trackingTarget = selected?.targetValue ?? 0;
+  const trackingBelongsToSelected =
+    Boolean(selected) && trackingMissionId === selected?.id;
   const trackingCurrent =
-    selected?.kind === "WALK_DISTANCE"
-      ? tracking.distanceM / 1_000
-      : tracking.elapsedSeconds;
+    !trackingBelongsToSelected
+      ? 0
+      : selected?.kind === "WALK_DISTANCE"
+        ? tracking.distanceM / 1_000
+        : tracking.elapsedSeconds;
   const trackingReady =
     trackingMission && trackingTarget > 0 && trackingCurrent >= trackingTarget;
   const trackingProgress =
@@ -2056,15 +2074,15 @@ export default function Home() {
                           </span>
                           <b>
                             {selected.kind === "WALK_DISTANCE"
-                              ? `${(tracking.distanceM / 1_000).toFixed(2)} / ${trackingTarget} km`
-                              : `${trackingTime(tracking.elapsedSeconds)} / ${trackingTime(trackingTarget)}`}
+                              ? `${trackingCurrent.toFixed(2)} / ${trackingTarget} km`
+                              : `${trackingTime(trackingCurrent)} / ${trackingTime(trackingTarget)}`}
                           </b>
                         </div>
                         <div className="track">
                           <i style={{ width: `${trackingProgress}%` }} />
                         </div>
                         <small>
-                          {tracking.active
+                          {trackingBelongsToSelected && tracking.active
                             ? tracking.latest
                               ? `GPS 정확도 약 ${Math.round(tracking.latest.accuracyM)}m`
                               : "GPS 신호를 찾고 있어요…"
@@ -2116,7 +2134,7 @@ export default function Home() {
                       )
                     ) : trackingMission ? (
                       <div className="tracking-actions">
-                        {tracking.active ? (
+                        {trackingBelongsToSelected && tracking.active ? (
                           <button
                             className="secondary"
                             onClick={stopTracking}
@@ -2128,7 +2146,11 @@ export default function Home() {
                           <button
                             className="secondary"
                             onClick={startTracking}
-                            disabled={selected.done || submitting}
+                            disabled={
+                              selected.done ||
+                              submitting ||
+                              (tracking.active && !trackingBelongsToSelected)
+                            }
                           >
                             {tracking.elapsedSeconds > 0
                               ? "처음부터 다시 기록"

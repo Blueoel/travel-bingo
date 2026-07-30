@@ -58,6 +58,19 @@ export class PhotoVerificationService {
       );
     }
 
+    const verificationPolicy = asRecord(mission.verificationPolicy);
+    if (!requiresAiJudgement(verificationPolicy)) {
+      return {
+        decision: "APPROVED",
+        targetVisible: true,
+        confidence: 1,
+        evidence: ["자유 기록형 사진 미션 제출"],
+        failureReasons: [],
+        retryGuide: null,
+        model: "record-only",
+      };
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException({
@@ -132,6 +145,19 @@ export class PhotoVerificationService {
       parseAnalysis(extractGeminiText(payload), model),
     );
   }
+}
+
+function requiresAiJudgement(
+  policy: Record<string, unknown> | null,
+): boolean {
+  if (policy?.photoVerificationMode === "RECORD") return false;
+  if (policy?.photoVerificationMode === "AI") return true;
+  return Boolean(
+    policy?.requiredSubject ||
+      policy?.requiredColor ||
+      policy?.requiredObjects ||
+      policy?.requiredText,
+  );
 }
 
 function extractGeminiText(payload: unknown): string {
