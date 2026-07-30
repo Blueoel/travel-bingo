@@ -134,6 +134,20 @@ test("provides a data-connected home screen after login", async () => {
   assert.match(pageSource, /region\.attraction\?\.imageUrl/);
 });
 
+test("lists Daily, region, and event bingo entries from one catalog", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /activeTab === "catalog"/);
+  assert.match(pageSource, /apiFetch\("\/bingos"\)/);
+  assert.match(pageSource, /"DAILY" \| "REGION" \| "EVENT"/);
+  assert.match(pageSource, /진행 중인 빙고를 이어가거나/);
+  assert.match(pageSource, /setActiveTab\("catalog"\)/);
+  assert.match(pageSource, /bingo\.type === "DAILY"/);
+});
+
 test("proxies API sessions through the participant origin", async () => {
   let receivedCookie = "";
   const upstream = createServer((request, response) => {

@@ -93,6 +93,20 @@ type RegionRecommendation = {
     source: "KTO" | "DATABASE";
   } | null;
 };
+type BingoCatalogItem = {
+  id: string;
+  templateId: string;
+  sessionId: string | null;
+  type: "DAILY" | "REGION" | "EVENT";
+  title: string;
+  regionName: string | null;
+  state: "IN_PROGRESS" | "COMPLETED" | "AVAILABLE";
+  completedCellCount: number;
+  totalCellCount: number;
+  totalPoints: number;
+  startsAt: string | null;
+  endsAt: string | null;
+};
 
 const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
@@ -357,6 +371,7 @@ export default function Home() {
   >("checking");
   const [account, setAccount] = useState<AccountUser | null>(null);
   const [items, setItems] = useState<Mission[]>(demoMissions);
+  const completeCount = items.filter((item) => item.done).length;
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
   const [lineKeys, setLineKeys] = useState<string[]>([]);
@@ -379,8 +394,10 @@ export default function Home() {
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
   const [activeTab, setActiveTab] = useState<
-    "home" | "bingo" | "ranking" | "my"
+    "home" | "catalog" | "bingo" | "ranking" | "my"
   >("home");
+  const [bingoCatalog, setBingoCatalog] = useState<BingoCatalogItem[]>([]);
+  const [bingoCatalogLoading, setBingoCatalogLoading] = useState(false);
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [ranking, setRanking] = useState<RankingResult>({
@@ -579,6 +596,38 @@ export default function Home() {
       .finally(() => setRankingLoading(false));
     return () => window.clearInterval(timer);
   }, [activeTab, rankingPeriod, rankingScope, nickname]);
+
+  useEffect(() => {
+    if (activeTab !== "catalog") return;
+    setBingoCatalogLoading(true);
+    void apiFetch("/bingos")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Bingo catalog unavailable");
+        const payload = (await response.json()) as {
+          items: BingoCatalogItem[];
+        };
+        setBingoCatalog(payload.items);
+      })
+      .catch(() => {
+        setBingoCatalog([
+          {
+            id: "demo-daily",
+            templateId: "demo-daily",
+            sessionId,
+            type: "DAILY",
+            title: "오늘의 산책 빙고",
+            regionName: null,
+            state: "IN_PROGRESS",
+            completedCellCount: completeCount,
+            totalCellCount: 25,
+            totalPoints: points,
+            startsAt: null,
+            endsAt: null,
+          },
+        ]);
+      })
+      .finally(() => setBingoCatalogLoading(false));
+  }, [activeTab, completeCount, points, sessionId]);
 
   const loadRegionRecommendations = async (coordinates?: {
     latitude: number;
@@ -1124,7 +1173,6 @@ export default function Home() {
     }
   };
 
-  const completeCount = items.filter((item) => item.done).length;
   const trackingMission =
     selected?.kind === "WALK_DISTANCE" || selected?.kind === "COMPOSITE";
   const trackingTarget = selected?.targetValue ?? 0;
@@ -1357,7 +1405,7 @@ export default function Home() {
 
           <div className="home-section-title">
             <h2>진행 중 빙고</h2>
-            <button type="button" onClick={() => setActiveTab("bingo")}>
+            <button type="button" onClick={() => setActiveTab("catalog")}>
               더보기 ›
             </button>
           </div>
@@ -1391,6 +1439,96 @@ export default function Home() {
               <b>작은 발견 하나가 여행의 시작이에요.</b>
             </div>
           </div>
+        </section>
+      )}
+      {activeTab === "catalog" && (
+        <section className="catalog-screen">
+          <header className="catalog-header">
+            <button
+              type="button"
+              aria-label="홈으로 돌아가기"
+              onClick={() => setActiveTab("home")}
+            >
+              ←
+            </button>
+            <div>
+              <small>MY BINGO NOTE</small>
+              <h1>나의 빙고</h1>
+            </div>
+          </header>
+          <p className="catalog-intro">
+            진행 중인 빙고를 이어가거나 새로운 여행을 시작해보세요.
+          </p>
+          {bingoCatalogLoading ? (
+            <p className="catalog-state">빙고 노트를 펼치고 있어요…</p>
+          ) : bingoCatalog.length === 0 ? (
+            <p className="catalog-state">
+              지금 참여할 수 있는 빙고가 아직 없어요.
+            </p>
+          ) : (
+            <div className="catalog-list">
+              {bingoCatalog.map((bingo) => {
+                const percent =
+                  bingo.totalCellCount > 0
+                    ? Math.round(
+                        (bingo.completedCellCount / bingo.totalCellCount) * 100,
+                      )
+                    : 0;
+                const typeLabel =
+                  bingo.type === "DAILY"
+                    ? "DAILY"
+                    : bingo.type === "EVENT"
+                      ? "EVENT"
+                      : "REGION";
+                const stateLabel =
+                  bingo.state === "IN_PROGRESS"
+                    ? "이어하기"
+                    : bingo.state === "COMPLETED"
+                      ? "완료"
+                      : "시작하기";
+                return (
+                  <button
+                    className={`catalog-card ${bingo.type.toLowerCase()}`}
+                    type="button"
+                    key={bingo.id}
+                    onClick={() => {
+                      if (bingo.type === "DAILY") {
+                        setActiveTab("bingo");
+                        return;
+                      }
+                      setMessage(
+                        `${bingo.title} 빙고판 생성 기능을 이어서 연결할게요.`,
+                      );
+                    }}
+                  >
+                    <span className="catalog-card-icon" aria-hidden="true">
+                      {bingo.type === "DAILY"
+                        ? "☀"
+                        : bingo.type === "EVENT"
+                          ? "✿"
+                          : "⌖"}
+                    </span>
+                    <span className="catalog-card-body">
+                      <small>
+                        {typeLabel}
+                        {bingo.regionName ? ` · ${bingo.regionName}` : ""}
+                      </small>
+                      <strong>{bingo.title}</strong>
+                      <em>
+                        {bingo.state === "AVAILABLE"
+                          ? `${bingo.totalCellCount}개 미션`
+                          : `${bingo.completedCellCount} / ${bingo.totalCellCount} · ${bingo.totalPoints}P`}
+                      </em>
+                      <i>
+                        <b style={{ width: `${percent}%` }} />
+                      </i>
+                    </span>
+                    <span className="catalog-card-action">{stateLabel} ›</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
       {activeTab === "ranking" && (
