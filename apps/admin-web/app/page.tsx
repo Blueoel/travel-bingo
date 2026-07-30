@@ -1,7 +1,16 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type Region = { id: string; name: string };
+type Region = {
+  id: string;
+  name: string;
+  administrativeCode?: string;
+  status?: "ACTIVE" | "INACTIVE" | "NEEDS_REVIEW";
+  activeMissionCount?: number;
+  publishedBoardCount?: number;
+  canActivate?: boolean;
+  missingMissionCount?: number;
+};
 type Mission = {
   id: string;
   title: string;
@@ -78,9 +87,9 @@ export default function AdminPage() {
     [kind, setKind] = useState(""),
     [similarityGroup, setSimilarityGroup] = useState(""),
     [dailyCandidate, setDailyCandidate] = useState("");
-  const [view, setView] = useState<"catalog" | "daily" | "reviews" | "users">(
-      "catalog",
-    ),
+  const [view, setView] = useState<
+    "catalog" | "daily" | "regions" | "reviews" | "users"
+  >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<PhotoReview[]>([]);
@@ -99,6 +108,7 @@ export default function AdminPage() {
     deleted: 0,
   });
   const [userQuery, setUserQuery] = useState("");
+  const [regionQuery, setRegionQuery] = useState("");
   const [userStatus, setUserStatus] = useState("");
   const [userLoading, setUserLoading] = useState(false);
   const [error, setError] = useState(""),
@@ -201,6 +211,34 @@ export default function AdminPage() {
       return setError(`Daily 구성 저장 실패: ${await result.text()}`);
     setNotice(`Daily 후보 ${dailyIds.length}개를 저장했습니다.`);
     setError("");
+  }
+  async function updateRegionStatus(
+    region: Region,
+    status: "ACTIVE" | "INACTIVE",
+  ) {
+    const result = await fetch(
+      `${API}/admin/missions/regions/${region.id}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": ADMIN,
+        },
+        body: JSON.stringify({ status }),
+      },
+    );
+    if (!result.ok) {
+      const payload = (await result.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+      return setError(payload?.message ?? "지역 상태를 변경하지 못했습니다.");
+    }
+    setNotice(
+      status === "ACTIVE"
+        ? `${region.name} 지역 서비스를 활성화했습니다.`
+        : `${region.name} 지역 서비스를 비활성화했습니다.`,
+    );
+    await load();
   }
   async function loadReviews() {
     try {
@@ -326,6 +364,15 @@ export default function AdminPage() {
       .map((id) => available.get(id))
       .filter((mission): mission is Mission => Boolean(mission));
   }, [dailyCandidates, dailyIds, dailyMissions]);
+  const visibleRegions = useMemo(() => {
+    const normalized = regionQuery.trim().toLocaleLowerCase("ko");
+    if (!normalized) return regions;
+    return regions.filter(
+      (region) =>
+        region.name.toLocaleLowerCase("ko").includes(normalized) ||
+        region.administrativeCode?.includes(normalized),
+    );
+  }, [regionQuery, regions]);
   const dailyHealth = useMemo(() => {
     const difficultyCounts = [1, 2, 3].map(
       (level) =>
@@ -399,7 +446,12 @@ export default function AdminPage() {
           >
             사진 검수
           </button>
-          <span>지역 관리</span>
+          <button
+            className={view === "regions" ? "selected" : ""}
+            onClick={() => setView("regions")}
+          >
+            지역 관리
+          </button>
           <button
             className={view === "users" ? "selected" : ""}
             onClick={() => setView("users")}
@@ -420,6 +472,8 @@ export default function AdminPage() {
                 ? "미션 관리"
                 : view === "daily"
                   ? "Daily 빙고 구성"
+                  : view === "regions"
+                    ? "지역 관리"
                   : view === "reviews"
                     ? "사진 검수"
                     : "사용자 관리"}
@@ -429,6 +483,8 @@ export default function AdminPage() {
                 ? "공통·지역 미션을 등록하고 운영 상태를 관리합니다."
                 : view === "daily"
                   ? "매일 무작위로 배치할 공통 미션 후보를 선택합니다."
+                  : view === "regions"
+                    ? "지역 빙고 준비 상태를 확인하고 서비스 노출을 관리합니다."
                   : view === "reviews"
                     ? "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."
                     : "가입 계정과 이용 상태를 안전하게 관리합니다."}
@@ -750,6 +806,137 @@ export default function AdminPage() {
               })}
             </div>
           </section>
+        ) : view === "regions" ? (
+          <>
+            <section className="summary">
+              <article>
+                <span>전체 지역</span>
+                <b>{regions.length}</b>
+                <small>등록된 서비스 지역</small>
+              </article>
+              <article>
+                <span>활성 지역</span>
+                <b className="green">
+                  {regions.filter((region) => region.status === "ACTIVE").length}
+                </b>
+                <small>사용자에게 노출 중</small>
+              </article>
+              <article>
+                <span>활성화 가능</span>
+                <b>
+                  {
+                    regions.filter(
+                      (region) =>
+                        region.canActivate && region.status !== "ACTIVE",
+                    ).length
+                  }
+                </b>
+                <small>미션과 빙고판 준비 완료</small>
+              </article>
+              <article>
+                <span>준비 중</span>
+                <b>
+                  {regions.filter((region) => !region.canActivate).length}
+                </b>
+                <small>콘텐츠 보강 필요</small>
+              </article>
+            </section>
+            <section className="catalog regionCatalog">
+              <div className="catalogHead">
+                <div>
+                  <h2>지역 서비스 준비 현황</h2>
+                  <p>
+                    활성 지역 미션 25개와 공개된 25칸 빙고판이 있어야
+                    활성화할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <div className="filters regionFilters">
+                <input
+                  aria-label="지역 검색"
+                  placeholder="지역명 또는 행정구역 코드 검색"
+                  value={regionQuery}
+                  onChange={(event) => setRegionQuery(event.target.value)}
+                />
+              </div>
+              <div className="table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>지역</th>
+                      <th>활성 미션</th>
+                      <th>공개 빙고판</th>
+                      <th>준비 상태</th>
+                      <th>서비스 상태</th>
+                      <th>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRegions.map((region) => (
+                      <tr key={region.id}>
+                        <td>
+                          <b>{region.name}</b>
+                          <small>
+                            행정구역 코드 {region.administrativeCode ?? "-"}
+                          </small>
+                        </td>
+                        <td>
+                          <b>{region.activeMissionCount ?? 0} / 25</b>
+                          <small>
+                            {(region.missingMissionCount ?? 0) > 0
+                              ? `${region.missingMissionCount}개 부족`
+                              : "기준 충족"}
+                          </small>
+                        </td>
+                        <td>{region.publishedBoardCount ?? 0}개</td>
+                        <td>
+                          <mark
+                            className={
+                              region.canActivate
+                                ? "activeStatus"
+                                : "inactiveStatus"
+                            }
+                          >
+                            {region.canActivate ? "활성화 가능" : "준비 중"}
+                          </mark>
+                        </td>
+                        <td>
+                          {region.status === "ACTIVE" ? "서비스 중" : "비활성"}
+                        </td>
+                        <td>
+                          <button
+                            className="textButton"
+                            disabled={
+                              region.status !== "ACTIVE" && !region.canActivate
+                            }
+                            onClick={() =>
+                              void updateRegionStatus(
+                                region,
+                                region.status === "ACTIVE"
+                                  ? "INACTIVE"
+                                  : "ACTIVE",
+                              )
+                            }
+                          >
+                            {region.status === "ACTIVE"
+                              ? "비활성화"
+                              : "활성화"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!visibleRegions.length && (
+                      <tr>
+                        <td colSpan={6} className="empty">
+                          검색 결과와 일치하는 지역이 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
         ) : view === "reviews" ? (
           <section className="reviewPanel">
             <div className="catalogHead">

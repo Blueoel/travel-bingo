@@ -18,6 +18,7 @@ import {
   type MissionCatalogInput,
   type MissionCatalogQuery,
   type DailyCollectionInput,
+  type RegionAdminSummary,
 } from "./mission-catalog.service.js";
 
 interface CsvResponse {
@@ -35,7 +36,7 @@ export class MissionCatalogController {
   async listRegions(
     @Headers("cookie") cookie: string | undefined,
     @Headers("x-user-id") developmentUserId: string | undefined,
-  ) {
+  ): Promise<RegionAdminSummary[]> {
     await this.auth.requireAdminId(cookie, developmentUserId);
     return this.missions.listRegions();
   }
@@ -93,6 +94,20 @@ export class MissionCatalogController {
   ) {
     await this.auth.requireAdminId(cookie, developmentUserId);
     return this.missions.updateDailyCollection(body);
+  }
+
+  @Patch("regions/:id/status")
+  async updateRegionStatus(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Body() body: { status?: string },
+  ): Promise<RegionAdminSummary> {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    if (body.status !== "ACTIVE" && body.status !== "INACTIVE") {
+      throw new BadRequestException("Region status must be ACTIVE or INACTIVE.");
+    }
+    return this.missions.updateRegionStatus(id, body.status);
   }
 
   @Patch(":id")

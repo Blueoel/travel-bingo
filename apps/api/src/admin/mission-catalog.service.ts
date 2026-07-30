@@ -66,18 +66,76 @@ export interface DailyCollectionInput {
   readonly missionIds: readonly string[];
 }
 
+export interface RegionAdminSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly administrativeCode: string;
+  readonly status: "ACTIVE" | "INACTIVE" | "NEEDS_REVIEW";
+  readonly activeMissionCount: number;
+  readonly publishedBoardCount: number;
+  readonly canActivate: boolean;
+  readonly missingMissionCount: number;
+}
+
 @Injectable()
 export class MissionCatalogService {
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
   ) {}
 
-  async listRegions() {
-    return this.database.region.findMany({
-      where: { status: "ACTIVE" },
+  async listRegions(): Promise<RegionAdminSummary[]> {
+    const regions = await this.database.region.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      include: {
+        missionLinks: {
+          where: { mission: { status: "ACTIVE", scope: "REGION" } },
+          select: { missionId: true },
+        },
+        templates: {
+          where: { status: "PUBLISHED", type: "REGION" },
+          select: {
+            id: true,
+            title: true,
+            _count: { select: { cells: true } },
+          },
+        },
+      },
     });
+    return regions.map((region) => {
+      const publishedBoardCount = region.templates.filter(
+        (template) => template._count.cells === 25,
+      ).length;
+      const activeMissionCount = region.missionLinks.length;
+      return {
+        id: region.id,
+        name: region.name,
+        administrativeCode: region.administrativeCode,
+        status: region.status,
+        activeMissionCount,
+        publishedBoardCount,
+        canActivate: activeMissionCount >= 25 && publishedBoardCount > 0,
+        missingMissionCount: Math.max(0, 25 - activeMissionCount),
+      };
+    });
+  }
+
+  async updateRegionStatus(
+    id: string,
+    status: "ACTIVE" | "INACTIVE",
+  ): Promise<RegionAdminSummary> {
+    const regions = await this.listRegions();
+    const region = regions.find((candidate) => candidate.id === id);
+    if (!region) throw new NotFoundException("Region not found.");
+    if (status === "ACTIVE" && !region.canActivate) {
+      throw new BadRequestException(
+        "지역 미션 25개와 공개된 25칸 지역 빙고판이 있어야 활성화할 수 있습니다.",
+      );
+    }
+    await this.database.region.update({
+      where: { id },
+      data: { status },
+    });
+    return { ...region, status };
   }
 
   async list(query: MissionCatalogQuery) {
