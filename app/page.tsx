@@ -25,7 +25,21 @@ type Mission = {
     type?: string;
     maxLength?: number;
     durationSeconds?: number;
+    maximumAccuracyM?: number;
+    maximumAgeMs?: number;
   };
+  radiusM?: number | null;
+  place?: {
+    id: string;
+    title: string;
+    address: string | null;
+    latitude: string;
+    longitude: string;
+    imageUrl?: string | null;
+    source?: string;
+    externalContentId?: string;
+    contentType?: string;
+  } | null;
   estimatedMinutesMin?: number | null;
   estimatedMinutesMax?: number | null;
   similarityGroup?: string | null;
@@ -81,6 +95,13 @@ type MissionDraft = {
   scope: "REGION";
   category: string;
   regionId: string;
+  placeTitle?: string;
+  placeAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  imageUrl?: string | null;
+  externalContentId?: string;
+  contentTypeId?: string | null;
 };
 const API = "/api/backend";
 const PHOTO_API =
@@ -216,13 +237,20 @@ export default function AdminPage() {
   }
   function createMissionFromAttraction(attraction: AttractionRecommendation) {
     setEditing(null);
-    setFormVerificationType("PHOTO");
+    setFormVerificationType("GPS");
     setMissionDraft({
       title: `${attraction.title} 방문하기`,
       description: `${attraction.title}을 방문해 인증 사진을 남겨보세요.`,
       scope: "REGION",
       category: "관광지 탐방",
       regionId: selectedRegionId,
+      placeTitle: attraction.title,
+      placeAddress: attraction.address ?? "",
+      latitude: attraction.latitude,
+      longitude: attraction.longitude,
+      imageUrl: attraction.imageUrl,
+      externalContentId: attraction.contentId,
+      contentTypeId: attraction.contentTypeId,
     });
     setOpen(true);
   }
@@ -238,7 +266,35 @@ export default function AdminPage() {
               type: "TIMER",
               durationSeconds: Number(data.timerMinutes) * 60,
             }
-          : { type: verificationType };
+          : verificationType === "GPS"
+            ? {
+                type: "GPS",
+                maximumAccuracyM: Number(data.maximumAccuracyM),
+                maximumAgeMs: 60_000,
+              }
+            : { type: verificationType };
+    const place =
+      verificationType === "GPS"
+        ? {
+            title: String(data.placeTitle),
+            address: String(data.placeAddress || ""),
+            latitude: Number(data.latitude),
+            longitude: Number(data.longitude),
+            imageUrl: missionDraft?.imageUrl ?? editing?.place?.imageUrl ?? null,
+            externalContentId:
+              missionDraft?.externalContentId ??
+              editing?.place?.externalContentId ??
+              null,
+            contentType:
+              missionDraft?.contentTypeId ??
+              editing?.place?.contentType ??
+              "TOURIST_SPOT",
+            source:
+              missionDraft?.externalContentId || editing?.place?.source === "KTO"
+                ? "KTO"
+                : "ADMIN",
+          }
+        : null;
     const result = await fetch(
       editing ? `${API}/admin/missions/${editing.id}` : `${API}/admin/missions`,
       {
@@ -249,6 +305,9 @@ export default function AdminPage() {
           estimatedMinutesMin: Number(data.estimatedMinutesMin),
           estimatedMinutesMax: Number(data.estimatedMinutesMax),
           verificationPolicy,
+          radiusM:
+            verificationType === "GPS" ? Number(data.radiusM) : null,
+          place,
           regionIds: data.regionId ? [data.regionId] : [],
           changeNote: editing ? "관리자 화면에서 수정" : "관리자 화면에서 생성",
         }),
@@ -1457,6 +1516,94 @@ export default function AdminPage() {
                   <option value="MANUAL">직접 확인</option>
                 </select>
               </label>
+              {formVerificationType === "GPS" && (
+                <div className="verificationSetting gpsMissionSettings">
+                  <strong>GPS 방문 인증 장소</strong>
+                  <label>
+                    장소명
+                    <input
+                      name="placeTitle"
+                      required
+                      defaultValue={
+                        editing?.place?.title ?? missionDraft?.placeTitle ?? ""
+                      }
+                      placeholder="예: 안성맞춤랜드"
+                    />
+                  </label>
+                  <label>
+                    주소
+                    <input
+                      name="placeAddress"
+                      defaultValue={
+                        editing?.place?.address ??
+                        missionDraft?.placeAddress ??
+                        ""
+                      }
+                      placeholder="장소 주소"
+                    />
+                  </label>
+                  <label>
+                    위도
+                    <input
+                      name="latitude"
+                      type="number"
+                      step="0.000001"
+                      min="-90"
+                      max="90"
+                      required
+                      defaultValue={
+                        editing?.place?.latitude ?? missionDraft?.latitude ?? ""
+                      }
+                      placeholder="37.008000"
+                    />
+                  </label>
+                  <label>
+                    경도
+                    <input
+                      name="longitude"
+                      type="number"
+                      step="0.000001"
+                      min="-180"
+                      max="180"
+                      required
+                      defaultValue={
+                        editing?.place?.longitude ??
+                        missionDraft?.longitude ??
+                        ""
+                      }
+                      placeholder="127.279700"
+                    />
+                  </label>
+                  <label>
+                    인증 반경(m)
+                    <input
+                      name="radiusM"
+                      type="number"
+                      min="30"
+                      max="1000"
+                      required
+                      defaultValue={editing?.radiusM ?? 100}
+                    />
+                  </label>
+                  <label>
+                    허용 GPS 오차(m)
+                    <input
+                      name="maximumAccuracyM"
+                      type="number"
+                      min="10"
+                      max="200"
+                      required
+                      defaultValue={
+                        editing?.verificationPolicy?.maximumAccuracyM ?? 50
+                      }
+                    />
+                  </label>
+                  <small>
+                    사용자가 인증 반경 안에 있고 GPS 오차가 허용값 이하일
+                    때만 완료됩니다.
+                  </small>
+                </div>
+              )}
               {formVerificationType === "TEXT" && (
                 <label className="verificationSetting">
                   최대 글자 수
