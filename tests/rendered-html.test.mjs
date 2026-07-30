@@ -146,6 +146,11 @@ test("lists Daily, region, and event bingo entries from one catalog", async () =
   assert.match(pageSource, /진행 중인 빙고를 이어가거나/);
   assert.match(pageSource, /setActiveTab\("catalog"\)/);
   assert.match(pageSource, /bingo\.type === "DAILY"/);
+  assert.match(pageSource, /openCatalogBingo/);
+  assert.match(pageSource, /\/bingos\/sessions\/\$\{bingo\.sessionId\}/);
+  assert.match(pageSource, /\/bingos\/\$\{bingo\.templateId\}\/sessions/);
+  assert.match(pageSource, /activeTab === "bingo"/);
+  assert.match(pageSource, /currentBingo\.title/);
 });
 
 test("proxies API sessions through the participant origin", async () => {
