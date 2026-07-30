@@ -100,18 +100,34 @@ test("uses cookie-backed email authentication without a fixed demo user", async 
     /회원가입이 완료됐어요\. 새 계정으로 로그인해주세요\./,
   );
   assert.match(authSource, /await onAuthenticated\(result\.user\)/);
-  assert.match(pageSource, /const enterBingoAfterLogin = async/);
-  assert.match(pageSource, /setActiveTab\("bingo"\)/);
+  assert.match(pageSource, /const enterHomeAfterLogin = async/);
+  assert.match(pageSource, /setActiveTab\("home"\)/);
   assert.match(pageSource, /await loadDaily\(true\)/);
   assert.match(
     pageSource,
-    /<AuthScreen onAuthenticated=\{enterBingoAfterLogin\} \/>/,
+    /<AuthScreen onAuthenticated=\{enterHomeAfterLogin\} \/>/,
   );
   assert.match(backendProxySource, /process\.env\.BACKEND_API_BASE_URL/);
   assert.match(backendProxySource, /request\.headers/);
   assert.match(backendProxySource, /toFirstPartyCookie/);
   assert.match(backendProxySource, /cache-control", "no-store"/);
   assert.doesNotMatch(pageSource, /11111111-1111-4111-8111-111111111111/);
+});
+
+test("provides a data-connected home screen after login", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /activeTab === "home"/);
+  assert.match(pageSource, /좋은 오후예요/);
+  assert.match(pageSource, /Daily Bingo/);
+  assert.match(pageSource, /추천 지역/);
+  assert.match(pageSource, /진행 중 빙고/);
+  assert.match(pageSource, /completeCount\} \/ 25 완료/);
+  assert.match(pageSource, /onClick=\{\(\) => setActiveTab\("bingo"\)\}/);
+  assert.match(pageSource, /className="app-toast"/);
 });
 
 test("proxies API sessions through the participant origin", async () => {

@@ -365,9 +365,9 @@ export default function Home() {
   );
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
-  const [activeTab, setActiveTab] = useState<"bingo" | "ranking" | "my">(
-    "bingo",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "home" | "bingo" | "ranking" | "my"
+  >("home");
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [ranking, setRanking] = useState<RankingResult>({
@@ -504,10 +504,10 @@ export default function Home() {
     }
   };
 
-  const enterBingoAfterLogin = async (
+  const enterHomeAfterLogin = async (
     user: Omit<AccountUser, "role"> & { role?: AccountUser["role"] },
   ) => {
-    setActiveTab("bingo");
+    setActiveTab("home");
     setSelected(null);
     setMessage(null);
     setAccount({
@@ -612,7 +612,7 @@ export default function Home() {
     setAccount(null);
     setSessionId(null);
     setSelected(null);
-    setActiveTab("bingo");
+    setActiveTab("home");
     setAuthStatus("unauthenticated");
 
     void apiFetch("/auth/logout", { method: "POST" }).catch(() => {
@@ -1095,7 +1095,7 @@ export default function Home() {
   }
 
   if (authStatus === "unauthenticated") {
-    return <AuthScreen onAuthenticated={enterBingoAfterLogin} />;
+    return <AuthScreen onAuthenticated={enterHomeAfterLogin} />;
   }
 
   return (
@@ -1189,6 +1189,125 @@ export default function Home() {
           해가 지기 전 20분 산책은 기분 전환에 좋아요.
         </p>
       </aside>
+      {activeTab === "home" && (
+        <section className="home-screen">
+          <header className="home-topbar">
+            <button type="button" aria-label="메뉴">
+              ☰
+            </button>
+            <b>travel bingo</b>
+            <button
+              type="button"
+              aria-label="알림"
+              onClick={() => setMessage("새로운 알림이 아직 없어요.")}
+            >
+              ♧
+            </button>
+          </header>
+
+          <div className="home-greeting">
+            <div>
+              <p>좋은 오후예요 :)</p>
+              <h1>
+                {nickname}님, 오늘은
+                <br />
+                어디를 걸어볼까요?
+              </h1>
+            </div>
+            <div className="home-walker" aria-hidden="true">
+              <span>☀</span>
+              <b>♙</b>
+              <i>⌁</i>
+            </div>
+          </div>
+
+          <button
+            className="daily-home-card"
+            type="button"
+            onClick={() => setActiveTab("bingo")}
+          >
+            <span>
+              <small>오늘의 빙고</small>
+              <strong>Daily Bingo</strong>
+              <em>
+                {completeCount} / 25 완료 · {lineKeys.length}줄 빙고
+              </em>
+            </span>
+            <div className="daily-notebook" aria-hidden="true">
+              <i>✓</i>
+              <i>✿</i>
+              <i>☆</i>
+              <i>⌁</i>
+            </div>
+          </button>
+
+          <div className="home-section-title">
+            <h2>추천 지역</h2>
+            <button
+              type="button"
+              onClick={() => setMessage("탐험 지도는 준비 중이에요.")}
+            >
+              더보기 ›
+            </button>
+          </div>
+          <div className="region-cards">
+            {[
+              ["안성", "안성맞춤의 도시", "🏯"],
+              ["강릉", "바다와 커피거리", "🌊"],
+              ["전주", "한옥마을 산책", "🏡"],
+            ].map(([name, copy, art]) => (
+              <button
+                type="button"
+                key={name}
+                onClick={() =>
+                  setMessage(`${name} 지역 빙고는 곧 공개할 예정이에요.`)
+                }
+              >
+                <span>{art}</span>
+                <b>{name}</b>
+                <small>{copy}</small>
+              </button>
+            ))}
+          </div>
+
+          <div className="home-section-title">
+            <h2>진행 중 빙고</h2>
+            <button type="button" onClick={() => setActiveTab("bingo")}>
+              더보기 ›
+            </button>
+          </div>
+          <button
+            className="ongoing-bingo-card"
+            type="button"
+            onClick={() => setActiveTab("bingo")}
+          >
+            <div className="ongoing-art" aria-hidden="true">
+              🌳
+            </div>
+            <span>
+              <small>DAILY WALK</small>
+              <strong>오늘의 산책 빙고</strong>
+              <em>{completeCount} / 25</em>
+              <i>
+                <b
+                  style={{
+                    width: `${Math.round((completeCount / 25) * 100)}%`,
+                  }}
+                />
+              </i>
+            </span>
+            <b>›</b>
+          </button>
+
+          <div className="home-event">
+            <span>✿</span>
+            <div>
+              <small>오늘의 산책 한마디</small>
+              <b>작은 발견 하나가 여행의 시작이에요.</b>
+            </div>
+          </div>
+        </section>
+      )}
       {activeTab === "ranking" && (
         <section className="ranking-screen">
           <header className="ranking-header">
@@ -1338,10 +1457,13 @@ export default function Home() {
         </section>
       )}
       <nav>
-        <button>
+        <button
+          className={activeTab === "home" ? "active" : ""}
+          onClick={() => setActiveTab("home")}
+        >
           <span>⌂</span>홈
         </button>
-        <button>
+        <button onClick={() => setMessage("탐험 지도는 다음 단계에서 만나요.")}>
           <span>♧</span>탐험
         </button>
         <button
@@ -1363,6 +1485,16 @@ export default function Home() {
           <span>○</span>마이
         </button>
       </nav>
+      {message && !selected && (
+        <button
+          type="button"
+          className="app-toast"
+          onClick={() => setMessage(null)}
+          aria-label="안내 메시지 닫기"
+        >
+          {message}
+        </button>
+      )}
       {selected && (
         <div className="modal-backdrop" onClick={closeMission}>
           <section
