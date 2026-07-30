@@ -13,6 +13,7 @@ import {
 } from "@travel-bingo/domain";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
+import { getDailyCycle, toDatabaseDate } from "../daily/daily-date.js";
 
 export type BingoCatalogType = "DAILY" | "REGION" | "EVENT";
 export type BingoCatalogState = "IN_PROGRESS" | "COMPLETED" | "AVAILABLE";
@@ -57,9 +58,19 @@ export class BingoCatalogService {
   ) {}
 
   async list(userId: string, now = new Date()): Promise<BingoCatalogItem[]> {
+    const currentDailyDate = toDatabaseDate(getDailyCycle(now).date);
     const [sessions, availableTemplates] = await Promise.all([
       this.database.bingoSession.findMany({
-        where: { userId },
+        where: {
+          userId,
+          OR: [
+            { template: { type: { not: "DAILY" } } },
+            {
+              template: { type: "DAILY" },
+              dailyDate: currentDailyDate,
+            },
+          ],
+        },
         include: {
           template: { include: { region: true } },
           cells: { select: { status: true } },

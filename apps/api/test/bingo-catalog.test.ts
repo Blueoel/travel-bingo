@@ -66,6 +66,18 @@ describe("BingoCatalogService", () => {
         }),
       }),
     );
+    expect(database.bingoSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "user-1",
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              dailyDate: new Date("2026-07-30T00:00:00.000Z"),
+            }),
+          ]),
+        }),
+      }),
+    );
   });
 
   it("does not duplicate an available template that already has a session", async () => {
