@@ -1036,6 +1036,47 @@ h1 {
 .tip b {
   color: #333;
 }
+.active-gps-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 74px;
+  z-index: 6;
+  width: min(calc(100% - 24px), 456px);
+  min-height: 48px;
+  padding: 10px 13px;
+  transform: translateX(-50%);
+  border: 1px solid #b9d2bd;
+  border-radius: 14px;
+  background: #173f31;
+  box-shadow: 0 8px 22px #1537292b;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.active-gps-banner span {
+  color: #8fe09c;
+  font-size: 11px;
+  animation: gps-pulse 1.4s ease-in-out infinite;
+}
+.active-gps-banner b {
+  font-size: 12px;
+}
+.active-gps-banner em {
+  color: #cce7d1;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.active-gps-banner strong {
+  margin-left: auto;
+  font-size: 11px;
+}
+@keyframes gps-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
 nav {
   position: fixed;
   bottom: 0;

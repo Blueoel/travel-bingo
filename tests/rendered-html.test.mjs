@@ -294,6 +294,10 @@ test("tracks GPS distance and duration missions before server verification", asy
   assert.match(pageSource, /GPS_DURATION_NOT_REACHED/);
   assert.match(pageSource, /type: "ACTIVITY"/);
   assert.match(pageSource, /목표 달성 후 인증 가능/);
+  assert.match(pageSource, /travel-bingo-active-gps/);
+  assert.match(pageSource, /visibilitychange/);
+  assert.match(pageSource, /active-gps-banner/);
+  assert.match(pageSource, /reopenTrackingMission/);
 });
 
 test("persists photo verdicts and prevents duplicate daily rewards", async () => {
