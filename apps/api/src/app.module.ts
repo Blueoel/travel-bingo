@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AdminModule } from "./admin/admin.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { BingoCatalogModule } from "./bingo-catalog/bingo-catalog.module.js";
 import { DailyModule } from "./daily/daily.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
@@ -12,6 +13,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module.
   imports: [
     DatabaseModule,
     AuthModule,
+    BingoCatalogModule,
     HealthModule,
     DailyModule,
     AdminModule,
