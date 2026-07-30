@@ -27,6 +27,7 @@ type Mission = {
     durationSeconds?: number;
     maximumAccuracyM?: number;
     maximumAgeMs?: number;
+    photoVerificationMode?: "AI" | "RECORD";
   };
   radiusM?: number | null;
   place?: {
@@ -272,7 +273,13 @@ export default function AdminPage() {
                 maximumAccuracyM: Number(data.maximumAccuracyM),
                 maximumAgeMs: 60_000,
               }
-            : { type: verificationType };
+            : verificationType === "PHOTO"
+              ? {
+                  type: "PHOTO",
+                  photoVerificationMode: String(data.photoVerificationMode),
+                  requiredPhotoCount: 1,
+                }
+              : { type: verificationType };
     const place =
       verificationType === "GPS"
         ? {
@@ -1516,6 +1523,26 @@ export default function AdminPage() {
                   <option value="MANUAL">직접 확인</option>
                 </select>
               </label>
+              {formVerificationType === "PHOTO" && (
+                <label className="verificationSetting">
+                  사진 판정 방식
+                  <select
+                    name="photoVerificationMode"
+                    defaultValue={
+                      editing?.verificationPolicy?.photoVerificationMode ??
+                      "RECORD"
+                    }
+                  >
+                    <option value="RECORD">자유 기록형 · 사진 제출로 완료</option>
+                    <option value="AI">정답형 · AI가 대상 확인</option>
+                  </select>
+                  <small>
+                    특정 사물이나 색처럼 정답이 분명할 때만 AI 판정형을
+                    사용하세요. 장소 기록, 분위기, 오래된 흔적처럼 주관적인
+                    미션은 자유 기록형이 적합합니다.
+                  </small>
+                </label>
+              )}
               {formVerificationType === "GPS" && (
                 <div className="verificationSetting gpsMissionSettings">
                   <strong>GPS 방문 인증 장소</strong>
