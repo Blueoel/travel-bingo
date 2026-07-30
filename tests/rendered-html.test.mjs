@@ -128,6 +128,10 @@ test("provides a data-connected home screen after login", async () => {
   assert.match(pageSource, /completeCount\} \/ 25 완료/);
   assert.match(pageSource, /onClick=\{\(\) => setActiveTab\("bingo"\)\}/);
   assert.match(pageSource, /className="app-toast"/);
+  assert.match(pageSource, /\/recommendations\/regions/);
+  assert.match(pageSource, /recommendNearbyRegions/);
+  assert.match(pageSource, /현재 위치와 가까운 활성 지역 순/);
+  assert.match(pageSource, /region\.attraction\?\.imageUrl/);
 });
 
 test("proxies API sessions through the participant origin", async () => {

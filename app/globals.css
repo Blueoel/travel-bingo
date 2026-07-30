@@ -206,6 +206,10 @@ button {
   background: #edf1df;
   font-size: 34px;
 }
+.region-cards span.region-image {
+  background-position: center;
+  background-size: cover;
+}
 .region-cards button:nth-child(2) span {
   background: #e2eef2;
 }
@@ -222,6 +226,16 @@ button {
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.region-state {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 26px 10px;
+  border: 1px dashed #d8d1c4;
+  border-radius: 13px;
+  color: #858178;
+  font-size: 11px;
+  text-align: center;
 }
 .ongoing-bingo-card {
   width: 100%;

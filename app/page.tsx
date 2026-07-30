@@ -80,6 +80,19 @@ type AccountUser = {
   email: string | null;
   role: "USER" | "ADMIN";
 };
+type RegionRecommendation = {
+  id: string;
+  name: string;
+  distanceKm: number | null;
+  attraction: {
+    title: string;
+    address: string | null;
+    imageUrl: string | null;
+    latitude: number;
+    longitude: number;
+    source: "KTO" | "DATABASE";
+  } | null;
+};
 
 const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
@@ -377,6 +390,11 @@ export default function Home() {
   });
   const [rankingLoading, setRankingLoading] = useState(false);
   const [clock, setClock] = useState(Date.now());
+  const [regionRecommendations, setRegionRecommendations] = useState<
+    RegionRecommendation[]
+  >([]);
+  const [regionRecommendationsLoading, setRegionRecommendationsLoading] =
+    useState(false);
   const [photoStage, setPhotoStage] = useState<
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
@@ -562,6 +580,34 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [activeTab, rankingPeriod, rankingScope, nickname]);
 
+  const loadRegionRecommendations = async (coordinates?: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    setRegionRecommendationsLoading(true);
+    try {
+      const query = new URLSearchParams({ limit: "3" });
+      if (coordinates) {
+        query.set("latitude", String(coordinates.latitude));
+        query.set("longitude", String(coordinates.longitude));
+      }
+      const response = await apiFetch(`/recommendations/regions?${query}`);
+      if (!response.ok) throw new Error("Region recommendations unavailable");
+      setRegionRecommendations(
+        (await response.json()) as RegionRecommendation[],
+      );
+    } catch {
+      setRegionRecommendations([]);
+    } finally {
+      setRegionRecommendationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    void loadRegionRecommendations();
+  }, [authStatus]);
+
   useEffect(() => {
     if (!tracking.active) return;
     const timer = window.setInterval(() => {
@@ -635,6 +681,25 @@ export default function Home() {
         maximumAge: 0,
       }),
     );
+
+  const recommendNearbyRegions = async () => {
+    if (!navigator.geolocation) {
+      setMessage("이 기기에서는 현재 위치를 사용할 수 없어요.");
+      return;
+    }
+    setRegionRecommendationsLoading(true);
+    try {
+      const position = await getGps();
+      await loadRegionRecommendations({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+      setMessage("현재 위치와 가까운 활성 지역 순으로 추천했어요.");
+    } catch {
+      setRegionRecommendationsLoading(false);
+      setMessage("위치 권한을 허용하면 가까운 지역을 추천할 수 있어요.");
+    }
+  };
 
   const stopTracking = () => {
     if (trackingWatchId.current !== null) {
@@ -1243,31 +1308,51 @@ export default function Home() {
 
           <div className="home-section-title">
             <h2>추천 지역</h2>
-            <button
-              type="button"
-              onClick={() => setMessage("탐험 지도는 준비 중이에요.")}
-            >
-              더보기 ›
+            <button type="button" onClick={recommendNearbyRegions}>
+              내 주변 ⌖
             </button>
           </div>
           <div className="region-cards">
-            {[
-              ["안성", "안성맞춤의 도시", "🏯"],
-              ["강릉", "바다와 커피거리", "🌊"],
-              ["전주", "한옥마을 산책", "🏡"],
-            ].map(([name, copy, art]) => (
+            {regionRecommendations.map((region, index) => (
               <button
                 type="button"
-                key={name}
+                key={region.id}
                 onClick={() =>
-                  setMessage(`${name} 지역 빙고는 곧 공개할 예정이에요.`)
+                  setMessage(`${region.name} 지역 빙고는 곧 공개할 예정이에요.`)
                 }
               >
-                <span>{art}</span>
-                <b>{name}</b>
-                <small>{copy}</small>
+                <span
+                  className={region.attraction?.imageUrl ? "region-image" : ""}
+                  style={
+                    region.attraction?.imageUrl
+                      ? {
+                          backgroundImage: `url("${region.attraction.imageUrl}")`,
+                        }
+                      : undefined
+                  }
+                >
+                  {region.attraction?.imageUrl
+                    ? ""
+                    : ["🏯", "🌊", "🏡"][index % 3]}
+                </span>
+                <b>{region.name}</b>
+                <small>
+                  {region.distanceKm !== null
+                    ? `${region.distanceKm}km · `
+                    : ""}
+                  {region.attraction?.title ?? "추천 관광지 준비 중"}
+                </small>
               </button>
             ))}
+            {regionRecommendationsLoading && (
+              <p className="region-state">활성 지역의 관광지를 찾고 있어요…</p>
+            )}
+            {!regionRecommendationsLoading &&
+              regionRecommendations.length === 0 && (
+                <p className="region-state">
+                  현재 추천 가능한 활성 지역이 없어요.
+                </p>
+              )}
           </div>
 
           <div className="home-section-title">
