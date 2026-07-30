@@ -61,4 +61,8 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /목표 시간\(분\)/);
   assert.match(pageSource, /durationSeconds/);
   assert.match(pageSource, /화면을 벗어나도 실제 경과 시간/);
+  assert.match(pageSource, /지역 서비스 준비 현황/);
+  assert.match(pageSource, /행정구역 코드 검색/);
+  assert.match(pageSource, /updateRegionStatus/);
+  assert.match(pageSource, /region\.canActivate/);
 });

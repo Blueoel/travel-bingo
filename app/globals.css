@@ -266,6 +266,14 @@ mark {
   font-weight: 800;
   cursor: pointer;
 }
+.textButton:disabled {
+  color: #9ca39f;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.regionFilters {
+  grid-template-columns: minmax(260px, 520px);
+}
 .userFilters {
   grid-template-columns: minmax(260px, 1fr) 180px;
 }
