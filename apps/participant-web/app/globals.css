@@ -934,7 +934,9 @@ h1 {
 }
 .board {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 7px;
 }
 .board-loading {
@@ -945,6 +947,8 @@ h1 {
   font-size: 13px;
 }
 .board button {
+  width: 100%;
+  min-width: 0;
   aspect-ratio: 0.88;
   padding: 7px 3px;
   border: 1px solid var(--line);
@@ -995,10 +999,18 @@ h1 {
   color: white;
 }
 .board b {
+  width: 100%;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 9.5px;
   line-height: 1.2;
-  word-break: keep-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
   letter-spacing: -0.4px;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 .board small {
   font-size: 8px;
@@ -1128,6 +1140,52 @@ nav .active {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.55;
+}
+.gps-preflight {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed #adc0af;
+  border-radius: 12px;
+  background: #fbfdf8;
+}
+.gps-preflight > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gps-preflight strong {
+  color: var(--green);
+  font-size: 12px;
+}
+.gps-preflight p {
+  display: block;
+  color: #59645c;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.gps-preflight button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #87a08c;
+  border-radius: 10px;
+  background: #fff;
+  color: #31563b;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.gps-preflight.ready {
+  border-color: #75a77f;
+  background: #f1f8ef;
+}
+.gps-preflight.error {
+  border-color: #d1a38d;
+  background: #fff6f0;
+}
+.gps-preflight button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 .privacy-warning strong {
   color: #222824;
@@ -2095,10 +2153,10 @@ nav .active {
     padding-right: 10px;
   }
   .board {
-    gap: 4px;
+    gap: 3px;
   }
   .board b {
-    font-size: 8.5px;
+    font-size: clamp(7.5px, 2.35vw, 8.5px);
   }
   .hero {
     padding: 20px;
