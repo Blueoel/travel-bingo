@@ -1,10 +1,21 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Query,
+} from "@nestjs/common";
 
+import { AuthService } from "../auth/auth.service.js";
 import { RegionRecommendationService } from "./region-recommendation.service.js";
 
 @Controller("api/v1/recommendations")
 export class RegionRecommendationController {
-  constructor(private readonly recommendations: RegionRecommendationService) {}
+  constructor(
+    private readonly recommendations: RegionRecommendationService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Get("regions")
   recommendRegions(
@@ -36,6 +47,27 @@ export class RegionRecommendationController {
         : 3;
     return this.recommendations.recommend(
       hasCoordinates ? { latitude, longitude } : null,
+      limit,
+    );
+  }
+
+  @Get("regions/:regionId/attractions")
+  async recommendAttractions(
+    @Param("regionId") regionId: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Query("q") query = "",
+    @Query("limit") limitInput = "12",
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    const parsedLimit = Number(limitInput);
+    const limit =
+      Number.isInteger(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 30
+        ? parsedLimit
+        : 12;
+    return this.recommendations.searchRegionAttractions(
+      regionId,
+      query.trim(),
       limit,
     );
   }

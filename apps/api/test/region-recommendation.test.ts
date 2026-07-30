@@ -67,4 +67,41 @@ describe("region recommendation distance", () => {
       },
     });
   });
+
+  it("provides saved attraction candidates for an inactive region admin", async () => {
+    const service = new RegionRecommendationService({
+      region: {
+        findUnique: async () => ({
+          id: "region-draft",
+          centerLatitude: 37.008,
+          centerLongitude: 127.2797,
+          places: [
+            {
+              externalContentId: "place-1",
+              contentType: "TOURIST_SPOT",
+              title: "안성맞춤랜드",
+              address: "경기도 안성시",
+              imageUrl: "https://example.com/place.jpg",
+              latitude: 37.03,
+              longitude: 127.31,
+            },
+          ],
+        }),
+      },
+    } as never);
+
+    const result = await service.searchRegionAttractions(
+      "region-draft",
+      "맞춤",
+      12,
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        contentId: "place-1",
+        title: "안성맞춤랜드",
+        source: "DATABASE",
+      }),
+    ]);
+  });
 });

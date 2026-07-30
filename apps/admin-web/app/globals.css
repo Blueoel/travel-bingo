@@ -274,6 +274,63 @@ mark {
 .regionFilters {
   grid-template-columns: minmax(260px, 520px);
 }
+.regionActions {
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+.attractionPanel {
+  border-top: 8px solid #f3f6f3;
+}
+.attractionSearch {
+  display: grid;
+  grid-template-columns: minmax(260px, 520px) auto;
+  gap: 8px;
+  padding: 0 24px 18px;
+  justify-content: start;
+}
+.attractionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 24px 24px;
+}
+.attractionGrid article {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.attractionGrid img,
+.attractionPlaceholder {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+.attractionPlaceholder {
+  display: grid;
+  place-items: center;
+  background: #eef2ee;
+  color: #8a928d;
+}
+.attractionGrid article > div {
+  padding: 14px;
+}
+.attractionGrid h3 {
+  margin: 10px 0 5px;
+  font-size: 16px;
+}
+.attractionGrid p {
+  min-height: 36px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.attractionEmpty {
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
 .userFilters {
   grid-template-columns: minmax(260px, 1fr) 180px;
 }
@@ -648,6 +705,9 @@ textarea {
   gap: 8px;
 }
 @media (max-width: 900px) {
+  .attractionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .shell {
     grid-template-columns: 1fr;
   }
@@ -685,6 +745,12 @@ textarea {
   }
 }
 @media (max-width: 560px) {
+  .attractionGrid {
+    grid-template-columns: 1fr;
+  }
+  .attractionSearch {
+    grid-template-columns: 1fr;
+  }
   header {
     align-items: flex-start;
     flex-direction: column;
