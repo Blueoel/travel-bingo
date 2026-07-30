@@ -65,6 +65,23 @@ type UserSummary = {
   suspended: number;
   deleted: number;
 };
+type AttractionRecommendation = {
+  contentId: string;
+  contentTypeId: string | null;
+  title: string;
+  address: string | null;
+  imageUrl: string | null;
+  latitude: number;
+  longitude: number;
+  source: "KTO" | "DATABASE";
+};
+type MissionDraft = {
+  title: string;
+  description: string;
+  scope: "REGION";
+  category: string;
+  regionId: string;
+};
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 const PHOTO_API =
   process.env.NEXT_PUBLIC_PHOTO_REVIEW_API_URL ??
@@ -109,6 +126,11 @@ export default function AdminPage() {
   });
   const [userQuery, setUserQuery] = useState("");
   const [regionQuery, setRegionQuery] = useState("");
+  const [selectedRegionId, setSelectedRegionId] = useState("");
+  const [attractionQuery, setAttractionQuery] = useState("");
+  const [attractions, setAttractions] = useState<AttractionRecommendation[]>([]);
+  const [attractionsLoading, setAttractionsLoading] = useState(false);
+  const [missionDraft, setMissionDraft] = useState<MissionDraft | null>(null);
   const [userStatus, setUserStatus] = useState("");
   const [userLoading, setUserLoading] = useState(false);
   const [error, setError] = useState(""),
@@ -162,8 +184,46 @@ export default function AdminPage() {
     void load();
   }, [params]);
   function showForm(mission: Mission | null = null) {
+    setMissionDraft(null);
     setEditing(mission);
     setFormVerificationType(mission?.verificationPolicy?.type ?? "PHOTO");
+    setOpen(true);
+  }
+  async function loadAttractions(regionId: string, q = attractionQuery) {
+    if (!regionId) return;
+    setSelectedRegionId(regionId);
+    setAttractionsLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: "12" });
+      if (q.trim()) params.set("q", q.trim());
+      const response = await fetch(
+        `${API}/recommendations/regions/${regionId}/attractions?${params}`,
+        { headers: { "x-user-id": ADMIN } },
+      );
+      if (!response.ok) throw new Error("관광지 추천을 불러오지 못했습니다.");
+      setAttractions(await response.json());
+      setError("");
+    } catch (cause) {
+      setAttractions([]);
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "관광지 추천을 불러오지 못했습니다.",
+      );
+    } finally {
+      setAttractionsLoading(false);
+    }
+  }
+  function createMissionFromAttraction(attraction: AttractionRecommendation) {
+    setEditing(null);
+    setFormVerificationType("PHOTO");
+    setMissionDraft({
+      title: `${attraction.title} 방문하기`,
+      description: `${attraction.title}을 방문해 인증 사진을 남겨보세요.`,
+      scope: "REGION",
+      category: "관광지 탐방",
+      regionId: selectedRegionId,
+    });
     setOpen(true);
   }
   async function saveMission(e: FormEvent<HTMLFormElement>) {
@@ -904,24 +964,33 @@ export default function AdminPage() {
                           {region.status === "ACTIVE" ? "서비스 중" : "비활성"}
                         </td>
                         <td>
-                          <button
-                            className="textButton"
-                            disabled={
-                              region.status !== "ACTIVE" && !region.canActivate
-                            }
-                            onClick={() =>
-                              void updateRegionStatus(
-                                region,
-                                region.status === "ACTIVE"
-                                  ? "INACTIVE"
-                                  : "ACTIVE",
-                              )
-                            }
-                          >
-                            {region.status === "ACTIVE"
-                              ? "비활성화"
-                              : "활성화"}
-                          </button>
+                          <div className="regionActions">
+                            <button
+                              className="textButton"
+                              onClick={() => void loadAttractions(region.id)}
+                            >
+                              관광지 추천
+                            </button>
+                            <button
+                              className="textButton"
+                              disabled={
+                                region.status !== "ACTIVE" &&
+                                !region.canActivate
+                              }
+                              onClick={() =>
+                                void updateRegionStatus(
+                                  region,
+                                  region.status === "ACTIVE"
+                                    ? "INACTIVE"
+                                    : "ACTIVE",
+                                )
+                              }
+                            >
+                              {region.status === "ACTIVE"
+                                ? "비활성화"
+                                : "활성화"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -935,6 +1004,89 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              {selectedRegionId && (
+                <section className="attractionPanel">
+                  <div className="catalogHead">
+                    <div>
+                      <h2>
+                        {
+                          regions.find(
+                            (region) => region.id === selectedRegionId,
+                          )?.name
+                        }{" "}
+                        관광지 추천
+                      </h2>
+                      <p>
+                        한국관광공사 관광정보를 참고해 지역 미션 후보를
+                        확인합니다.
+                      </p>
+                    </div>
+                    <mark className="activeStatus">한국관광공사 Open API</mark>
+                  </div>
+                  <form
+                    className="attractionSearch"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void loadAttractions(selectedRegionId, attractionQuery);
+                    }}
+                  >
+                    <input
+                      aria-label="관광지 검색"
+                      placeholder="관광지명 또는 주소 검색"
+                      value={attractionQuery}
+                      onChange={(event) =>
+                        setAttractionQuery(event.target.value)
+                      }
+                    />
+                    <button className="secondary">검색</button>
+                  </form>
+                  {attractionsLoading ? (
+                    <p className="attractionEmpty">관광지를 찾고 있습니다.</p>
+                  ) : attractions.length ? (
+                    <div className="attractionGrid">
+                      {attractions.map((attraction) => (
+                        <article key={`${attraction.source}-${attraction.contentId}`}>
+                          {attraction.imageUrl ? (
+                            <img
+                              src={attraction.imageUrl}
+                              alt={`${attraction.title} 관광지`}
+                            />
+                          ) : (
+                            <div className="attractionPlaceholder">사진 없음</div>
+                          )}
+                          <div>
+                            <mark
+                              className={
+                                attraction.source === "KTO"
+                                  ? "activeStatus"
+                                  : "inactiveStatus"
+                              }
+                            >
+                              {attraction.source === "KTO"
+                                ? "관광공사"
+                                : "저장 장소"}
+                            </mark>
+                            <h3>{attraction.title}</h3>
+                            <p>{attraction.address ?? "주소 정보 없음"}</p>
+                            <button
+                              className="primary"
+                              onClick={() =>
+                                createMissionFromAttraction(attraction)
+                              }
+                            >
+                              이 장소로 미션 만들기
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="attractionEmpty">
+                      조건에 맞는 관광지가 없습니다.
+                    </p>
+                  )}
+                </section>
+              )}
             </section>
           </>
         ) : view === "reviews" ? (
@@ -1238,7 +1390,7 @@ export default function AdminPage() {
               <input
                 name="title"
                 required
-                defaultValue={editing?.title}
+                defaultValue={editing?.title ?? missionDraft?.title}
                 placeholder="예: 오늘의 파란색"
               />
             </label>
@@ -1247,14 +1399,19 @@ export default function AdminPage() {
               <textarea
                 name="description"
                 required
-                defaultValue={editing?.description}
+                defaultValue={editing?.description ?? missionDraft?.description}
                 placeholder="참여자가 이해하기 쉬운 행동을 적어주세요."
               />
             </label>
             <div className="grid">
               <label>
                 범위
-                <select name="scope" defaultValue={editing?.scope ?? "COMMON"}>
+                <select
+                  name="scope"
+                  defaultValue={
+                    editing?.scope ?? missionDraft?.scope ?? "COMMON"
+                  }
+                >
                   <option value="COMMON">공통</option>
                   <option value="REGION">지역</option>
                   <option value="EVENT">이벤트</option>
@@ -1265,7 +1422,9 @@ export default function AdminPage() {
                 <input
                   name="category"
                   required
-                  defaultValue={editing?.category ?? "관찰"}
+                  defaultValue={
+                    editing?.category ?? missionDraft?.category ?? "관찰"
+                  }
                 />
               </label>
               <label>
@@ -1369,7 +1528,9 @@ export default function AdminPage() {
                 연결 지역
                 <select
                   name="regionId"
-                  defaultValue={editing?.regions[0]?.id ?? ""}
+                  defaultValue={
+                    editing?.regions[0]?.id ?? missionDraft?.regionId ?? ""
+                  }
                 >
                   <option value="">없음 · 공통 미션</option>
                   {regions.map((r) => (
