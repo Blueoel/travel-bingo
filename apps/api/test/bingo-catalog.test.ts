@@ -191,6 +191,8 @@ describe("BingoCatalogService", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           templateId: "region-template",
+          dailyDate: null,
+          layoutVariant: null,
           cells: { create: expect.arrayContaining([expect.any(Object)]) },
         }),
       }),

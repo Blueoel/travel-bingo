@@ -199,7 +199,8 @@ export class BingoCatalogService {
           userId: input.userId,
           templateId: template.id,
           idempotencyKey: input.idempotencyKey,
-          layoutVariant: 0,
+          dailyDate: null,
+          layoutVariant: null,
           cells: {
             create: template.cells.map(({ position, mission }) => ({
               position,
