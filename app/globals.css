@@ -1119,6 +1119,16 @@ nav .active {
 .detail-list .privacy-warning {
   display: block;
 }
+.detail-list .gps-guidance {
+  display: block;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #eef5ec;
+  color: #365b40;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+}
 .privacy-warning strong {
   color: #222824;
   line-height: 1.45;
