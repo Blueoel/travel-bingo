@@ -151,6 +151,14 @@ test("lists Daily, region, and event bingo entries from one catalog", async () =
   assert.match(pageSource, /\/bingos\/\$\{bingo\.templateId\}\/sessions/);
   assert.match(pageSource, /activeTab === "bingo"/);
   assert.match(pageSource, /currentBingo\.title/);
+  assert.match(
+    pageSource,
+    /activeTab === "catalog" \|\| activeTab === "bingo"/,
+  );
+  assert.match(
+    pageSource,
+    /onClick=\{\(\) => setActiveTab\("catalog"\)\}/,
+  );
 });
 
 test("proxies API sessions through the participant origin", async () => {
