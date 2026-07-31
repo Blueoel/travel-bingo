@@ -29,16 +29,22 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.match(svg, /viewBox="0 0 900 1260"/);
   assert.match(svg, /id="region-31220"/);
   assert.match(svg, /data-name="안성시"/);
-  assert.match(svg, /data-tier="bronze"/);
-  assert.equal((svg.match(/<path\b/g) ?? []).length, 250);
-  assert.equal(metadata.regionCount, 250);
+  assert.match(svg, /data-city-type="MUNICIPAL"/);
+  assert.equal((svg.match(/class="region city-region"/g) ?? []).length, 85);
+  assert.equal(metadata.regionCount, 85);
+  assert.equal(metadata.municipalCityCount, 77);
+  assert.equal(metadata.metropolitanCityCount, 8);
   assert.equal(metadata.boundarySimplificationToleranceM, 900);
+  assert.equal(metadata.dokdo.preservedAsMarker, true);
+  assert.match(svg, /id="korea-land-background"/);
+  assert.match(svg, /id="dokdo"/);
   assert.deepEqual(
     metadata.regions.find((region) => region.id === "region-31220"),
     {
       code: "31220",
       name: "안성시",
       province: "경기도",
+      cityType: "MUNICIPAL",
       id: "region-31220",
       bounds: {
         minX: 315.39,
@@ -63,7 +69,7 @@ test("connects the nationwide map to the exploration tab", async () => {
 
   assert.match(pageSource, /activeTab === "exploration"/);
   assert.match(pageSource, /fetch\("\/maps\/korea-sigungu\.svg"\)/);
-  assert.match(pageSource, /대한민국 시군구 탐험 지도/);
+  assert.match(pageSource, /대한민국 도시 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
   assert.match(pageSource, /anseong-map-marker/);

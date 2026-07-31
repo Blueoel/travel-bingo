@@ -1,10 +1,14 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import polygonClipping from "polygon-clipping";
 
 const sourceDirectory = process.argv[2];
 const outputDirectory =
   process.argv[3] ?? "apps/participant-web/public/maps";
 const boundarySimplificationToleranceM = 900;
+const landSimplificationToleranceM = 2500;
+const minimumCityIslandAreaM2 = 1_000_000;
+const minimumBackgroundIslandAreaM2 = 100_000_000;
 
 if (!sourceDirectory) {
   throw new Error(
@@ -32,6 +36,17 @@ const provinceFiles = [
   "제주특별자치도_시군구_경계.json",
 ];
 
+const metropolitanProvinceCodes = new Map([
+  ["서울특별시", "11"],
+  ["부산광역시", "21"],
+  ["대구광역시", "22"],
+  ["인천광역시", "23"],
+  ["광주광역시", "24"],
+  ["대전광역시", "25"],
+  ["울산광역시", "26"],
+  ["세종특별자치시", "29"],
+]);
+
 const features = [];
 for (const file of provinceFiles) {
   const collection = JSON.parse(
@@ -43,11 +58,10 @@ for (const file of provinceFiles) {
   }
 }
 
-const points = features.flatMap((feature) =>
+const allPoints = features.flatMap((feature) =>
   geometryRings(feature.geometry).flat(),
 );
-const bounds = boundsOfRaw(points);
-
+const bounds = boundsOfRaw(allPoints);
 const width = 900;
 const height = 1260;
 const padding = 28;
@@ -59,84 +73,150 @@ const renderedWidth = (bounds.maxX - bounds.minX) * scale;
 const renderedHeight = (bounds.maxY - bounds.minY) * scale;
 const offsetX = (width - renderedWidth) / 2;
 const offsetY = (height - renderedHeight) / 2;
-
 const project = ([x, y]) => [
   offsetX + (x - bounds.minX) * scale,
   offsetY + (bounds.maxY - y) * scale,
 ];
 
-const metadata = [];
-const groups = new Map();
+const cityGroups = new Map();
 for (const feature of features) {
-  const code = String(feature.properties?.id ?? "");
-  const name = String(feature.properties?.title ?? code);
-  const rings = geometryRings(feature.geometry);
-  const d = rings
-    .map((ring) => {
-      const simplified = simplifyClosedRing(
-        ring,
-        boundarySimplificationToleranceM,
-      ).map(project);
-      return `${simplified
-        .map(
-          ([x, y], index) =>
-            `${index === 0 ? "M" : "L"}${round(x)} ${round(y)}`,
-        )
-        .join(" ")} Z`;
-    })
-    .join(" ");
-  const projectedPoints = rings.flat().map(project);
-  const regionBounds = boundsOf(projectedPoints);
-  const region = {
+  const metroCode = metropolitanProvinceCodes.get(feature.province);
+  if (metroCode) {
+    addCityFeature(cityGroups, {
+      code: metroCode,
+      name: feature.province,
+      province: feature.province,
+      cityType: "METROPOLITAN",
+      feature,
+    });
+    continue;
+  }
+
+  const featureName = String(feature.properties?.title ?? "");
+  const cityMatch = featureName.match(/^(.+?시)(?:\s|$)/);
+  if (!cityMatch) continue;
+  const cityName = cityMatch[1];
+  const featureCode = String(feature.properties?.id ?? "");
+  const code = featureName === cityName ? featureCode : `${featureCode.slice(0, 4)}0`;
+  addCityFeature(cityGroups, {
     code,
-    name,
+    name: cityName,
     province: feature.province,
-    id: `region-${code}`,
+    cityType: "MUNICIPAL",
+    feature,
+  });
+}
+
+const cityRegions = [...cityGroups.values()]
+  .map((city) => {
+    const unionedGeometry = polygonClipping.union(
+      ...city.features.map((feature) => geometryToMultiPolygon(feature.geometry)),
+    );
+    return {
+      ...city,
+      geometry: filterSmallPolygons(
+        unionedGeometry,
+        minimumCityIslandAreaM2,
+      ),
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
+const landGeometry = filterSmallPolygons(
+  polygonClipping.union(
+    ...features.map((feature) => geometryToMultiPolygon(feature.geometry)),
+  ),
+  minimumBackgroundIslandAreaM2,
+);
+const landPath = pathFromMultiPolygon(
+  landGeometry,
+  project,
+  landSimplificationToleranceM,
+);
+
+const metadata = [];
+const cityPaths = cityRegions.map((city) => {
+  const rawPoints = city.geometry.flat(2);
+  const projectedPoints = rawPoints.map(project);
+  const regionBounds = boundsOf(projectedPoints);
+  const id = `region-${city.code}`;
+  metadata.push({
+    code: city.code,
+    name: city.name,
+    province: city.province,
+    cityType: city.cityType,
+    id,
     bounds: regionBounds,
     center: [
       round((regionBounds.minX + regionBounds.maxX) / 2),
       round((regionBounds.minY + regionBounds.maxY) / 2),
     ],
-  };
-  metadata.push(region);
-  const pathElement = `<path id="${region.id}" class="region" data-code="${escapeXml(code)}" data-name="${escapeXml(name)}" data-province="${escapeXml(feature.province)}" d="${d}"><title>${escapeXml(feature.province)} ${escapeXml(name)}</title></path>`;
-  const list = groups.get(feature.province) ?? [];
-  list.push(pathElement);
-  groups.set(feature.province, list);
-}
+  });
+  return `<path id="${id}" class="region city-region" data-code="${escapeXml(city.code)}" data-name="${escapeXml(city.name)}" data-province="${escapeXml(city.province)}" data-city-type="${city.cityType}" d="${pathFromMultiPolygon(city.geometry, project)}"><title>${escapeXml(city.province)} ${escapeXml(city.name)}</title></path>`;
+});
 
-const groupMarkup = [...groups.entries()]
-  .map(
-    ([province, paths]) =>
-      `<g id="province-${slug(province)}" class="province" data-province="${escapeXml(province)}">\n${paths.join("\n")}\n</g>`,
-  )
-  .join("\n");
+const dokdoRing = geometryRings(
+  features.find(
+    (feature) =>
+      feature.province === "경상북도" &&
+      String(feature.properties?.title ?? "") === "울릉군",
+  )?.geometry,
+)
+  .map((ring) => ({ ring, bounds: boundsOfRaw(ring) }))
+  .sort((a, b) => b.bounds.maxX - a.bounds.maxX)[0];
+const dokdoCenter = dokdoRing
+  ? project([
+      (dokdoRing.bounds.minX + dokdoRing.bounds.maxX) / 2,
+      (dokdoRing.bounds.minY + dokdoRing.bounds.maxY) / 2,
+    ])
+  : [872, 398];
+
+const municipalCityCount = cityRegions.filter(
+  (city) => city.cityType === "MUNICIPAL",
+).length;
+const metropolitanCityCount = cityRegions.filter(
+  (city) => city.cityType === "METROPOLITAN",
+).length;
 
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="map-title map-description">
-  <title id="map-title">대한민국 시군구 탐험 지도</title>
-  <desc id="map-description">각 시군구를 독립적으로 선택하고 사진으로 채울 수 있는 기능용 지도</desc>
+  <title id="map-title">대한민국 도시 탐험 지도</title>
+  <desc id="map-description">군 지역은 내부 경계 없이 배경으로 표시하고 77개 일반·행정시와 8개 특별·광역·특별자치시를 선택할 수 있는 지도</desc>
   <metadata>
     Source: SGIS boundary data processed by StatGarten maps (2020).
     Derived dataset repository license: MIT, Copyright (c) 2022 StatGarten.
-    Generated for Travel Bingo. Replace with the official 2025 SGIS boundary package before final release.
+    City boundaries are dissolved from the source administrative polygons.
   </metadata>
   <style>
-    .region {
+    .land-background {
+      fill: #eee9dd;
+      stroke: #829083;
+      stroke-width: 1.2;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .city-region {
       fill: #f7f2e6;
-      stroke: #334638;
-      stroke-width: 1.15;
+      fill-opacity: .96;
+      stroke: #65746a;
+      stroke-width: .8;
       vector-effect: non-scaling-stroke;
       cursor: pointer;
       transition: fill .18s ease, opacity .18s ease;
     }
-    .region:hover, .region:focus { fill: #dce9cb; outline: none; }
-    .region[data-tier="bronze"] { stroke: #a96f3f; stroke-width: 2.2; }
-    .region[data-tier="silver"] { stroke: #aeb5bd; stroke-width: 2.4; }
-    .region[data-tier="gold"] { stroke: #d5a625; stroke-width: 2.8; }
+    .city-region:hover, .city-region:focus { fill: #dce9cb; outline: none; }
+    .dokdo-marker { fill: #506756; stroke: #fffdf8; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+    .dokdo-label { fill: #506756; font: 700 11px sans-serif; }
   </style>
-  <g id="korea-regions">
-${groupMarkup}
+  <g id="korea-land-background">
+    <path class="land-background" d="${landPath}" />
+  </g>
+  <g id="korea-city-regions">
+${cityPaths.join("\n")}
+  </g>
+  <g id="dokdo" aria-label="독도">
+    <circle class="dokdo-marker" cx="${round(dokdoCenter[0])}" cy="${round(dokdoCenter[1])}" r="4.5" />
+    <text class="dokdo-label" x="${round(dokdoCenter[0] - 10)}" y="${round(dokdoCenter[1] - 9)}">독도</text>
   </g>
 </svg>
 `;
@@ -152,8 +232,18 @@ await writeFile(
       source: "StatGarten maps, derived from SGIS Open API",
       sourceUrl: "https://github.com/statgarten/maps",
       license: "MIT",
+      layerType: "CITY",
       boundarySimplificationToleranceM,
+      landSimplificationToleranceM,
+      minimumCityIslandAreaM2,
+      minimumBackgroundIslandAreaM2,
+      municipalCityCount,
+      metropolitanCityCount,
       regionCount: metadata.length,
+      dokdo: {
+        center: dokdoCenter.map(round),
+        preservedAsMarker: true,
+      },
       viewBox: [0, 0, width, height],
       regions: metadata.sort((a, b) => a.code.localeCompare(b.code)),
     },
@@ -163,19 +253,88 @@ await writeFile(
   "utf8",
 );
 
-console.log(`Generated ${metadata.length} regions in ${outputDirectory}`);
+console.log(
+  `Generated ${metadata.length} city regions (${municipalCityCount} municipal + ${metropolitanCityCount} metropolitan) in ${outputDirectory}`,
+);
+
+function addCityFeature(groups, city) {
+  const key = `${city.province}:${city.name}`;
+  const existing = groups.get(key);
+  if (existing) {
+    existing.features.push(city.feature);
+    if (city.code < existing.code) existing.code = city.code;
+    return;
+  }
+  groups.set(key, {
+    code: city.code,
+    name: city.name,
+    province: city.province,
+    cityType: city.cityType,
+    features: [city.feature],
+  });
+}
+
+function geometryToMultiPolygon(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === "Polygon") return [geometry.coordinates];
+  if (geometry.type === "MultiPolygon") return geometry.coordinates;
+  return [];
+}
 
 function geometryRings(geometry) {
-  if (!geometry) return [];
-  if (geometry.type === "Polygon") return geometry.coordinates;
-  if (geometry.type === "MultiPolygon") return geometry.coordinates.flat();
-  return [];
+  return geometryToMultiPolygon(geometry).flat();
+}
+
+function pathFromMultiPolygon(
+  multiPolygon,
+  projectPoint,
+  tolerance = boundarySimplificationToleranceM,
+) {
+  return multiPolygon
+    .flatMap((polygon) => polygon)
+    .map((ring) => {
+      const simplified = simplifyClosedRing(
+        ring,
+        tolerance,
+      ).map(projectPoint);
+      return `${simplified
+        .map(
+          ([x, y], index) =>
+            `${index === 0 ? "M" : "L"}${round(x)} ${round(y)}`,
+        )
+        .join(" ")} Z`;
+    })
+    .join(" ");
+}
+
+function filterSmallPolygons(multiPolygon, minimumAreaM2) {
+  if (multiPolygon.length <= 1) return multiPolygon;
+  const sorted = multiPolygon
+    .map((polygon) => ({
+      polygon,
+      area: Math.abs(ringArea(polygon[0] ?? [])),
+    }))
+    .sort((a, b) => b.area - a.area);
+  return sorted
+    .filter((entry, index) => index === 0 || entry.area >= minimumAreaM2)
+    .map((entry) => entry.polygon);
+}
+
+function ringArea(ring) {
+  let area = 0;
+  for (let index = 0; index < ring.length; index += 1) {
+    const [x1, y1] = ring[index];
+    const [x2, y2] = ring[(index + 1) % ring.length];
+    area += x1 * y2 - x2 * y1;
+  }
+  return area / 2;
 }
 
 function simplifyClosedRing(points, tolerance) {
   if (points.length < 5) return points;
   const open = points.slice(0, -1);
   const simplified = simplify(open, tolerance);
+  if (simplified.length < 3) return points;
   return [...simplified, simplified[0]];
 }
 
@@ -231,37 +390,33 @@ function segmentDistanceSquared(point, start, end) {
 }
 
 function boundsOf(regionPoints) {
-  const bounds = boundsOfRaw(regionPoints);
+  const regionBounds = boundsOfRaw(regionPoints);
   return {
-    minX: round(bounds.minX),
-    minY: round(bounds.minY),
-    maxX: round(bounds.maxX),
-    maxY: round(bounds.maxY),
+    minX: round(regionBounds.minX),
+    minY: round(regionBounds.minY),
+    maxX: round(regionBounds.maxX),
+    maxY: round(regionBounds.maxY),
   };
 }
 
 function boundsOfRaw(regionPoints) {
-  const bounds = {
+  const regionBounds = {
     minX: Number.POSITIVE_INFINITY,
     minY: Number.POSITIVE_INFINITY,
     maxX: Number.NEGATIVE_INFINITY,
     maxY: Number.NEGATIVE_INFINITY,
   };
   for (const [x, y] of regionPoints) {
-    if (x < bounds.minX) bounds.minX = x;
-    if (x > bounds.maxX) bounds.maxX = x;
-    if (y < bounds.minY) bounds.minY = y;
-    if (y > bounds.maxY) bounds.maxY = y;
+    if (x < regionBounds.minX) regionBounds.minX = x;
+    if (x > regionBounds.maxX) regionBounds.maxX = x;
+    if (y < regionBounds.minY) regionBounds.minY = y;
+    if (y > regionBounds.maxY) regionBounds.maxY = y;
   }
-  return bounds;
+  return regionBounds;
 }
 
 function round(value) {
   return Math.round(value * 100) / 100;
-}
-
-function slug(value) {
-  return Buffer.from(value).toString("hex");
 }
 
 function escapeXml(value) {
