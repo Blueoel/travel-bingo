@@ -627,7 +627,6 @@ button {
 .region-memory-content {
   min-width: 0;
 }
-.memory-demo-unlock,
 .memory-photo-actions button {
   min-height: 32px;
   margin-top: 9px;
@@ -638,10 +637,6 @@ button {
   color: #fff;
   font-size: 10px;
   font-weight: 800;
-}
-.memory-demo-unlock {
-  background: #fffdf7;
-  color: #52744c;
 }
 .memory-photo-actions {
   display: flex;
@@ -655,6 +650,113 @@ button {
 .memory-photo-actions button:disabled {
   cursor: wait;
   opacity: 0.58;
+}
+.memory-photo-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px;
+  background: #20332880;
+  backdrop-filter: blur(3px);
+}
+.memory-photo-picker {
+  width: min(100%, 430px);
+  max-height: min(72vh, 620px);
+  padding: 19px 17px 22px;
+  overflow-y: auto;
+  border: 1px solid #d5c7aa;
+  border-radius: 24px 21px 10px 12px;
+  background:
+    radial-gradient(circle at 7px 7px, #eadfca 1px, transparent 1.4px) 0 0 /
+      18px 18px,
+    #fffdf6;
+  box-shadow: 0 -10px 35px #27382b38;
+}
+.memory-photo-picker header {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 15px;
+}
+.memory-photo-picker header small {
+  color: #789067;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.memory-photo-picker header h2 {
+  margin: 3px 0 2px;
+  color: #29472f;
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
+  font-size: 21px;
+}
+.memory-photo-picker header p,
+.memory-photo-empty p {
+  margin: 0;
+  color: #7d786d;
+  font-size: 10px;
+}
+.memory-photo-picker header > button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d8cdb8;
+  border-radius: 50%;
+  background: #fffdf8;
+  color: #3b5741;
+  font-size: 24px;
+}
+.memory-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.memory-photo-grid button {
+  min-width: 0;
+  padding: 6px 6px 9px;
+  overflow: hidden;
+  border: 1px solid #d9cfba;
+  border-radius: 10px 13px 9px 12px;
+  background: #fff;
+  text-align: left;
+}
+.memory-photo-grid img {
+  width: 100%;
+  aspect-ratio: 1.2;
+  display: block;
+  object-fit: cover;
+  border-radius: 7px;
+}
+.memory-photo-grid span {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  color: #405a43;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.memory-photo-empty {
+  display: grid;
+  gap: 7px;
+  padding: 30px 12px;
+  border: 1px dashed #d7cbb4;
+  border-radius: 12px;
+  color: #455f48;
+  text-align: center;
+}
+.memory-photo-empty > button {
+  min-height: 36px;
+  margin-top: 5px;
+  border: 0;
+  border-radius: 10px;
+  background: #5d8055;
+  color: #fff;
+  font-weight: 800;
 }
 .region-progress-note.muted {
   grid-template-columns: 35px 1fr;

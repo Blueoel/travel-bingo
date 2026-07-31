@@ -166,6 +166,13 @@ type ExplorationMemory = {
   photoUrl: string | null;
   selectedAt: string | null;
 };
+type MemoryPhoto = {
+  id: string;
+  missionId: string;
+  missionTitle: string;
+  imageUrl: string;
+  submittedAt: string;
+};
 
 const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
@@ -479,6 +486,10 @@ export default function Home() {
     useState(false);
   const [explorationMemorySaving, setExplorationMemorySaving] =
     useState(false);
+  const [memoryPhotos, setMemoryPhotos] = useState<MemoryPhoto[]>([]);
+  const [memoryPhotosLoading, setMemoryPhotosLoading] = useState(false);
+  const [memoryPhotoPickerOpen, setMemoryPhotoPickerOpen] = useState(false);
+  const [anseongMissionTitles, setAnseongMissionTitles] = useState<string[]>([]);
   const [selectedMapRegion, setSelectedMapRegion] = useState({
     code: "31220",
     name: "안성시",
@@ -795,7 +806,7 @@ export default function Home() {
       ),
       apiFetch("/bingos")
         .then(async (response) => {
-          if (!response.ok) return 0;
+          if (!response.ok) return { lineCount: 0, missionTitles: [] };
           const payload = (await response.json()) as {
             items: BingoCatalogItem[];
           };
@@ -805,25 +816,51 @@ export default function Home() {
               item.regionName?.includes("안성") &&
               item.sessionId,
           );
-          if (!anseong?.sessionId) return 0;
+          if (!anseong?.sessionId) return { lineCount: 0, missionTitles: [] };
           const board = await apiFetch(`/bingos/sessions/${anseong.sessionId}`);
-          if (!board.ok) return 0;
+          if (!board.ok) return { lineCount: 0, missionTitles: [] };
           const result = (await board.json()) as DailySession;
-          return result.completedLineKeys.length;
+          return {
+            lineCount: result.completedLineKeys.length,
+            missionTitles: result.cells.map((cell) => cell.mission.title),
+          };
         })
-        .catch(() => 0),
+        .catch(() => ({ lineCount: 0, missionTitles: [] })),
     ])
-      .then(([memory, actualLineCount]) => {
-        const lineCount = Math.max(memory.lineCount, actualLineCount);
+      .then(([memory, actualProgress]) => {
+        const lineCount = actualProgress.lineCount;
+        setAnseongMissionTitles(actualProgress.missionTitles);
         setExplorationMemory({
           ...memory,
           lineCount,
           unlocked: lineCount >= 3,
+          photoUrl: lineCount >= 3 ? memory.photoUrl : null,
         });
       })
       .catch(() => undefined)
       .finally(() => setExplorationMemoryLoading(false));
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "exploration" || !explorationMemory.unlocked) return;
+    setMemoryPhotosLoading(true);
+    void fetch("/api/exploration/regions/31220/photos", {
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Memory photos unavailable");
+        const payload = (await response.json()) as { items: MemoryPhoto[] };
+        setMemoryPhotos(
+          anseongMissionTitles.length
+            ? payload.items.filter((photo) =>
+                anseongMissionTitles.includes(photo.missionTitle),
+              )
+            : payload.items,
+        );
+      })
+      .catch(() => setMemoryPhotos([]))
+      .finally(() => setMemoryPhotosLoading(false));
+  }, [activeTab, explorationMemory.unlocked, anseongMissionTitles]);
 
   useEffect(() => {
     if (activeTab !== "exploration" || !explorationMapSvg) return;
@@ -848,7 +885,7 @@ export default function Home() {
     selectedMapRegion.code,
   ]);
 
-  const saveRepresentativePhoto = async (photo?: File) => {
+  const saveRepresentativePhoto = async (photo: File | MemoryPhoto) => {
     if (explorationMemory.lineCount < 3) {
       setMessage("안성 지역 빙고 세 줄을 먼저 완성해주세요.");
       return;
@@ -856,14 +893,13 @@ export default function Home() {
     setExplorationMemorySaving(true);
     setMessage(null);
     try {
-      const response = photo
+      const response = photo instanceof File
         ? await fetch("/api/exploration/regions/31220", {
             method: "POST",
             credentials: "include",
             body: (() => {
               const form = new FormData();
               form.set("photo", photo);
-              form.set("lineCount", String(explorationMemory.lineCount));
               return form;
             })(),
           })
@@ -872,12 +908,12 @@ export default function Home() {
             credentials: "include",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
-              demo: true,
-              lineCount: explorationMemory.lineCount,
+              photoId: photo.id,
             }),
           });
       if (!response.ok) throw new Error("Representative photo save failed");
       setExplorationMemory((await response.json()) as ExplorationMemory);
+      setMemoryPhotoPickerOpen(false);
       setMessage("안성 대표 사진을 탐험 지도에 채웠어요.");
     } catch {
       setMessage("대표 사진을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -2124,21 +2160,6 @@ export default function Home() {
                       ? "여행 사진을 고르거나 샘플 사진으로 지도 표시를 확인해보세요."
                       : "안성 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요."}
                 </p>
-                {!explorationMemoryLoading && !explorationMemory.unlocked && (
-                  <button
-                    type="button"
-                    className="memory-demo-unlock"
-                    onClick={() =>
-                      setExplorationMemory((current) => ({
-                        ...current,
-                        lineCount: 3,
-                        unlocked: true,
-                      }))
-                    }
-                  >
-                    시연용 3 Bingo 달성
-                  </button>
-                )}
                 {explorationMemory.unlocked && (
                   <div className="memory-photo-actions">
                     <input
@@ -2154,22 +2175,22 @@ export default function Home() {
                     />
                     <button
                       type="button"
-                      onClick={() => representativePhotoInput.current?.click()}
+                      onClick={() => setMemoryPhotoPickerOpen(true)}
                       disabled={explorationMemorySaving}
                     >
                       {explorationMemory.photoUrl
-                        ? "대표 사진 바꾸기"
-                        : "내 사진 선택"}
+                        ? "인증 사진에서 바꾸기"
+                        : "인증 사진에서 선택"}
                     </button>
                     <button
                       type="button"
                       className="sample"
-                      onClick={() => void saveRepresentativePhoto()}
+                      onClick={() => representativePhotoInput.current?.click()}
                       disabled={explorationMemorySaving}
                     >
                       {explorationMemorySaving
-                        ? "사진 채우는 중…"
-                        : "샘플 사진으로 확인"}
+                        ? "사진 저장 중…"
+                        : "새 사진 선택"}
                     </button>
                   </div>
                 )}
@@ -2183,6 +2204,67 @@ export default function Home() {
                 <b>새로운 여행을 기다리고 있어요</b>
                 <p>지역 빙고가 열리면 이곳에서 진행 상황을 확인할 수 있어요.</p>
               </div>
+            </div>
+          )}
+          {memoryPhotoPickerOpen && (
+            <div
+              className="memory-photo-picker-backdrop"
+              role="presentation"
+              onClick={() => setMemoryPhotoPickerOpen(false)}
+            >
+              <section
+                className="memory-photo-picker"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="memory-photo-picker-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <header>
+                  <div>
+                    <small>ANSEONG MEMORY</small>
+                    <h2 id="memory-photo-picker-title">대표 사진 선택</h2>
+                    <p>안성 지역 미션에서 인증한 사진을 골라주세요.</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="대표 사진 선택 닫기"
+                    onClick={() => setMemoryPhotoPickerOpen(false)}
+                  >
+                    ×
+                  </button>
+                </header>
+                {memoryPhotosLoading ? (
+                  <p className="memory-photo-empty">사진을 불러오고 있어요…</p>
+                ) : memoryPhotos.length ? (
+                  <div className="memory-photo-grid">
+                    {memoryPhotos.map((photo) => (
+                      <button
+                        type="button"
+                        key={photo.id}
+                        onClick={() => void saveRepresentativePhoto(photo)}
+                        disabled={explorationMemorySaving}
+                      >
+                        <img src={photo.imageUrl} alt="" />
+                        <span>{photo.missionTitle}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="memory-photo-empty">
+                    <b>선택할 수 있는 인증 사진이 아직 없어요.</b>
+                    <p>안성의 사진 미션을 완료하면 이곳에 표시돼요.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMemoryPhotoPickerOpen(false);
+                        representativePhotoInput.current?.click();
+                      }}
+                    >
+                      새 사진 선택하기
+                    </button>
+                  </div>
+                )}
+              </section>
             </div>
           )}
         </section>

@@ -178,7 +178,7 @@ export async function POST(request: Request) {
     const verdict = enforceApprovalPolicy(parseVerdict(part?.text));
     const guest = resolveGuest(request);
     const photoKey =
-      verdict.decision === "NEEDS_REVIEW"
+      verdict.decision === "APPROVED" || verdict.decision === "NEEDS_REVIEW"
         ? await storeReviewPhoto({
             missionId,
             mimeType: match[1],
