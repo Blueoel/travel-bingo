@@ -32,6 +32,7 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.match(svg, /data-tier="bronze"/);
   assert.equal((svg.match(/<path\b/g) ?? []).length, 250);
   assert.equal(metadata.regionCount, 250);
+  assert.equal(metadata.boundarySimplificationToleranceM, 540);
   assert.deepEqual(
     metadata.regions.find((region) => region.id === "region-31220"),
     {

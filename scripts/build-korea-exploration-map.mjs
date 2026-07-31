@@ -4,6 +4,7 @@ import path from "node:path";
 const sourceDirectory = process.argv[2];
 const outputDirectory =
   process.argv[3] ?? "apps/participant-web/public/maps";
+const boundarySimplificationToleranceM = 540;
 
 if (!sourceDirectory) {
   throw new Error(
@@ -72,7 +73,10 @@ for (const feature of features) {
   const rings = geometryRings(feature.geometry);
   const d = rings
     .map((ring) => {
-      const simplified = simplifyClosedRing(ring, 180).map(project);
+      const simplified = simplifyClosedRing(
+        ring,
+        boundarySimplificationToleranceM,
+      ).map(project);
       return `${simplified
         .map(
           ([x, y], index) =>
@@ -148,6 +152,7 @@ await writeFile(
       source: "StatGarten maps, derived from SGIS Open API",
       sourceUrl: "https://github.com/statgarten/maps",
       license: "MIT",
+      boundarySimplificationToleranceM,
       regionCount: metadata.length,
       viewBox: [0, 0, width, height],
       regions: metadata.sort((a, b) => a.code.localeCompare(b.code)),
