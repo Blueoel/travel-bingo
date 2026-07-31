@@ -134,6 +134,10 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
   assert.match(pageSource, /addRepresentativePhotoPattern/);
   assert.match(pageSource, /anseong-representative-photo/);
   assert.match(pageSource, /has-memory-photo/);
+  assert.match(
+    pageSource,
+    /fill:url\(#anseong-representative-photo\) !important/,
+  );
   assert.match(memoryRoute, /lineCount < 3/);
   assert.match(memoryRoute, /exploration_region_memories/);
   assert.match(memoryRoute, /demoAnseongPhoto/);
