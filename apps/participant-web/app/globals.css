@@ -356,7 +356,8 @@ button {
 }
 .exploration-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   margin-bottom: 13px;
   overflow: hidden;
   border: 1px solid #ded4c2;
