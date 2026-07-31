@@ -373,7 +373,7 @@
 <text class="region-label" data-code="32320" data-region-type="COUNTY" x="610.56" y="372.14">횡성</text>
   </g>
   <g id="dokdo" aria-label="독도">
-    <circle class="dokdo-marker" cx="836" cy="475" r="4.5" />
-    <text class="dokdo-label" x="826" y="466">독도</text>
+    <circle class="dokdo-marker" cx="864" cy="505" r="4.5" />
+    <text class="dokdo-label" x="854" y="496">독도</text>
   </g>
 </svg>

@@ -55,7 +55,7 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.equal(metadata.dokdo.preservedAsMarker, true);
   assert.deepEqual(metadata.visualInsets.jeju, [245, 1085, 245, 105]);
   assert.deepEqual(metadata.visualInsets.ulleungdo, [770, 455, 42, 42]);
-  assert.deepEqual(metadata.visualInsets.dokdo, [836, 475]);
+  assert.deepEqual(metadata.visualInsets.dokdo, [864, 505]);
   assert.match(svg, /id="korea-land-background"/);
   assert.match(svg, /id="dokdo"/);
   assert.deepEqual(
@@ -95,6 +95,8 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(pageSource, /className="exploration-header-side"/);
+  assert.match(pageSource, /사진을 채운 지역/);
+  assert.doesNotMatch(pageSource, /exploration-header-marker/);
   assert.match(pageSource, /scale: 1\.06/);
   assert.match(styles, /\.exploration-map-viewport/);
   assert.match(styles, /height:\s*min\(66vh,\s*620px\)/);
