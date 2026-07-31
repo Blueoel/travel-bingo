@@ -1897,7 +1897,7 @@ export default function Home() {
               onPointerCancel={() => {
                 mapPointer.current = null;
               }}
-              aria-label="대한민국 시·군·구 탐험 지도"
+              aria-label="대한민국 광역·시·군 탐험 지도"
             >
               {explorationMapLoading && (
                 <div className="exploration-map-state">

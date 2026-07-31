@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-07-31T07:06:45.200Z",
+  "generatedAt": "2026-07-31T07:50:46.536Z",
   "sourceYear": 2020,
   "source": "StatGarten maps, derived from SGIS Open API",
   "sourceUrl": "https://github.com/statgarten/maps",
   "license": "MIT",
-  "layerType": "SIGUNGU",
+  "layerType": "CITY_COUNTY",
   "boundarySimplificationToleranceM": 900,
   "landSimplificationToleranceM": 2500,
   "minimumCityIslandAreaM2": 1000000,
   "minimumBackgroundIslandAreaM2": 100000000,
-  "cityCount": 67,
-  "countyCount": 82,
-  "districtCount": 101,
-  "regionCount": 250,
+  "cityCount": 77,
+  "countyCount": 77,
+  "metropolitanCount": 8,
+  "regionCount": 162,
   "dokdo": {
     "center": [
       871.75,
@@ -28,1269 +28,130 @@
   ],
   "regions": [
     {
-      "code": "11010",
-      "name": "종로구",
+      "code": "11",
+      "name": "서울특별시",
       "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11010",
-      "bounds": {
-        "minX": 297.96,
-        "minY": 372.46,
-        "maxX": 306.56,
-        "maxY": 382.16
-      },
-      "center": [
-        302.26,
-        377.31
-      ]
-    },
-    {
-      "code": "11020",
-      "name": "중구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11020",
-      "bounds": {
-        "minX": 299.38,
-        "minY": 381.3,
-        "maxX": 306.95,
-        "maxY": 385.39
-      },
-      "center": [
-        303.16,
-        383.35
-      ]
-    },
-    {
-      "code": "11030",
-      "name": "용산구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11030",
-      "bounds": {
-        "minX": 297.38,
-        "minY": 383.65,
-        "maxX": 305.86,
-        "maxY": 390.83
-      },
-      "center": [
-        301.62,
-        387.24
-      ]
-    },
-    {
-      "code": "11040",
-      "name": "성동구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11040",
-      "bounds": {
-        "minX": 304.77,
-        "minY": 381.16,
-        "maxX": 312.4,
-        "maxY": 387.69
-      },
-      "center": [
-        308.58,
-        384.43
-      ]
-    },
-    {
-      "code": "11050",
-      "name": "광진구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11050",
-      "bounds": {
-        "minX": 310.35,
-        "minY": 381.08,
-        "maxX": 317.22,
-        "maxY": 388.55
-      },
-      "center": [
-        313.79,
-        384.82
-      ]
-    },
-    {
-      "code": "11060",
-      "name": "동대문구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11060",
-      "bounds": {
-        "minX": 306.54,
-        "minY": 375.92,
-        "maxX": 312.93,
-        "maxY": 383.08
-      },
-      "center": [
-        309.74,
-        379.5
-      ]
-    },
-    {
-      "code": "11070",
-      "name": "중랑구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11070",
-      "bounds": {
-        "minX": 311.93,
-        "minY": 374.24,
-        "maxX": 317.58,
-        "maxY": 381.67
-      },
-      "center": [
-        314.76,
-        377.96
-      ]
-    },
-    {
-      "code": "11080",
-      "name": "성북구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11080",
-      "bounds": {
-        "minX": 300.95,
-        "minY": 371.87,
-        "maxX": 312.2,
-        "maxY": 380.49
-      },
-      "center": [
-        306.58,
-        376.18
-      ]
-    },
-    {
-      "code": "11090",
-      "name": "강북구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11090",
-      "bounds": {
-        "minX": 301.55,
-        "minY": 364.79,
-        "maxX": 309.66,
-        "maxY": 375.89
-      },
-      "center": [
-        305.61,
-        370.34
-      ]
-    },
-    {
-      "code": "11100",
-      "name": "도봉구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11100",
-      "bounds": {
-        "minX": 304.88,
-        "minY": 362.4,
-        "maxX": 310.39,
-        "maxY": 372.78
-      },
-      "center": [
-        307.64,
-        367.59
-      ]
-    },
-    {
-      "code": "11110",
-      "name": "노원구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11110",
-      "bounds": {
-        "minX": 308.73,
-        "minY": 363.21,
-        "maxX": 316.95,
-        "maxY": 375.15
-      },
-      "center": [
-        312.84,
-        369.18
-      ]
-    },
-    {
-      "code": "11120",
-      "name": "은평구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11120",
-      "bounds": {
-        "minX": 290.17,
-        "minY": 368.53,
-        "maxX": 299.64,
-        "maxY": 380.63
-      },
-      "center": [
-        294.9,
-        374.58
-      ]
-    },
-    {
-      "code": "11130",
-      "name": "서대문구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11130",
-      "bounds": {
-        "minX": 292.46,
-        "minY": 375.61,
-        "maxX": 300.29,
-        "maxY": 383.71
-      },
-      "center": [
-        296.38,
-        379.66
-      ]
-    },
-    {
-      "code": "11140",
-      "name": "마포구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11140",
-      "bounds": {
-        "minX": 286.85,
-        "minY": 378.46,
-        "maxX": 299.59,
-        "maxY": 386.82
-      },
-      "center": [
-        293.22,
-        382.64
-      ]
-    },
-    {
-      "code": "11150",
-      "name": "양천구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11150",
-      "bounds": {
-        "minX": 283.13,
-        "minY": 384.22,
-        "maxX": 291.09,
-        "maxY": 391.26
-      },
-      "center": [
-        287.11,
-        387.74
-      ]
-    },
-    {
-      "code": "11160",
-      "name": "강서구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11160",
+      "regionType": "METROPOLITAN",
+      "id": "region-11",
       "bounds": {
         "minX": 276.48,
-        "minY": 376.32,
-        "maxX": 289.97,
-        "maxY": 387.81
-      },
-      "center": [
-        283.23,
-        382.07
-      ]
-    },
-    {
-      "code": "11170",
-      "name": "구로구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11170",
-      "bounds": {
-        "minX": 282.05,
-        "minY": 389.1,
-        "maxX": 292.52,
-        "maxY": 395.57
-      },
-      "center": [
-        287.28,
-        392.34
-      ]
-    },
-    {
-      "code": "11180",
-      "name": "금천구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11180",
-      "bounds": {
-        "minX": 288.87,
-        "minY": 393.71,
-        "maxX": 295.44,
-        "maxY": 401.43
-      },
-      "center": [
-        292.15,
-        397.57
-      ]
-    },
-    {
-      "code": "11190",
-      "name": "영등포구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11190",
-      "bounds": {
-        "minX": 289.65,
-        "minY": 383.49,
-        "maxX": 297.99,
-        "maxY": 393.91
-      },
-      "center": [
-        293.82,
-        388.7
-      ]
-    },
-    {
-      "code": "11200",
-      "name": "동작구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11200",
-      "bounds": {
-        "minX": 292.53,
-        "minY": 389.19,
-        "maxX": 302.09,
-        "maxY": 395.36
-      },
-      "center": [
-        297.31,
-        392.28
-      ]
-    },
-    {
-      "code": "11210",
-      "name": "관악구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11210",
-      "bounds": {
-        "minX": 292.02,
-        "minY": 392.46,
-        "maxX": 302.44,
-        "maxY": 401.13
-      },
-      "center": [
-        297.23,
-        396.79
-      ]
-    },
-    {
-      "code": "11220",
-      "name": "서초구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11220",
-      "bounds": {
-        "minX": 301.48,
-        "minY": 388.06,
-        "maxX": 314.85,
+        "minY": 362.4,
+        "maxX": 325.15,
         "maxY": 402.21
       },
       "center": [
-        308.17,
-        395.14
+        300.82,
+        382.3
       ]
     },
     {
-      "code": "11230",
-      "name": "강남구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11230",
-      "bounds": {
-        "minX": 304.81,
-        "minY": 386.57,
-        "maxX": 318.21,
-        "maxY": 398.21
-      },
-      "center": [
-        311.51,
-        392.39
-      ]
-    },
-    {
-      "code": "11240",
-      "name": "송파구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11240",
-      "bounds": {
-        "minX": 311.65,
-        "minY": 385.55,
-        "maxX": 322.56,
-        "maxY": 396.74
-      },
-      "center": [
-        317.11,
-        391.15
-      ]
-    },
-    {
-      "code": "11250",
-      "name": "강동구",
-      "province": "서울특별시",
-      "regionType": "DISTRICT",
-      "id": "region-11250",
-      "bounds": {
-        "minX": 316.52,
-        "minY": 380.03,
-        "maxX": 325.15,
-        "maxY": 389.41
-      },
-      "center": [
-        320.83,
-        384.72
-      ]
-    },
-    {
-      "code": "21010",
-      "name": "중구",
+      "code": "21",
+      "name": "부산광역시",
       "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21010",
-      "bounds": {
-        "minX": 544.26,
-        "minY": 738.25,
-        "maxX": 547.33,
-        "maxY": 741.29
-      },
-      "center": [
-        545.8,
-        739.77
-      ]
-    },
-    {
-      "code": "21020",
-      "name": "서구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21020",
-      "bounds": {
-        "minX": 541.17,
-        "minY": 734.73,
-        "maxX": 545.07,
-        "maxY": 747.74
-      },
-      "center": [
-        543.12,
-        741.24
-      ]
-    },
-    {
-      "code": "21030",
-      "name": "동구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21030",
-      "bounds": {
-        "minX": 544.6,
-        "minY": 733.9,
-        "maxX": 549.59,
-        "maxY": 739.52
-      },
-      "center": [
-        547.1,
-        736.71
-      ]
-    },
-    {
-      "code": "21040",
-      "name": "영도구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21040",
-      "bounds": {
-        "minX": 545.48,
-        "minY": 739.95,
-        "maxX": 553.29,
-        "maxY": 747.95
-      },
-      "center": [
-        549.39,
-        743.95
-      ]
-    },
-    {
-      "code": "21050",
-      "name": "부산진구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21050",
-      "bounds": {
-        "minX": 542.83,
-        "minY": 726.04,
-        "maxX": 551.53,
-        "maxY": 735.46
-      },
-      "center": [
-        547.18,
-        730.75
-      ]
-    },
-    {
-      "code": "21060",
-      "name": "동래구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21060",
-      "bounds": {
-        "minX": 546.79,
-        "minY": 722.16,
-        "maxX": 555.4,
-        "maxY": 728.29
-      },
-      "center": [
-        551.1,
-        725.22
-      ]
-    },
-    {
-      "code": "21070",
-      "name": "남구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21070",
-      "bounds": {
-        "minX": 549.17,
-        "minY": 731.59,
-        "maxX": 557.15,
-        "maxY": 741.81
-      },
-      "center": [
-        553.16,
-        736.7
-      ]
-    },
-    {
-      "code": "21080",
-      "name": "북구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21080",
-      "bounds": {
-        "minX": 540.04,
-        "minY": 714.85,
-        "maxX": 548.85,
-        "maxY": 727.91
-      },
-      "center": [
-        544.44,
-        721.38
-      ]
-    },
-    {
-      "code": "21090",
-      "name": "해운대구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21090",
-      "bounds": {
-        "minX": 554.69,
-        "minY": 718.42,
-        "maxX": 566.51,
-        "maxY": 732.93
-      },
-      "center": [
-        560.6,
-        725.68
-      ]
-    },
-    {
-      "code": "21100",
-      "name": "사하구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21100",
-      "bounds": {
-        "minX": 532.74,
-        "minY": 735.4,
-        "maxX": 543.47,
-        "maxY": 750.63
-      },
-      "center": [
-        538.11,
-        743.02
-      ]
-    },
-    {
-      "code": "21110",
-      "name": "금정구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21110",
-      "bounds": {
-        "minX": 545.75,
-        "minY": 710.39,
-        "maxX": 558.7,
-        "maxY": 724.45
-      },
-      "center": [
-        552.23,
-        717.42
-      ]
-    },
-    {
-      "code": "21120",
-      "name": "강서구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21120",
+      "regionType": "METROPOLITAN",
+      "id": "region-21",
       "bounds": {
         "minX": 516.74,
-        "minY": 720.87,
-        "maxX": 541.22,
+        "minY": 698.16,
+        "maxX": 577.79,
         "maxY": 757.25
       },
       "center": [
-        528.98,
-        739.06
+        547.27,
+        727.71
       ]
     },
     {
-      "code": "21130",
-      "name": "연제구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21130",
-      "bounds": {
-        "minX": 547.19,
-        "minY": 726.06,
-        "maxX": 555.34,
-        "maxY": 732.07
-      },
-      "center": [
-        551.27,
-        729.07
-      ]
-    },
-    {
-      "code": "21140",
-      "name": "수영구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21140",
-      "bounds": {
-        "minX": 552.56,
-        "minY": 727.91,
-        "maxX": 557.82,
-        "maxY": 735.29
-      },
-      "center": [
-        555.19,
-        731.6
-      ]
-    },
-    {
-      "code": "21150",
-      "name": "사상구",
-      "province": "부산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-21150",
-      "bounds": {
-        "minX": 536.58,
-        "minY": 725.93,
-        "maxX": 544.06,
-        "maxY": 738.29
-      },
-      "center": [
-        540.32,
-        732.11
-      ]
-    },
-    {
-      "code": "21310",
-      "name": "기장군",
-      "province": "부산광역시",
-      "regionType": "COUNTY",
-      "id": "region-21310",
-      "bounds": {
-        "minX": 554.26,
-        "minY": 698.16,
-        "maxX": 577.79,
-        "maxY": 728.35
-      },
-      "center": [
-        566.03,
-        713.26
-      ]
-    },
-    {
-      "code": "22010",
-      "name": "중구",
+      "code": "22",
+      "name": "대구광역시",
       "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22010",
-      "bounds": {
-        "minX": 489.42,
-        "minY": 627.65,
-        "maxX": 494.27,
-        "maxY": 631.2
-      },
-      "center": [
-        491.85,
-        629.42
-      ]
-    },
-    {
-      "code": "22020",
-      "name": "동구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22020",
-      "bounds": {
-        "minX": 492.73,
-        "minY": 607.56,
-        "maxX": 511.66,
-        "maxY": 631.57
-      },
-      "center": [
-        502.2,
-        619.57
-      ]
-    },
-    {
-      "code": "22030",
-      "name": "서구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22030",
-      "bounds": {
-        "minX": 482.57,
-        "minY": 625.11,
-        "maxX": 490.35,
-        "maxY": 631.37
-      },
-      "center": [
-        486.46,
-        628.24
-      ]
-    },
-    {
-      "code": "22040",
-      "name": "남구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22040",
-      "bounds": {
-        "minX": 487.3,
-        "minY": 630.5,
-        "maxX": 493.6,
-        "maxY": 638.2
-      },
-      "center": [
-        490.45,
-        634.35
-      ]
-    },
-    {
-      "code": "22050",
-      "name": "북구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22050",
-      "bounds": {
-        "minX": 481.19,
-        "minY": 611.82,
-        "maxX": 496.32,
-        "maxY": 628.46
-      },
-      "center": [
-        488.76,
-        620.14
-      ]
-    },
-    {
-      "code": "22060",
-      "name": "수성구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22060",
-      "bounds": {
-        "minX": 491.61,
-        "minY": 627.73,
-        "maxX": 507.64,
-        "maxY": 640.55
-      },
-      "center": [
-        499.63,
-        634.14
-      ]
-    },
-    {
-      "code": "22070",
-      "name": "달서구",
-      "province": "대구광역시",
-      "regionType": "DISTRICT",
-      "id": "region-22070",
-      "bounds": {
-        "minX": 476.98,
-        "minY": 629.19,
-        "maxX": 491.18,
-        "maxY": 643.23
-      },
-      "center": [
-        484.08,
-        636.21
-      ]
-    },
-    {
-      "code": "22310",
-      "name": "달성군",
-      "province": "대구광역시",
-      "regionType": "COUNTY",
-      "id": "region-22310",
+      "regionType": "METROPOLITAN",
+      "id": "region-22",
       "bounds": {
         "minX": 463.23,
-        "minY": 618.52,
-        "maxX": 504.07,
+        "minY": 607.56,
+        "maxX": 511.66,
         "maxY": 667.71
       },
       "center": [
-        483.65,
-        643.12
+        487.45,
+        637.64
       ]
     },
     {
-      "code": "23010",
-      "name": "중구",
+      "code": "23",
+      "name": "인천광역시",
       "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23010",
-      "bounds": {
-        "minX": 228.78,
-        "minY": 385.05,
-        "maxX": 262.29,
-        "maxY": 410.95
-      },
-      "center": [
-        245.54,
-        398
-      ]
-    },
-    {
-      "code": "23020",
-      "name": "동구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23020",
-      "bounds": {
-        "minX": 258.42,
-        "minY": 392.08,
-        "maxX": 265.91,
-        "maxY": 396.11
-      },
-      "center": [
-        262.17,
-        394.1
-      ]
-    },
-    {
-      "code": "23040",
-      "name": "연수구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23040",
-      "bounds": {
-        "minX": 254.81,
-        "minY": 400.39,
-        "maxX": 269.61,
-        "maxY": 415.19
-      },
-      "center": [
-        262.21,
-        407.79
-      ]
-    },
-    {
-      "code": "23050",
-      "name": "남동구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23050",
-      "bounds": {
-        "minX": 264.92,
-        "minY": 394.49,
-        "maxX": 278.22,
-        "maxY": 408.91
-      },
-      "center": [
-        271.57,
-        401.7
-      ]
-    },
-    {
-      "code": "23060",
-      "name": "부평구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23060",
-      "bounds": {
-        "minX": 266.99,
-        "minY": 388.09,
-        "maxX": 276.76,
-        "maxY": 396.74
-      },
-      "center": [
-        271.88,
-        392.42
-      ]
-    },
-    {
-      "code": "23070",
-      "name": "계양구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23070",
-      "bounds": {
-        "minX": 266.82,
-        "minY": 377.91,
-        "maxX": 279.9,
-        "maxY": 388.1
-      },
-      "center": [
-        273.36,
-        383.01
-      ]
-    },
-    {
-      "code": "23080",
-      "name": "서구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23080",
-      "bounds": {
-        "minX": 254.49,
-        "minY": 371.33,
-        "maxX": 271.98,
-        "maxY": 395.68
-      },
-      "center": [
-        263.24,
-        383.51
-      ]
-    },
-    {
-      "code": "23090",
-      "name": "미추홀구",
-      "province": "인천광역시",
-      "regionType": "DISTRICT",
-      "id": "region-23090",
-      "bounds": {
-        "minX": 260.58,
-        "minY": 393.83,
-        "maxX": 269.19,
-        "maxY": 401.72
-      },
-      "center": [
-        264.89,
-        397.78
-      ]
-    },
-    {
-      "code": "23310",
-      "name": "강화군",
-      "province": "인천광역시",
-      "regionType": "COUNTY",
-      "id": "region-23310",
-      "bounds": {
-        "minX": 202.14,
-        "minY": 342.85,
-        "maxX": 250.95,
-        "maxY": 379.69
-      },
-      "center": [
-        226.55,
-        361.27
-      ]
-    },
-    {
-      "code": "23320",
-      "name": "옹진군",
-      "province": "인천광역시",
-      "regionType": "COUNTY",
-      "id": "region-23320",
+      "regionType": "METROPOLITAN",
+      "id": "region-23",
       "bounds": {
         "minX": 28,
         "minY": 316.36,
-        "maxX": 249.77,
+        "maxX": 279.9,
         "maxY": 460.99
       },
       "center": [
-        138.89,
+        153.95,
         388.68
       ]
     },
     {
-      "code": "24010",
-      "name": "동구",
+      "code": "24",
+      "name": "광주광역시",
       "province": "광주광역시",
-      "regionType": "DISTRICT",
-      "id": "region-24010",
-      "bounds": {
-        "minX": 290.9,
-        "minY": 732.31,
-        "maxX": 302.51,
-        "maxY": 745.87
-      },
-      "center": [
-        296.71,
-        739.09
-      ]
-    },
-    {
-      "code": "24020",
-      "name": "서구",
-      "province": "광주광역시",
-      "regionType": "DISTRICT",
-      "id": "region-24020",
-      "bounds": {
-        "minX": 278.08,
-        "minY": 730.35,
-        "maxX": 291.21,
-        "maxY": 743.11
-      },
-      "center": [
-        284.65,
-        736.73
-      ]
-    },
-    {
-      "code": "24030",
-      "name": "남구",
-      "province": "광주광역시",
-      "regionType": "DISTRICT",
-      "id": "region-24030",
-      "bounds": {
-        "minX": 272.35,
-        "minY": 734.21,
-        "maxX": 293.57,
-        "maxY": 748.92
-      },
-      "center": [
-        282.96,
-        741.57
-      ]
-    },
-    {
-      "code": "24040",
-      "name": "북구",
-      "province": "광주광역시",
-      "regionType": "DISTRICT",
-      "id": "region-24040",
-      "bounds": {
-        "minX": 282.31,
-        "minY": 718.74,
-        "maxX": 304.7,
-        "maxY": 738.84
-      },
-      "center": [
-        293.51,
-        728.79
-      ]
-    },
-    {
-      "code": "24050",
-      "name": "광산구",
-      "province": "광주광역시",
-      "regionType": "DISTRICT",
-      "id": "region-24050",
+      "regionType": "METROPOLITAN",
+      "id": "region-24",
       "bounds": {
         "minX": 259.48,
         "minY": 718.59,
-        "maxX": 285.33,
-        "maxY": 746.09
+        "maxX": 304.7,
+        "maxY": 748.92
       },
       "center": [
-        272.4,
-        732.34
+        282.09,
+        733.76
       ]
     },
     {
-      "code": "25010",
-      "name": "동구",
+      "code": "25",
+      "name": "대전광역시",
       "province": "대전광역시",
-      "regionType": "DISTRICT",
-      "id": "region-25010",
-      "bounds": {
-        "minX": 351.73,
-        "minY": 546.62,
-        "maxX": 368.96,
-        "maxY": 582.37
-      },
-      "center": [
-        360.35,
-        564.5
-      ]
-    },
-    {
-      "code": "25020",
-      "name": "중구",
-      "province": "대전광역시",
-      "regionType": "DISTRICT",
-      "id": "region-25020",
-      "bounds": {
-        "minX": 346.27,
-        "minY": 559.78,
-        "maxX": 356.98,
-        "maxY": 580.55
-      },
-      "center": [
-        351.63,
-        570.17
-      ]
-    },
-    {
-      "code": "25030",
-      "name": "서구",
-      "province": "대전광역시",
-      "regionType": "DISTRICT",
-      "id": "region-25030",
-      "bounds": {
-        "minX": 335.88,
-        "minY": 556.51,
-        "maxX": 350.61,
-        "maxY": 584.06
-      },
-      "center": [
-        343.25,
-        570.29
-      ]
-    },
-    {
-      "code": "25040",
-      "name": "유성구",
-      "province": "대전광역시",
-      "regionType": "DISTRICT",
-      "id": "region-25040",
+      "regionType": "METROPOLITAN",
+      "id": "region-25",
       "bounds": {
         "minX": 332,
         "minY": 537.8,
-        "maxX": 352.52,
-        "maxY": 572.21
+        "maxX": 368.96,
+        "maxY": 584.06
       },
       "center": [
-        342.26,
-        555.01
+        350.48,
+        560.93
       ]
     },
     {
-      "code": "25050",
-      "name": "대덕구",
-      "province": "대전광역시",
-      "regionType": "DISTRICT",
-      "id": "region-25050",
-      "bounds": {
-        "minX": 348.87,
-        "minY": 541.17,
-        "maxX": 362.45,
-        "maxY": 561.05
-      },
-      "center": [
-        355.66,
-        551.11
-      ]
-    },
-    {
-      "code": "26010",
-      "name": "중구",
+      "code": "26",
+      "name": "울산광역시",
       "province": "울산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-26010",
-      "bounds": {
-        "minX": 570.75,
-        "minY": 667.23,
-        "maxX": 582.87,
-        "maxY": 675.22
-      },
-      "center": [
-        576.81,
-        671.23
-      ]
-    },
-    {
-      "code": "26020",
-      "name": "남구",
-      "province": "울산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-26020",
-      "bounds": {
-        "minX": 568.97,
-        "minY": 673.53,
-        "maxX": 587.57,
-        "maxY": 688.29
-      },
-      "center": [
-        578.27,
-        680.91
-      ]
-    },
-    {
-      "code": "26030",
-      "name": "동구",
-      "province": "울산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-26030",
-      "bounds": {
-        "minX": 587.01,
-        "minY": 670.97,
-        "maxX": 595.39,
-        "maxY": 685.7
-      },
-      "center": [
-        591.2,
-        678.34
-      ]
-    },
-    {
-      "code": "26040",
-      "name": "북구",
-      "province": "울산광역시",
-      "regionType": "DISTRICT",
-      "id": "region-26040",
-      "bounds": {
-        "minX": 575.21,
-        "minY": 655.47,
-        "maxX": 596.03,
-        "maxY": 679.18
-      },
-      "center": [
-        585.62,
-        667.33
-      ]
-    },
-    {
-      "code": "26310",
-      "name": "울주군",
-      "province": "울산광역시",
-      "regionType": "COUNTY",
-      "id": "region-26310",
+      "regionType": "METROPOLITAN",
+      "id": "region-26",
       "bounds": {
         "minX": 537.28,
         "minY": 649.27,
-        "maxX": 585.61,
+        "maxX": 596.03,
         "maxY": 706.83
       },
       "center": [
-        561.44,
+        566.66,
         678.05
       ]
     },
     {
-      "code": "29010",
-      "name": "세종시",
+      "code": "29",
+      "name": "세종특별자치시",
       "province": "세종특별자치시",
-      "regionType": "CITY",
-      "id": "region-29010",
+      "regionType": "METROPOLITAN",
+      "id": "region-29",
       "bounds": {
         "minX": 318.19,
         "minY": 503.66,
@@ -1303,122 +164,37 @@
       ]
     },
     {
-      "code": "31011",
-      "name": "수원시 장안구",
+      "code": "31010",
+      "name": "수원시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31011",
-      "bounds": {
-        "minX": 299.07,
-        "minY": 413.53,
-        "maxX": 308.28,
-        "maxY": 423.09
-      },
-      "center": [
-        303.67,
-        418.31
-      ]
-    },
-    {
-      "code": "31012",
-      "name": "수원시 권선구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31012",
+      "regionType": "CITY",
+      "id": "region-31010",
       "bounds": {
         "minX": 295.1,
-        "minY": 420.44,
-        "maxX": 308.52,
+        "minY": 413.53,
+        "maxX": 314.08,
         "maxY": 431.99
       },
       "center": [
-        301.81,
-        426.22
+        304.59,
+        422.76
       ]
     },
     {
-      "code": "31013",
-      "name": "수원시 팔달구",
+      "code": "31020",
+      "name": "성남시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31013",
-      "bounds": {
-        "minX": 300.99,
-        "minY": 421.93,
-        "maxX": 308.94,
-        "maxY": 427.34
-      },
-      "center": [
-        304.97,
-        424.64
-      ]
-    },
-    {
-      "code": "31014",
-      "name": "수원시 영통구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31014",
-      "bounds": {
-        "minX": 307.42,
-        "minY": 417.93,
-        "maxX": 314.08,
-        "maxY": 431.03
-      },
-      "center": [
-        310.75,
-        424.48
-      ]
-    },
-    {
-      "code": "31021",
-      "name": "성남시 수정구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31021",
-      "bounds": {
-        "minX": 308.59,
-        "minY": 395.56,
-        "maxX": 324.35,
-        "maxY": 406.86
-      },
-      "center": [
-        316.47,
-        401.21
-      ]
-    },
-    {
-      "code": "31022",
-      "name": "성남시 중원구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31022",
-      "bounds": {
-        "minX": 317.35,
-        "minY": 395.55,
-        "maxX": 326.53,
-        "maxY": 405.71
-      },
-      "center": [
-        321.94,
-        400.63
-      ]
-    },
-    {
-      "code": "31023",
-      "name": "성남시 분당구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31023",
+      "regionType": "CITY",
+      "id": "region-31020",
       "bounds": {
         "minX": 306.92,
-        "minY": 403.96,
-        "maxX": 324.33,
+        "minY": 395.55,
+        "maxX": 326.53,
         "maxY": 416.16
       },
       "center": [
-        315.63,
-        410.06
+        316.73,
+        405.86
       ]
     },
     {
@@ -1439,37 +215,20 @@
       ]
     },
     {
-      "code": "31041",
-      "name": "안양시 만안구",
+      "code": "31040",
+      "name": "안양시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31041",
+      "regionType": "CITY",
+      "id": "region-31040",
       "bounds": {
         "minX": 288.62,
         "minY": 399.01,
-        "maxX": 297.81,
+        "maxX": 301.72,
         "maxY": 412.33
       },
       "center": [
-        293.22,
+        295.17,
         405.67
-      ]
-    },
-    {
-      "code": "31042",
-      "name": "안양시 동안구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31042",
-      "bounds": {
-        "minX": 295.03,
-        "minY": 400.4,
-        "maxX": 301.72,
-        "maxY": 411.95
-      },
-      "center": [
-        298.38,
-        406.17
       ]
     },
     {
@@ -1541,88 +300,37 @@
       ]
     },
     {
-      "code": "31091",
-      "name": "안산시 상록구",
+      "code": "31090",
+      "name": "안산시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31091",
-      "bounds": {
-        "minX": 282.22,
-        "minY": 409.59,
-        "maxX": 296.59,
-        "maxY": 425.6
-      },
-      "center": [
-        289.4,
-        417.6
-      ]
-    },
-    {
-      "code": "31092",
-      "name": "안산시 단원구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31092",
+      "regionType": "CITY",
+      "id": "region-31090",
       "bounds": {
         "minX": 230.92,
-        "minY": 411.23,
-        "maxX": 285.37,
+        "minY": 409.59,
+        "maxX": 296.59,
         "maxY": 449.68
       },
       "center": [
-        258.15,
-        430.46
+        263.76,
+        429.64
       ]
     },
     {
-      "code": "31101",
-      "name": "고양시 덕양구",
+      "code": "31100",
+      "name": "고양시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31101",
+      "regionType": "CITY",
+      "id": "region-31100",
       "bounds": {
-        "minX": 275.98,
+        "minX": 265.71,
         "minY": 355.48,
         "maxX": 303.27,
         "maxY": 381.21
       },
       "center": [
-        289.63,
+        284.49,
         368.35
-      ]
-    },
-    {
-      "code": "31103",
-      "name": "고양시 일산동구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31103",
-      "bounds": {
-        "minX": 272.87,
-        "minY": 357.11,
-        "maxX": 287.25,
-        "maxY": 373.3
-      },
-      "center": [
-        280.06,
-        365.21
-      ]
-    },
-    {
-      "code": "31104",
-      "name": "고양시 일산서구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31104",
-      "bounds": {
-        "minX": 265.71,
-        "minY": 361.38,
-        "maxX": 278.65,
-        "maxY": 370.05
-      },
-      "center": [
-        272.18,
-        365.72
       ]
     },
     {
@@ -1762,54 +470,20 @@
       ]
     },
     {
-      "code": "31191",
-      "name": "용인시 처인구",
+      "code": "31190",
+      "name": "용인시",
       "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31191",
+      "regionType": "CITY",
+      "id": "region-31190",
       "bounds": {
-        "minX": 316.26,
-        "minY": 412.26,
+        "minX": 305.6,
+        "minY": 410.46,
         "maxX": 353.48,
         "maxY": 452.63
       },
       "center": [
-        334.87,
-        432.45
-      ]
-    },
-    {
-      "code": "31192",
-      "name": "용인시 기흥구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31192",
-      "bounds": {
-        "minX": 311.12,
-        "minY": 417.44,
-        "maxX": 324.28,
-        "maxY": 433.37
-      },
-      "center": [
-        317.7,
-        425.41
-      ]
-    },
-    {
-      "code": "31193",
-      "name": "용인시 수지구",
-      "province": "경기도",
-      "regionType": "DISTRICT",
-      "id": "region-31193",
-      "bounds": {
-        "minX": 305.6,
-        "minY": 410.46,
-        "maxX": 320.26,
-        "maxY": 422
-      },
-      "center": [
-        312.93,
-        416.23
+        329.54,
+        431.54
       ]
     },
     {
@@ -2357,71 +1031,20 @@
       ]
     },
     {
-      "code": "33041",
-      "name": "청주시 상당구",
+      "code": "33040",
+      "name": "청주시",
       "province": "충청북도",
-      "regionType": "DISTRICT",
-      "id": "region-33041",
+      "regionType": "CITY",
+      "id": "region-33040",
       "bounds": {
-        "minX": 355.47,
-        "minY": 504.27,
+        "minX": 335.54,
+        "minY": 496.95,
         "maxX": 393.65,
         "maxY": 551.24
       },
       "center": [
-        374.56,
-        527.76
-      ]
-    },
-    {
-      "code": "33042",
-      "name": "청주시 서원구",
-      "province": "충청북도",
-      "regionType": "DISTRICT",
-      "id": "region-33042",
-      "bounds": {
-        "minX": 346.92,
-        "minY": 516.48,
-        "maxX": 361.79,
-        "maxY": 545.25
-      },
-      "center": [
-        354.36,
-        530.87
-      ]
-    },
-    {
-      "code": "33043",
-      "name": "청주시 흥덕구",
-      "province": "충청북도",
-      "regionType": "DISTRICT",
-      "id": "region-33043",
-      "bounds": {
-        "minX": 335.54,
-        "minY": 505.01,
-        "maxX": 359.79,
-        "maxY": 528.83
-      },
-      "center": [
-        347.67,
-        516.92
-      ]
-    },
-    {
-      "code": "33044",
-      "name": "청주시 청원구",
-      "province": "충청북도",
-      "regionType": "DISTRICT",
-      "id": "region-33044",
-      "bounds": {
-        "minX": 340.55,
-        "minY": 496.95,
-        "maxX": 375.89,
-        "maxY": 516.71
-      },
-      "center": [
-        358.22,
-        506.83
+        364.6,
+        524.1
       ]
     },
     {
@@ -2561,37 +1184,20 @@
       ]
     },
     {
-      "code": "34011",
-      "name": "천안시 동남구",
+      "code": "34010",
+      "name": "천안시",
       "province": "충청남도",
-      "regionType": "DISTRICT",
-      "id": "region-34011",
+      "regionType": "CITY",
+      "id": "region-34010",
       "bounds": {
         "minX": 304.13,
-        "minY": 480.6,
+        "minY": 468.73,
         "maxX": 352.58,
         "maxY": 520.3
       },
       "center": [
         328.36,
-        500.45
-      ]
-    },
-    {
-      "code": "34012",
-      "name": "천안시 서북구",
-      "province": "충청남도",
-      "regionType": "DISTRICT",
-      "id": "region-34012",
-      "bounds": {
-        "minX": 312.04,
-        "minY": 468.73,
-        "maxX": 337.38,
-        "maxY": 496.18
-      },
-      "center": [
-        324.71,
-        482.46
+        494.52
       ]
     },
     {
@@ -2833,37 +1439,20 @@
       ]
     },
     {
-      "code": "35011",
-      "name": "전주시 완산구",
+      "code": "35010",
+      "name": "전주시",
       "province": "전라북도",
-      "regionType": "DISTRICT",
-      "id": "region-35011",
-      "bounds": {
-        "minX": 308.46,
-        "minY": 633.55,
-        "maxX": 328.29,
-        "maxY": 650.27
-      },
-      "center": [
-        318.38,
-        641.91
-      ]
-    },
-    {
-      "code": "35012",
-      "name": "전주시 덕진구",
-      "province": "전라북도",
-      "regionType": "DISTRICT",
-      "id": "region-35012",
+      "regionType": "CITY",
+      "id": "region-35010",
       "bounds": {
         "minX": 302.31,
         "minY": 624.83,
         "maxX": 330.35,
-        "maxY": 639.67
+        "maxY": 650.27
       },
       "center": [
         316.33,
-        632.25
+        637.55
       ]
     },
     {
@@ -3462,37 +2051,20 @@
       ]
     },
     {
-      "code": "37011",
-      "name": "포항시 남구",
+      "code": "37010",
+      "name": "포항시",
       "province": "경상북도",
-      "regionType": "DISTRICT",
-      "id": "region-37011",
+      "regionType": "CITY",
+      "id": "region-37010",
       "bounds": {
-        "minX": 572.47,
-        "minY": 595.65,
+        "minX": 538.11,
+        "minY": 560.21,
         "maxX": 608.97,
         "maxY": 631.92
       },
       "center": [
-        590.72,
-        613.79
-      ]
-    },
-    {
-      "code": "37012",
-      "name": "포항시 북구",
-      "province": "경상북도",
-      "regionType": "DISTRICT",
-      "id": "region-37012",
-      "bounds": {
-        "minX": 538.11,
-        "minY": 560.21,
-        "maxX": 591.56,
-        "maxY": 606.64
-      },
-      "center": [
-        564.84,
-        583.42
+        573.54,
+        596.07
       ]
     },
     {
@@ -3989,88 +2561,20 @@
       ]
     },
     {
-      "code": "38111",
-      "name": "창원시 의창구",
+      "code": "38110",
+      "name": "창원시",
       "province": "경상남도",
-      "regionType": "DISTRICT",
-      "id": "region-38111",
-      "bounds": {
-        "minX": 488.5,
-        "minY": 698.54,
-        "maxX": 513,
-        "maxY": 724.22
-      },
-      "center": [
-        500.75,
-        711.38
-      ]
-    },
-    {
-      "code": "38112",
-      "name": "창원시 성산구",
-      "province": "경상남도",
-      "regionType": "DISTRICT",
-      "id": "region-38112",
-      "bounds": {
-        "minX": 492.34,
-        "minY": 719.95,
-        "maxX": 511.75,
-        "maxY": 733.89
-      },
-      "center": [
-        502.04,
-        726.92
-      ]
-    },
-    {
-      "code": "38113",
-      "name": "창원시 마산합포구",
-      "province": "경상남도",
-      "regionType": "DISTRICT",
-      "id": "region-38113",
+      "regionType": "CITY",
+      "id": "region-38110",
       "bounds": {
         "minX": 463.57,
-        "minY": 723.5,
-        "maxX": 498.11,
+        "minY": 698.54,
+        "maxX": 522.92,
         "maxY": 748.37
       },
       "center": [
-        480.84,
-        735.94
-      ]
-    },
-    {
-      "code": "38114",
-      "name": "창원시 마산회원구",
-      "province": "경상남도",
-      "regionType": "DISTRICT",
-      "id": "region-38114",
-      "bounds": {
-        "minX": 478.52,
-        "minY": 715.56,
-        "maxX": 496.81,
-        "maxY": 730.21
-      },
-      "center": [
-        487.67,
-        722.89
-      ]
-    },
-    {
-      "code": "38115",
-      "name": "창원시 진해구",
-      "province": "경상남도",
-      "regionType": "DISTRICT",
-      "id": "region-38115",
-      "bounds": {
-        "minX": 494.53,
-        "minY": 729.44,
-        "maxX": 522.92,
-        "maxY": 746.96
-      },
-      "center": [
-        508.73,
-        738.2
+        493.25,
+        723.46
       ]
     },
     {

@@ -36,6 +36,17 @@ const provinceFiles = [
   "제주특별자치도_시군구_경계.json",
 ];
 
+const metropolitanProvinceCodes = new Map([
+  ["서울특별시", "11"],
+  ["부산광역시", "21"],
+  ["대구광역시", "22"],
+  ["인천광역시", "23"],
+  ["광주광역시", "24"],
+  ["대전광역시", "25"],
+  ["울산광역시", "26"],
+  ["세종특별자치시", "29"],
+]);
+
 const features = [];
 for (const file of provinceFiles) {
   const collection = JSON.parse(
@@ -67,16 +78,58 @@ const project = ([x, y]) => [
   offsetY + (bounds.maxY - y) * scale,
 ];
 
-const administrativeRegions = features
-  .map((feature) => {
-    const name = String(feature.properties?.title ?? "");
-    return {
-      code: String(feature.properties?.id ?? ""),
-      name,
+const regionGroups = new Map();
+for (const feature of features) {
+  const featureName = String(feature.properties?.title ?? "");
+  const featureCode = String(feature.properties?.id ?? "");
+  const metropolitanCode = metropolitanProvinceCodes.get(feature.province);
+  if (metropolitanCode) {
+    addRegionFeature(regionGroups, {
+      code: metropolitanCode,
+      name: feature.province,
       province: feature.province,
-      regionType: administrativeRegionType(name),
-      geometry: filterSmallPolygons(
+      regionType: "METROPOLITAN",
+      feature,
+    });
+    continue;
+  }
+
+  const parentCityMatch = featureName.match(/^(.+?시)(?:\s|$)/);
+  if (parentCityMatch) {
+    const cityName = parentCityMatch[1];
+    addRegionFeature(regionGroups, {
+      code:
+        featureName === cityName
+          ? featureCode
+          : `${featureCode.slice(0, 4)}0`,
+      name: cityName,
+      province: feature.province,
+      regionType: "CITY",
+      feature,
+    });
+    continue;
+  }
+
+  addRegionFeature(regionGroups, {
+    code: featureCode,
+    name: featureName,
+    province: feature.province,
+    regionType: "COUNTY",
+    feature,
+  });
+}
+
+const administrativeRegions = [...regionGroups.values()]
+  .map((region) => {
+    const unionedGeometry = polygonClipping.union(
+      ...region.features.map((feature) =>
         geometryToMultiPolygon(feature.geometry),
+      ),
+    );
+    return {
+      ...region,
+      geometry: filterSmallPolygons(
+        unionedGeometry,
         minimumCityIslandAreaM2,
       ),
     };
@@ -149,18 +202,18 @@ const cityCount = administrativeRegions.filter(
 const countyCount = administrativeRegions.filter(
   (region) => region.regionType === "COUNTY",
 ).length;
-const districtCount = administrativeRegions.filter(
-  (region) => region.regionType === "DISTRICT",
+const metropolitanCount = administrativeRegions.filter(
+  (region) => region.regionType === "METROPOLITAN",
 ).length;
 
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="map-title map-description">
-  <title id="map-title">대한민국 시군구 탐험 지도</title>
-  <desc id="map-description">대한민국 250개 시·군·구 경계와 지역명을 표시하고 각 지역을 선택할 수 있는 지도</desc>
+  <title id="map-title">대한민국 시군 탐험 지도</title>
+  <desc id="map-description">광역 지자체와 일반 시·군 규모로 정리한 지역 경계와 이름을 표시하고 각 지역을 선택할 수 있는 지도</desc>
   <metadata>
     Source: SGIS boundary data processed by StatGarten maps (2020).
     Derived dataset repository license: MIT, Copyright (c) 2022 StatGarten.
-    Administrative boundaries preserve the source city, county, and district polygons.
+    District polygons are dissolved into their parent city or metropolitan municipality.
   </metadata>
   <style>
     .land-background {
@@ -222,14 +275,14 @@ await writeFile(
       source: "StatGarten maps, derived from SGIS Open API",
       sourceUrl: "https://github.com/statgarten/maps",
       license: "MIT",
-      layerType: "SIGUNGU",
+      layerType: "CITY_COUNTY",
       boundarySimplificationToleranceM,
       landSimplificationToleranceM,
       minimumCityIslandAreaM2,
       minimumBackgroundIslandAreaM2,
       cityCount,
       countyCount,
-      districtCount,
+      metropolitanCount,
       regionCount: metadata.length,
       dokdo: {
         center: dokdoCenter.map(round),
@@ -245,8 +298,25 @@ await writeFile(
 );
 
 console.log(
-  `Generated ${metadata.length} administrative regions (${cityCount} cities + ${countyCount} counties + ${districtCount} districts) in ${outputDirectory}`,
+  `Generated ${metadata.length} regions (${metropolitanCount} metropolitan + ${cityCount} cities + ${countyCount} counties) in ${outputDirectory}`,
 );
+
+function addRegionFeature(groups, region) {
+  const key = `${region.province}:${region.name}`;
+  const existing = groups.get(key);
+  if (existing) {
+    existing.features.push(region.feature);
+    if (region.code < existing.code) existing.code = region.code;
+    return;
+  }
+  groups.set(key, {
+    code: region.code,
+    name: region.name,
+    province: region.province,
+    regionType: region.regionType,
+    features: [region.feature],
+  });
+}
 
 function geometryToMultiPolygon(geometry) {
   if (!geometry) return [];
@@ -328,12 +398,6 @@ function polygonCentroid(ring) {
     centerX / (3 * areaFactor),
     centerY / (3 * areaFactor),
   ];
-}
-
-function administrativeRegionType(name) {
-  if (String(name).endsWith("군")) return "COUNTY";
-  if (String(name).endsWith("구")) return "DISTRICT";
-  return "CITY";
 }
 
 function shortAdministrativeName(name) {
