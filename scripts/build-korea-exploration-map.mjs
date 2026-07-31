@@ -36,17 +36,6 @@ const provinceFiles = [
   "제주특별자치도_시군구_경계.json",
 ];
 
-const metropolitanProvinceCodes = new Map([
-  ["서울특별시", "11"],
-  ["부산광역시", "21"],
-  ["대구광역시", "22"],
-  ["인천광역시", "23"],
-  ["광주광역시", "24"],
-  ["대전광역시", "25"],
-  ["울산광역시", "26"],
-  ["세종특별자치시", "29"],
-]);
-
 const features = [];
 for (const file of provinceFiles) {
   const collection = JSON.parse(
@@ -78,44 +67,16 @@ const project = ([x, y]) => [
   offsetY + (bounds.maxY - y) * scale,
 ];
 
-const cityGroups = new Map();
-for (const feature of features) {
-  const metroCode = metropolitanProvinceCodes.get(feature.province);
-  if (metroCode) {
-    addCityFeature(cityGroups, {
-      code: metroCode,
-      name: feature.province,
-      province: feature.province,
-      cityType: "METROPOLITAN",
-      feature,
-    });
-    continue;
-  }
-
-  const featureName = String(feature.properties?.title ?? "");
-  const cityMatch = featureName.match(/^(.+?시)(?:\s|$)/);
-  if (!cityMatch) continue;
-  const cityName = cityMatch[1];
-  const featureCode = String(feature.properties?.id ?? "");
-  const code = featureName === cityName ? featureCode : `${featureCode.slice(0, 4)}0`;
-  addCityFeature(cityGroups, {
-    code,
-    name: cityName,
-    province: feature.province,
-    cityType: "MUNICIPAL",
-    feature,
-  });
-}
-
-const cityRegions = [...cityGroups.values()]
-  .map((city) => {
-    const unionedGeometry = polygonClipping.union(
-      ...city.features.map((feature) => geometryToMultiPolygon(feature.geometry)),
-    );
+const administrativeRegions = features
+  .map((feature) => {
+    const name = String(feature.properties?.title ?? "");
     return {
-      ...city,
+      code: String(feature.properties?.id ?? ""),
+      name,
+      province: feature.province,
+      regionType: administrativeRegionType(name),
       geometry: filterSmallPolygons(
-        unionedGeometry,
+        geometryToMultiPolygon(feature.geometry),
         minimumCityIslandAreaM2,
       ),
     };
@@ -135,27 +96,27 @@ const landPath = pathFromMultiPolygon(
 );
 
 const metadata = [];
-const cityLabels = [];
-const cityPaths = cityRegions.map((city) => {
-  const rawPoints = city.geometry.flat(2);
+const regionLabels = [];
+const regionPaths = administrativeRegions.map((region) => {
+  const rawPoints = region.geometry.flat(2);
   const projectedPoints = rawPoints.map(project);
   const regionBounds = boundsOf(projectedPoints);
-  const id = `region-${city.code}`;
-  const largestPolygon = [...city.geometry].sort(
+  const id = `region-${region.code}`;
+  const largestPolygon = [...region.geometry].sort(
     (a, b) =>
       Math.abs(ringArea(b[0] ?? [])) - Math.abs(ringArea(a[0] ?? [])),
   )[0];
   const labelPoint = project(
     polygonCentroid(largestPolygon?.[0] ?? rawPoints),
   );
-  cityLabels.push(
-    `<text class="city-label" data-code="${escapeXml(city.code)}" data-city-type="${city.cityType}" x="${round(labelPoint[0])}" y="${round(labelPoint[1])}">${escapeXml(shortCityName(city.name))}</text>`,
+  regionLabels.push(
+    `<text class="region-label" data-code="${escapeXml(region.code)}" data-region-type="${region.regionType}" x="${round(labelPoint[0])}" y="${round(labelPoint[1])}">${escapeXml(shortAdministrativeName(region.name))}</text>`,
   );
   metadata.push({
-    code: city.code,
-    name: city.name,
-    province: city.province,
-    cityType: city.cityType,
+    code: region.code,
+    name: region.name,
+    province: region.province,
+    regionType: region.regionType,
     id,
     bounds: regionBounds,
     center: [
@@ -163,7 +124,7 @@ const cityPaths = cityRegions.map((city) => {
       round((regionBounds.minY + regionBounds.maxY) / 2),
     ],
   });
-  return `<path id="${id}" class="region city-region" data-code="${escapeXml(city.code)}" data-name="${escapeXml(city.name)}" data-province="${escapeXml(city.province)}" data-city-type="${city.cityType}" d="${pathFromMultiPolygon(city.geometry, project)}"><title>${escapeXml(city.province)} ${escapeXml(city.name)}</title></path>`;
+  return `<path id="${id}" class="region administrative-region" data-code="${escapeXml(region.code)}" data-name="${escapeXml(region.name)}" data-province="${escapeXml(region.province)}" data-region-type="${region.regionType}" d="${pathFromMultiPolygon(region.geometry, project)}"><title>${escapeXml(region.province)} ${escapeXml(region.name)}</title></path>`;
 });
 
 const dokdoRing = geometryRings(
@@ -182,64 +143,66 @@ const dokdoCenter = dokdoRing
     ])
   : [872, 398];
 
-const municipalCityCount = cityRegions.filter(
-  (city) => city.cityType === "MUNICIPAL",
+const cityCount = administrativeRegions.filter(
+  (region) => region.regionType === "CITY",
 ).length;
-const metropolitanCityCount = cityRegions.filter(
-  (city) => city.cityType === "METROPOLITAN",
+const countyCount = administrativeRegions.filter(
+  (region) => region.regionType === "COUNTY",
+).length;
+const districtCount = administrativeRegions.filter(
+  (region) => region.regionType === "DISTRICT",
 ).length;
 
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="map-title map-description">
-  <title id="map-title">대한민국 도시 탐험 지도</title>
-  <desc id="map-description">군 지역은 내부 경계 없이 배경으로 표시하고 77개 일반·행정시와 8개 특별·광역·특별자치시를 선택할 수 있는 지도</desc>
+  <title id="map-title">대한민국 시군구 탐험 지도</title>
+  <desc id="map-description">대한민국 250개 시·군·구 경계와 지역명을 표시하고 각 지역을 선택할 수 있는 지도</desc>
   <metadata>
     Source: SGIS boundary data processed by StatGarten maps (2020).
     Derived dataset repository license: MIT, Copyright (c) 2022 StatGarten.
-    City boundaries are dissolved from the source administrative polygons.
+    Administrative boundaries preserve the source city, county, and district polygons.
   </metadata>
   <style>
     .land-background {
-      fill: #fff8e9;
-      stroke: #d78972;
+      fill: #f8f4e8;
+      stroke: #809a8d;
       stroke-width: 1.35;
       vector-effect: non-scaling-stroke;
       pointer-events: none;
     }
-    .city-region {
-      fill: #fffaf0;
+    .administrative-region {
+      fill: #fffdf7;
       fill-opacity: .98;
-      stroke: #e3a28e;
-      stroke-width: .68;
+      stroke: #9ab4a7;
+      stroke-width: .56;
       vector-effect: non-scaling-stroke;
       cursor: pointer;
       transition: fill .18s ease, opacity .18s ease;
     }
-    .city-region:hover, .city-region:focus { fill: #e4edc9; outline: none; }
-    .city-label {
-      fill: #3c7465;
-      stroke: #fffaf0;
-      stroke-width: 2.4;
+    .administrative-region:hover, .administrative-region:focus { fill: #e4edc9; outline: none; }
+    .region-label {
+      fill: #426f62;
+      stroke: #fffdf7;
+      stroke-width: 2;
       paint-order: stroke;
       stroke-linejoin: round;
-      font: 800 15px "Pretendard", "Noto Sans KR", sans-serif;
+      font: 800 11px "Pretendard", "Noto Sans KR", sans-serif;
       text-anchor: middle;
       dominant-baseline: central;
       pointer-events: none;
       vector-effect: non-scaling-stroke;
     }
-    .city-label[data-city-type="METROPOLITAN"] { font-size: 17px; }
     .dokdo-marker { fill: #3c7465; stroke: #fffaf0; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
     .dokdo-label { fill: #3c7465; stroke: #fffaf0; stroke-width: 2; paint-order: stroke; font: 800 13px sans-serif; }
   </style>
   <g id="korea-land-background">
     <path class="land-background" d="${landPath}" />
   </g>
-  <g id="korea-city-regions">
-${cityPaths.join("\n")}
+  <g id="korea-administrative-regions">
+${regionPaths.join("\n")}
   </g>
-  <g id="korea-city-labels" aria-hidden="true">
-${cityLabels.join("\n")}
+  <g id="korea-region-labels" aria-hidden="true">
+${regionLabels.join("\n")}
   </g>
   <g id="dokdo" aria-label="독도">
     <circle class="dokdo-marker" cx="${round(dokdoCenter[0])}" cy="${round(dokdoCenter[1])}" r="4.5" />
@@ -259,13 +222,14 @@ await writeFile(
       source: "StatGarten maps, derived from SGIS Open API",
       sourceUrl: "https://github.com/statgarten/maps",
       license: "MIT",
-      layerType: "CITY",
+      layerType: "SIGUNGU",
       boundarySimplificationToleranceM,
       landSimplificationToleranceM,
       minimumCityIslandAreaM2,
       minimumBackgroundIslandAreaM2,
-      municipalCityCount,
-      metropolitanCityCount,
+      cityCount,
+      countyCount,
+      districtCount,
       regionCount: metadata.length,
       dokdo: {
         center: dokdoCenter.map(round),
@@ -281,25 +245,8 @@ await writeFile(
 );
 
 console.log(
-  `Generated ${metadata.length} city regions (${municipalCityCount} municipal + ${metropolitanCityCount} metropolitan) in ${outputDirectory}`,
+  `Generated ${metadata.length} administrative regions (${cityCount} cities + ${countyCount} counties + ${districtCount} districts) in ${outputDirectory}`,
 );
-
-function addCityFeature(groups, city) {
-  const key = `${city.province}:${city.name}`;
-  const existing = groups.get(key);
-  if (existing) {
-    existing.features.push(city.feature);
-    if (city.code < existing.code) existing.code = city.code;
-    return;
-  }
-  groups.set(key, {
-    code: city.code,
-    name: city.name,
-    province: city.province,
-    cityType: city.cityType,
-    features: [city.feature],
-  });
-}
 
 function geometryToMultiPolygon(geometry) {
   if (!geometry) return [];
@@ -383,12 +330,15 @@ function polygonCentroid(ring) {
   ];
 }
 
-function shortCityName(name) {
-  return String(name)
-    .replace("특별자치시", "")
-    .replace("특별시", "")
-    .replace("광역시", "")
-    .replace(/시$/, "");
+function administrativeRegionType(name) {
+  if (String(name).endsWith("군")) return "COUNTY";
+  if (String(name).endsWith("구")) return "DISTRICT";
+  return "CITY";
+}
+
+function shortAdministrativeName(name) {
+  const finalPart = String(name).split(/\s+/).at(-1) ?? String(name);
+  return finalPart.replace(/(?:특별자치시|특별시|광역시|시|군|구)$/, "");
 }
 
 function simplifyClosedRing(points, tolerance) {

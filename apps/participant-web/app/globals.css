@@ -415,7 +415,7 @@ button {
   border-radius: 7px 9px 6px 10px;
   background:
     radial-gradient(circle at 22% 28%, #fff2d955 0 2px, transparent 3px),
-    linear-gradient(145deg, #f49b83, #ef8f78);
+    linear-gradient(145deg, #fbfaf2, #f3efe1);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -437,8 +437,8 @@ button {
 }
 .exploration-map path[data-code] {
   fill: #fffaf0 !important;
-  stroke: #e3a28e !important;
-  stroke-width: 0.68 !important;
+  stroke: #9ab4a7 !important;
+  stroke-width: 0.56 !important;
   cursor: pointer;
   transition:
     fill 160ms ease,
@@ -474,10 +474,10 @@ button {
     drop-shadow(0 0 2px #fffaf0)
     drop-shadow(0 0 6px #2f684788);
 }
-.exploration-map .city-label {
+.exploration-map .region-label {
   fill: #3c7465 !important;
 }
-.exploration-map .city-label[data-code="31220"] {
+.exploration-map .region-label[data-code="31220"] {
   fill: #fffdf5 !important;
   stroke: #2f6847 !important;
 }

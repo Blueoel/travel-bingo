@@ -29,14 +29,21 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.match(svg, /viewBox="0 0 900 1260"/);
   assert.match(svg, /id="region-31220"/);
   assert.match(svg, /data-name="안성시"/);
-  assert.match(svg, /data-city-type="MUNICIPAL"/);
-  assert.equal((svg.match(/class="region city-region"/g) ?? []).length, 85);
-  assert.equal((svg.match(/class="city-label"/g) ?? []).length, 85);
-  assert.match(svg, /id="korea-city-labels"/);
+  assert.match(svg, /data-region-type="COUNTY"/);
+  assert.equal(
+    (svg.match(/class="region administrative-region"/g) ?? []).length,
+    250,
+  );
+  assert.equal((svg.match(/class="region-label"/g) ?? []).length, 250);
+  assert.match(svg, /id="korea-region-labels"/);
   assert.match(svg, />안성<\/text>/);
-  assert.equal(metadata.regionCount, 85);
-  assert.equal(metadata.municipalCityCount, 77);
-  assert.equal(metadata.metropolitanCityCount, 8);
+  assert.match(svg, /data-name="양평군"/);
+  assert.match(svg, />양평<\/text>/);
+  assert.equal(metadata.regionCount, 250);
+  assert.equal(
+    metadata.cityCount + metadata.countyCount + metadata.districtCount,
+    250,
+  );
   assert.equal(metadata.boundarySimplificationToleranceM, 900);
   assert.equal(metadata.dokdo.preservedAsMarker, true);
   assert.match(svg, /id="korea-land-background"/);
@@ -47,7 +54,7 @@ test("ships an interactive nationwide administrative SVG map", async () => {
       code: "31220",
       name: "안성시",
       province: "경기도",
-      cityType: "MUNICIPAL",
+      regionType: "CITY",
       id: "region-31220",
       bounds: {
         minX: 315.39,
@@ -72,16 +79,16 @@ test("connects the nationwide map to the exploration tab", async () => {
 
   assert.match(pageSource, /activeTab === "exploration"/);
   assert.match(pageSource, /fetch\("\/maps\/korea-sigungu\.svg"\)/);
-  assert.match(pageSource, /대한민국 도시 탐험 지도/);
+  assert.match(pageSource, /대한민국 시·군·구 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(styles, /\.exploration-map-viewport/);
   assert.match(styles, /path\[data-code="31220"\]/);
-  assert.match(styles, /stroke-width:\s*0\.68\s*!important/);
+  assert.match(styles, /stroke-width:\s*0\.56\s*!important/);
   assert.match(styles, /fill:\s*#69a66f\s*!important/);
-  assert.match(styles, /\.exploration-map \.city-label/);
+  assert.match(styles, /\.exploration-map \.region-label/);
   assert.match(styles, /\.exploration-map path\.is-selected/);
 });
 
