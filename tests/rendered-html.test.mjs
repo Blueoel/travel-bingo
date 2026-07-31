@@ -598,3 +598,20 @@ test("connects completed exploration memories to the travel note", async () => {
   assert.match(pageSource, /첫 여행 기록을 기다리고 있어요/);
   assert.match(stylesSource, /\.travel-note-card/);
 });
+
+test("shows approved regional mission photos inside the travel memory", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /여행 중 남긴 사진/);
+  assert.match(pageSource, /memoryPhotos\.map/);
+  assert.match(pageSource, /대표 사진으로 지정/);
+  assert.match(pageSource, /사진을 누르면 지도 대표 사진으로 바뀌어요/);
+  assert.match(stylesSource, /\.memory-gallery-grid/);
+});
