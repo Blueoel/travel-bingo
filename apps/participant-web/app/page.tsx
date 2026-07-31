@@ -2350,7 +2350,10 @@ export default function Home() {
                 ) : (
                   <div className="memory-photo-empty">
                     <b>선택할 수 있는 인증 사진이 아직 없어요.</b>
-                    <p>안성의 사진 미션을 완료하면 이곳에 표시돼요.</p>
+                    <p>
+                      {selectedMapRegion.name}의 사진 미션을 완료하면 이곳에
+                      표시돼요.
+                    </p>
                     <button
                       type="button"
                       onClick={() => {
@@ -2414,6 +2417,53 @@ export default function Home() {
                     </small>
                   </figcaption>
                 </figure>
+                <section className="memory-gallery" aria-label="인증 사진 모음">
+                  <div className="memory-gallery-heading">
+                    <div>
+                      <small>MISSION PHOTOS</small>
+                      <h3>여행 중 남긴 사진</h3>
+                    </div>
+                    <b>{memoryPhotos.length}장</b>
+                  </div>
+                  {memoryPhotosLoading ? (
+                    <p className="memory-gallery-empty">
+                      인증 사진을 모으고 있어요…
+                    </p>
+                  ) : memoryPhotos.length ? (
+                    <div className="memory-gallery-grid">
+                      {memoryPhotos.map((photo) => (
+                        <button
+                          type="button"
+                          key={photo.id}
+                          onClick={() => void saveRepresentativePhoto(photo)}
+                          disabled={explorationMemorySaving}
+                          title="대표 사진으로 지정"
+                        >
+                          <img
+                            src={photo.imageUrl}
+                            alt={`${photo.missionTitle} 인증 사진`}
+                          />
+                          <span>{photo.missionTitle}</span>
+                          <small>
+                            {new Intl.DateTimeFormat("ko-KR", {
+                              month: "short",
+                              day: "numeric",
+                            }).format(new Date(photo.submittedAt))}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="memory-gallery-empty">
+                      이 지역에서 완료한 사진 미션이 아직 없어요.
+                    </p>
+                  )}
+                  {memoryPhotos.length > 0 && (
+                    <p className="memory-gallery-tip">
+                      사진을 누르면 지도 대표 사진으로 바뀌어요.
+                    </p>
+                  )}
+                </section>
                 <div className="memory-detail-actions">
                   <button
                     type="button"
