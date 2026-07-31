@@ -320,10 +320,10 @@ button {
 }
 .exploration-header {
   display: grid;
-  grid-template-columns: 1fr 42px;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 4px 15px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 2px 4px 12px;
 }
 .exploration-header small {
   color: #778f67;
@@ -342,7 +342,13 @@ button {
   color: #78756c;
   font-size: 11px;
 }
-.exploration-header > span {
+.exploration-header-side {
+  min-width: 112px;
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+.exploration-header-marker {
   width: 42px;
   height: 42px;
   display: grid;
@@ -358,16 +364,18 @@ button {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  margin-bottom: 13px;
+  min-width: 112px;
   overflow: hidden;
   border: 1px solid #ded4c2;
-  border-radius: 14px 17px 13px 16px;
+  border-radius: 12px 15px 11px 14px;
   background: #fffdf8;
+  box-shadow: 2px 3px 0 #e9dfce;
 }
 .exploration-summary div {
   display: grid;
-  gap: 3px;
-  padding: 10px 5px;
+  gap: 1px;
+  min-width: 54px;
+  padding: 6px 5px 7px;
   text-align: center;
 }
 .exploration-summary div + div {
@@ -376,11 +384,11 @@ button {
 .exploration-summary b {
   color: #3f693f;
   font-family: "Segoe Print", "Comic Sans MS", cursive;
-  font-size: 18px;
+  font-size: 15px;
 }
 .exploration-summary span {
   color: #827d73;
-  font-size: 9px;
+  font-size: 8px;
 }
 .map-paper {
   position: relative;
@@ -409,8 +417,8 @@ button {
 }
 .exploration-map-viewport {
   position: relative;
-  height: min(58vh, 530px);
-  min-height: 430px;
+  height: min(66vh, 620px);
+  min-height: 500px;
   overflow: hidden;
   border: 1px dashed #d8cdb9;
   border-radius: 7px 9px 6px 10px;

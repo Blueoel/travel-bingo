@@ -53,6 +53,9 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.equal(metadata.countyCount, 77);
   assert.equal(metadata.boundarySimplificationToleranceM, 900);
   assert.equal(metadata.dokdo.preservedAsMarker, true);
+  assert.deepEqual(metadata.visualInsets.jeju, [245, 1085, 245, 105]);
+  assert.deepEqual(metadata.visualInsets.ulleungdo, [770, 455, 42, 42]);
+  assert.deepEqual(metadata.visualInsets.dokdo, [836, 475]);
   assert.match(svg, /id="korea-land-background"/);
   assert.match(svg, /id="dokdo"/);
   assert.deepEqual(
@@ -64,12 +67,12 @@ test("ships an interactive nationwide administrative SVG map", async () => {
       regionType: "CITY",
       id: "region-31220",
       bounds: {
-        minX: 315.39,
-        minY: 442.14,
-        maxX: 363.86,
-        maxY: 480.37,
+        minX: 445.5,
+        minY: 447.27,
+        maxX: 515.92,
+        maxY: 502.8,
       },
-      center: [339.63, 461.26],
+      center: [480.71, 475.04],
     },
   );
 });
@@ -91,7 +94,10 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
+  assert.match(pageSource, /className="exploration-header-side"/);
+  assert.match(pageSource, /scale: 1\.06/);
   assert.match(styles, /\.exploration-map-viewport/);
+  assert.match(styles, /height:\s*min\(66vh,\s*620px\)/);
   assert.match(styles, /path\[data-code="31220"\]/);
   assert.match(styles, /stroke-width:\s*0\.56\s*!important/);
   assert.match(styles, /fill:\s*#69a66f\s*!important/);
