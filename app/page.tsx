@@ -46,6 +46,7 @@ type DailySession = {
   type?: "DAILY" | "REGION" | "EVENT";
   title?: string;
   regionName?: string;
+  regionCode?: string;
   totalPoints: number;
   completedLineKeys: string[];
   cells: Array<{
@@ -152,6 +153,7 @@ type BingoCatalogItem = {
   type: "DAILY" | "REGION" | "EVENT";
   title: string;
   regionName: string | null;
+  regionCode: string | null;
   state: "IN_PROGRESS" | "COMPLETED" | "AVAILABLE";
   completedCellCount: number;
   totalCellCount: number;
@@ -165,6 +167,11 @@ type ExplorationMemory = {
   unlocked: boolean;
   photoUrl: string | null;
   selectedAt: string | null;
+};
+type ExplorationRecord = ExplorationMemory & {
+  regionName: string;
+  provinceName: string;
+  missionTitles: string[];
 };
 type MemoryPhoto = {
   id: string;
@@ -483,6 +490,9 @@ export default function Home() {
       photoUrl: null,
       selectedAt: null,
     });
+  const [explorationRecords, setExplorationRecords] = useState<
+    ExplorationRecord[]
+  >([]);
   const [explorationMemoryLoading, setExplorationMemoryLoading] =
     useState(false);
   const [explorationMemorySaving, setExplorationMemorySaving] =
@@ -797,56 +807,105 @@ export default function Home() {
   }, [activeTab, explorationMapSvg, explorationMapAttempt]);
 
   useEffect(() => {
-    if (activeTab !== "exploration") return;
+    if (activeTab !== "exploration" && activeTab !== "my") return;
     setExplorationMemoryLoading(true);
     void Promise.all([
-      fetch("/api/exploration/regions/31220", { credentials: "include" }).then(
+      fetch("/api/exploration/regions", { credentials: "include" }).then(
         async (response) => {
-          if (!response.ok) throw new Error("Memory unavailable");
-          return (await response.json()) as ExplorationMemory;
+          if (!response.ok) return [];
+          const payload = (await response.json()) as {
+            items?: ExplorationMemory[];
+          };
+          return payload.items ?? [];
         },
       ),
-      apiFetch("/bingos")
-        .then(async (response) => {
-          if (!response.ok) return { lineCount: 0, missionTitles: [] };
-          const payload = (await response.json()) as {
-            items: BingoCatalogItem[];
-          };
-          const anseong = payload.items.find(
-            (item) =>
-              item.type === "REGION" &&
-              item.regionName?.includes("안성") &&
-              item.sessionId,
-          );
-          if (!anseong?.sessionId) return { lineCount: 0, missionTitles: [] };
-          const board = await apiFetch(`/bingos/sessions/${anseong.sessionId}`);
-          if (!board.ok) return { lineCount: 0, missionTitles: [] };
-          const result = (await board.json()) as DailySession;
-          return {
-            lineCount: result.completedLineKeys.length,
-            missionTitles: result.cells.map((cell) => cell.mission.title),
-          };
-        })
-        .catch(() => ({ lineCount: 0, missionTitles: [] })),
+      apiFetch("/bingos").then(async (response) => {
+        if (!response.ok) return [];
+        const payload = (await response.json()) as {
+          items: BingoCatalogItem[];
+        };
+        const regions = payload.items.filter((item) => item.type === "REGION");
+        return Promise.all(
+          regions.map(async (region) => {
+            const regionCode =
+              region.regionName?.includes("안성")
+                ? "31220"
+                : region.regionCode;
+            if (!regionCode) return null;
+            let board: DailySession | null = null;
+            if (region.sessionId) {
+              const boardResponse = await apiFetch(
+                `/bingos/sessions/${region.sessionId}`,
+              );
+              if (boardResponse.ok) board = (await boardResponse.json()) as DailySession;
+            }
+            return {
+              regionCode,
+              regionName: region.regionName ?? "여행지",
+              provinceName: provinceNameFor(regionCode),
+              lineCount: board?.completedLineKeys.length ?? 0,
+              missionTitles:
+                board?.cells.map((cell) => cell.mission.title) ?? [],
+            };
+          }),
+        );
+      }),
     ])
-      .then(([memory, actualProgress]) => {
-        const lineCount = actualProgress.lineCount;
-        setAnseongMissionTitles(actualProgress.missionTitles);
-        setExplorationMemory({
-          ...memory,
-          lineCount,
-          unlocked: lineCount >= 3,
-          photoUrl: lineCount >= 3 ? memory.photoUrl : null,
-        });
+      .then(([memories, progressItems]) => {
+        const memoryByCode = new Map(
+          memories.map((memory) => [memory.regionCode, memory]),
+        );
+        const records = progressItems
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .map((progress) => {
+            const memory = memoryByCode.get(progress.regionCode);
+            return {
+              regionCode: progress.regionCode,
+              regionName: progress.regionName,
+              provinceName: progress.provinceName,
+              missionTitles: progress.missionTitles,
+              lineCount: progress.lineCount,
+              unlocked: progress.lineCount >= 3,
+              photoUrl: progress.lineCount >= 3 ? (memory?.photoUrl ?? null) : null,
+              selectedAt: memory?.selectedAt ?? null,
+            } satisfies ExplorationRecord;
+          });
+        setExplorationRecords(records);
+        const selected =
+          records.find((record) => record.regionCode === selectedMapRegion.code) ??
+          records[0];
+        if (selected) {
+          setExplorationMemory(selected);
+          setAnseongMissionTitles(selected.missionTitles);
+        }
       })
       .catch(() => undefined)
       .finally(() => setExplorationMemoryLoading(false));
   }, [activeTab]);
 
   useEffect(() => {
+    const selected = explorationRecords.find(
+      (record) => record.regionCode === selectedMapRegion.code,
+    );
+    if (selected) {
+      setExplorationMemory(selected);
+      setAnseongMissionTitles(selected.missionTitles);
+      return;
+    }
+    setExplorationMemory({
+      regionCode: selectedMapRegion.code,
+      lineCount: 0,
+      unlocked: false,
+      photoUrl: null,
+      selectedAt: null,
+    });
+    setAnseongMissionTitles([]);
+  }, [explorationRecords, selectedMapRegion.code]);
+
+  useEffect(() => {
     if (activeTab !== "exploration" || !explorationMemory.unlocked) return;
     setMemoryPhotosLoading(true);
-    void fetch("/api/exploration/regions/31220/photos", {
+    void fetch(`/api/exploration/regions/${explorationMemory.regionCode}/photos`, {
       credentials: "include",
     })
       .then(async (response) => {
@@ -862,7 +921,12 @@ export default function Home() {
       })
       .catch(() => setMemoryPhotos([]))
       .finally(() => setMemoryPhotosLoading(false));
-  }, [activeTab, explorationMemory.unlocked, anseongMissionTitles]);
+  }, [
+    activeTab,
+    explorationMemory.regionCode,
+    explorationMemory.unlocked,
+    anseongMissionTitles,
+  ]);
 
   useEffect(() => {
     if (activeTab !== "exploration" || !explorationMapSvg) return;
@@ -889,14 +953,14 @@ export default function Home() {
 
   const saveRepresentativePhoto = async (photo: File | MemoryPhoto) => {
     if (explorationMemory.lineCount < 3) {
-      setMessage("안성 지역 빙고 세 줄을 먼저 완성해주세요.");
+      setMessage(`${selectedMapRegion.name} 지역 빙고 세 줄을 먼저 완성해주세요.`);
       return;
     }
     setExplorationMemorySaving(true);
     setMessage(null);
     try {
       const response = photo instanceof File
-        ? await fetch("/api/exploration/regions/31220", {
+        ? await fetch(`/api/exploration/regions/${explorationMemory.regionCode}`, {
             method: "POST",
             credentials: "include",
             body: (() => {
@@ -905,7 +969,7 @@ export default function Home() {
               return form;
             })(),
           })
-        : await fetch("/api/exploration/regions/31220", {
+        : await fetch(`/api/exploration/regions/${explorationMemory.regionCode}`, {
             method: "POST",
             credentials: "include",
             headers: { "content-type": "application/json" },
@@ -914,9 +978,15 @@ export default function Home() {
             }),
           });
       if (!response.ok) throw new Error("Representative photo save failed");
-      setExplorationMemory((await response.json()) as ExplorationMemory);
+      const saved = (await response.json()) as ExplorationMemory;
+      setExplorationMemory(saved);
+      setExplorationRecords((records) =>
+        records.map((record) =>
+          record.regionCode === saved.regionCode ? { ...record, ...saved } : record,
+        ),
+      );
       setMemoryPhotoPickerOpen(false);
-      setMessage("안성 대표 사진을 탐험 지도에 채웠어요.");
+      setMessage(`${selectedMapRegion.name} 대표 사진을 탐험 지도에 채웠어요.`);
     } catch {
       setMessage("대표 사진을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -924,12 +994,20 @@ export default function Home() {
     }
   };
 
-  const explorationMapWithPhoto = explorationMemory.photoUrl
-    ? addRepresentativePhotoPattern(
-        explorationMapSvg,
-        explorationMemory.photoUrl,
-      )
-    : explorationMapSvg;
+  const explorationMapWithPhoto = addRepresentativePhotoPatterns(
+    explorationMapSvg,
+    explorationRecords.filter((record) => record.photoUrl),
+  );
+  const selectedRegionRecord = explorationRecords.find(
+    (record) => record.regionCode === selectedMapRegion.code,
+  );
+  const travelRecordsByYear = explorationRecords
+    .filter((record) => record.photoUrl && record.selectedAt)
+    .reduce<Record<string, ExplorationRecord[]>>((groups, record) => {
+      const year = String(new Date(record.selectedAt!).getFullYear());
+      (groups[year] ??= []).push(record);
+      return groups;
+    }, {});
 
   const updateMapScale = (
     nextScale: number,
@@ -2019,14 +2097,22 @@ export default function Home() {
             </div>
             <div className="exploration-header-side">
               <div className="exploration-summary">
-                {!explorationMemory.unlocked && (
+                {explorationRecords.some((record) => !record.unlocked) && (
                   <div>
-                    <b>안성</b>
+                    <b>
+                      {explorationRecords
+                        .filter((record) => !record.unlocked)
+                        .slice(0, 2)
+                        .map((record) => record.regionName)
+                        .join(" · ")}
+                    </b>
                     <span>도전 중</span>
                   </div>
                 )}
                 <div>
-                  <b>{explorationMemory.photoUrl ? 1 : 0}</b>
+                  <b>
+                    {explorationRecords.filter((record) => record.photoUrl).length}
+                  </b>
                   <span>탐험 완료 지역</span>
                 </div>
               </div>
@@ -2112,23 +2198,23 @@ export default function Home() {
               <small>{selectedMapRegion.province || "대한민국"}</small>
               <h2>{selectedMapRegion.name}</h2>
               <p>
-                {selectedMapRegion.code === "31220"
+                {selectedRegionRecord
                   ? explorationMemory.photoUrl
-                    ? "대표 사진으로 안성의 추억을 채웠어요."
+                    ? `대표 사진으로 ${selectedMapRegion.name}의 추억을 채웠어요.`
                     : explorationMemory.unlocked
                       ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
-                      : "안성 여행 빙고에 도전 중이에요."
+                      : `${selectedMapRegion.name} 여행 빙고에 도전 중이에요.`
                   : "아직 이 지역의 여행 기록이 없어요."}
               </p>
             </div>
             <span
               className={
-                selectedMapRegion.code === "31220"
+                selectedRegionRecord
                   ? "region-status active"
                   : "region-status"
               }
             >
-              {selectedMapRegion.code === "31220"
+              {selectedRegionRecord
                 ? explorationMemory.photoUrl
                   ? "사진 완료"
                   : explorationMemory.unlocked
@@ -2136,7 +2222,7 @@ export default function Home() {
                     : "도전 중"
                 : "미발견"}
             </span>
-            {selectedMapRegion.code === "31220" &&
+            {selectedRegionRecord &&
               explorationMemory.photoUrl && (
                 <button
                   type="button"
@@ -2148,7 +2234,7 @@ export default function Home() {
               )}
           </article>
 
-          {selectedMapRegion.code === "31220" ? (
+          {selectedRegionRecord ? (
             <div
               className={`region-progress-note ${
                 explorationMemory.unlocked ? "unlocked" : ""
@@ -2160,17 +2246,17 @@ export default function Home() {
               <div className="region-memory-content">
                 <b>
                   {explorationMemory.photoUrl
-                    ? "안성 대표 사진을 채웠어요"
+                    ? `${selectedMapRegion.name} 대표 사진을 채웠어요`
                     : explorationMemory.unlocked
                       ? "대표 사진 선택 가능"
                       : "사진 해금까지 3 Bingo"}
                 </b>
                 <p>
                   {explorationMemory.photoUrl
-                    ? "지도 속 안성 영역을 선택한 사진으로 표시하고 있어요."
+                    ? `지도 속 ${selectedMapRegion.name} 영역을 선택한 사진으로 표시하고 있어요.`
                     : explorationMemory.unlocked
                       ? "여행 사진을 고르거나 샘플 사진으로 지도 표시를 확인해보세요."
-                      : "안성 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요."}
+                      : `${selectedMapRegion.name} 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요.`}
                 </p>
                 {explorationMemory.unlocked && (
                   <div className="memory-photo-actions">
@@ -2233,9 +2319,9 @@ export default function Home() {
               >
                 <header>
                   <div>
-                    <small>ANSEONG MEMORY</small>
+                    <small>{selectedMapRegion.name.toUpperCase()} MEMORY</small>
                     <h2 id="memory-photo-picker-title">대표 사진 선택</h2>
-                    <p>안성 지역 미션에서 인증한 사진을 골라주세요.</p>
+                    <p>{selectedMapRegion.name} 지역 미션에서 인증한 사진을 골라주세요.</p>
                   </div>
                   <button
                     type="button"
@@ -2294,8 +2380,10 @@ export default function Home() {
               >
                 <header>
                   <div>
-                    <small>ANSEONG MEMORY</small>
-                    <h2 id="memory-detail-title">안성에서 남긴 한 장</h2>
+                    <small>{selectedMapRegion.name.toUpperCase()} MEMORY</small>
+                    <h2 id="memory-detail-title">
+                      {selectedMapRegion.name}에서 남긴 한 장
+                    </h2>
                   </div>
                   <button
                     type="button"
@@ -2306,9 +2394,14 @@ export default function Home() {
                   </button>
                 </header>
                 <figure>
-                  <img src={explorationMemory.photoUrl} alt="안성 대표 추억" />
+                  <img
+                    src={explorationMemory.photoUrl}
+                    alt={`${selectedMapRegion.name} 대표 추억`}
+                  />
                   <figcaption>
-                    <span>경기도 안성시</span>
+                    <span>
+                      {selectedMapRegion.province} {selectedMapRegion.name}
+                    </span>
                     <strong>3 Bingo로 완성한 탐험 기록</strong>
                     <small>
                       {explorationMemory.selectedAt
@@ -2535,31 +2628,52 @@ export default function Home() {
                 <h2>빙고로 완성한 여행 이야기</h2>
                 <p>탐험 완료 지역의 대표 사진이 한 장씩 기록돼요.</p>
               </div>
-              <div className="travel-note-year">
-                <span>{new Date().getFullYear()}</span>
-                <i aria-hidden="true" />
-              </div>
-              {explorationMemory.photoUrl ? (
-                <button
-                  type="button"
-                  className="travel-note-card"
-                  onClick={() => {
-                    setSelectedMapRegion({
-                      code: "31220",
-                      name: "안성",
-                      province: "경기도",
-                    });
-                    setMemoryDetailOpen(true);
-                    setActiveTab("exploration");
-                  }}
-                >
-                  <img src={explorationMemory.photoUrl} alt="안성 여행 기록" />
-                  <span>
-                    <small>경기도</small>
-                    <strong>안성</strong>
-                    <em>3 Bingo 탐험 완료 · 추억 보기 ›</em>
-                  </span>
-                </button>
+              {Object.keys(travelRecordsByYear).length ? (
+                Object.entries(travelRecordsByYear)
+                  .sort(([left], [right]) => Number(right) - Number(left))
+                  .map(([year, records]) => (
+                    <section className="travel-note-year-group" key={year}>
+                      <div className="travel-note-year">
+                        <span>{year}</span>
+                        <i aria-hidden="true" />
+                      </div>
+                      <div className="travel-note-list">
+                        {records
+                          .sort(
+                            (left, right) =>
+                              new Date(right.selectedAt!).getTime() -
+                              new Date(left.selectedAt!).getTime(),
+                          )
+                          .map((record) => (
+                            <button
+                              type="button"
+                              className="travel-note-card"
+                              key={record.regionCode}
+                              onClick={() => {
+                                setSelectedMapRegion({
+                                  code: record.regionCode,
+                                  name: record.regionName,
+                                  province: record.provinceName,
+                                });
+                                setExplorationMemory(record);
+                                setMemoryDetailOpen(true);
+                                setActiveTab("exploration");
+                              }}
+                            >
+                              <img
+                                src={record.photoUrl!}
+                                alt={`${record.regionName} 여행 기록`}
+                              />
+                              <span>
+                                <small>{record.provinceName}</small>
+                                <strong>{record.regionName}</strong>
+                                <em>3 Bingo 탐험 완료 · 추억 보기 ›</em>
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    </section>
+                  ))
               ) : (
                 <div className="travel-note-empty">
                   <span aria-hidden="true">▧</span>
@@ -3050,22 +3164,56 @@ export default function Home() {
   );
 }
 
-function addRepresentativePhotoPattern(svg: string, photoUrl: string) {
-  if (!svg || svg.includes('id="anseong-representative-photo"')) return svg;
-  const safeUrl = photoUrl
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-  const pattern = `<defs>
-    <pattern id="anseong-representative-photo" width="1" height="1" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox">
-      <image href="${safeUrl}" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
-    </pattern>
-  </defs>`;
-  return svg
-    .replace(/(<svg\b[^>]*>)/, `$1${pattern}`)
-    .replace(
-      /(<path id="region-31220" class=")([^"]*)(")/,
-      '$1$2 has-memory-photo$3 style="fill:url(#anseong-representative-photo) !important"',
+function addRepresentativePhotoPatterns(
+  svg: string,
+  records: ExplorationRecord[],
+) {
+  if (!svg || !records.length) return svg;
+  const patterns = records
+    .filter((record) => record.photoUrl)
+    .map((record) => {
+      const safeUrl = record.photoUrl!
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+      return `<pattern id="memory-photo-${record.regionCode}" width="1" height="1" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox"><image href="${safeUrl}" width="1" height="1" preserveAspectRatio="xMidYMid slice" /></pattern>`;
+    })
+    .join("");
+  let withPatterns = svg.replace(/(<svg\b[^>]*>)/, `$1<defs>${patterns}</defs>`);
+  for (const record of records) {
+    const pathPattern = new RegExp(
+      `(<path id="region-${record.regionCode}" class=")([^"]*)(")`,
     );
+    withPatterns = withPatterns.replace(
+      pathPattern,
+      `$1$2 has-memory-photo$3 style="fill:url(#memory-photo-${record.regionCode}) !important"`,
+    );
+  }
+  return withPatterns;
+}
+
+function provinceNameFor(regionCode: string): string {
+  const prefix = regionCode.slice(0, 2);
+  return (
+    {
+      "11": "서울특별시",
+      "21": "부산광역시",
+      "22": "대구광역시",
+      "23": "인천광역시",
+      "24": "광주광역시",
+      "25": "대전광역시",
+      "26": "울산광역시",
+      "29": "세종특별자치시",
+      "31": "경기도",
+      "32": "강원특별자치도",
+      "33": "충청북도",
+      "34": "충청남도",
+      "35": "전북특별자치도",
+      "36": "전라남도",
+      "37": "경상북도",
+      "38": "경상남도",
+      "39": "제주특별자치도",
+    } as Record<string, string>
+  )[prefix] ?? "대한민국";
 }
