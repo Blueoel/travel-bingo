@@ -489,6 +489,7 @@ export default function Home() {
   const [memoryPhotos, setMemoryPhotos] = useState<MemoryPhoto[]>([]);
   const [memoryPhotosLoading, setMemoryPhotosLoading] = useState(false);
   const [memoryPhotoPickerOpen, setMemoryPhotoPickerOpen] = useState(false);
+  const [memoryDetailOpen, setMemoryDetailOpen] = useState(false);
   const [anseongMissionTitles, setAnseongMissionTitles] = useState<string[]>([]);
   const [selectedMapRegion, setSelectedMapRegion] = useState({
     code: "31220",
@@ -2025,7 +2026,7 @@ export default function Home() {
                 )}
                 <div>
                   <b>{explorationMemory.photoUrl ? 1 : 0}</b>
-                  <span>사진을 채운 지역</span>
+                  <span>탐험 완료 지역</span>
                 </div>
               </div>
             </div>
@@ -2134,6 +2135,16 @@ export default function Home() {
                     : "도전 중"
                 : "미발견"}
             </span>
+            {selectedMapRegion.code === "31220" &&
+              explorationMemory.photoUrl && (
+                <button
+                  type="button"
+                  className="memory-detail-button"
+                  onClick={() => setMemoryDetailOpen(true)}
+                >
+                  추억 보기
+                </button>
+              )}
           </article>
 
           {selectedMapRegion.code === "31220" ? (
@@ -2264,6 +2275,69 @@ export default function Home() {
                     </button>
                   </div>
                 )}
+              </section>
+            </div>
+          )}
+          {memoryDetailOpen && explorationMemory.photoUrl && (
+            <div
+              className="memory-detail-backdrop"
+              role="presentation"
+              onClick={() => setMemoryDetailOpen(false)}
+            >
+              <section
+                className="memory-detail-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="memory-detail-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <header>
+                  <div>
+                    <small>ANSEONG MEMORY</small>
+                    <h2 id="memory-detail-title">안성에서 남긴 한 장</h2>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="지역 추억 닫기"
+                    onClick={() => setMemoryDetailOpen(false)}
+                  >
+                    ×
+                  </button>
+                </header>
+                <figure>
+                  <img src={explorationMemory.photoUrl} alt="안성 대표 추억" />
+                  <figcaption>
+                    <span>경기도 안성시</span>
+                    <strong>3 Bingo로 완성한 탐험 기록</strong>
+                    <small>
+                      {explorationMemory.selectedAt
+                        ? new Intl.DateTimeFormat("ko-KR", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }).format(new Date(explorationMemory.selectedAt))
+                        : "대표 사진을 선택한 날"}
+                    </small>
+                  </figcaption>
+                </figure>
+                <div className="memory-detail-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMemoryDetailOpen(false);
+                      setMemoryPhotoPickerOpen(true);
+                    }}
+                  >
+                    대표 사진 바꾸기
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setMemoryDetailOpen(false)}
+                  >
+                    지도에 돌아가기
+                  </button>
+                </div>
               </section>
             </div>
           )}

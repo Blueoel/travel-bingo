@@ -96,7 +96,7 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(pageSource, /className="exploration-header-side"/);
-  assert.match(pageSource, /사진을 채운 지역/);
+  assert.match(pageSource, /탐험 완료 지역/);
   assert.doesNotMatch(pageSource, /exploration-header-marker/);
   assert.match(pageSource, /scale: 1\.06/);
   assert.match(styles, /\.exploration-map-viewport/);
@@ -540,4 +540,21 @@ test("shows GPS place and permission guidance for visit missions", async () => {
   assert.match(stylesSource, /overflow-wrap: anywhere/);
   assert.match(stylesSource, /-webkit-line-clamp: 3/);
   assert.match(pageSource, /title=\{item\.title\}/);
+});
+
+test("shows completed exploration memories and opens their detail sheet", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /탐험 완료 지역/);
+  assert.match(pageSource, /추억 보기/);
+  assert.match(pageSource, /안성에서 남긴 한 장/);
+  assert.match(pageSource, /대표 사진 바꾸기/);
+  assert.match(stylesSource, /\.memory-detail-sheet/);
 });
