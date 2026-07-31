@@ -474,6 +474,13 @@ button {
     drop-shadow(0 0 2px #fffaf0)
     drop-shadow(0 0 6px #2f684788);
 }
+.exploration-map path[data-code="31220"].has-memory-photo {
+  stroke: #fff7d7 !important;
+  stroke-width: 3 !important;
+  filter:
+    drop-shadow(0 0 2px #244b34)
+    drop-shadow(0 0 7px #d7aa4a99);
+}
 .exploration-map .region-label {
   fill: #3c7465 !important;
 }
@@ -614,6 +621,43 @@ button {
 .region-progress-note strong {
   color: #4b7046;
   font-size: 13px;
+}
+.region-progress-note.unlocked {
+  align-items: start;
+  border-color: #8eaa76;
+  background: #f3f7e9;
+}
+.region-memory-content {
+  min-width: 0;
+}
+.memory-demo-unlock,
+.memory-photo-actions button {
+  min-height: 32px;
+  margin-top: 9px;
+  padding: 0 11px;
+  border: 1px solid #78916a;
+  border-radius: 9px 11px 8px 10px;
+  background: #577d50;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.memory-demo-unlock {
+  background: #fffdf7;
+  color: #52744c;
+}
+.memory-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.memory-photo-actions button.sample {
+  background: #fffdf7;
+  color: #52744c;
+}
+.memory-photo-actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 .region-progress-note.muted {
   grid-template-columns: 35px 1fr;

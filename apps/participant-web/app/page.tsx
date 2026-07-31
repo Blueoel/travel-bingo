@@ -159,6 +159,13 @@ type BingoCatalogItem = {
   startsAt: string | null;
   endsAt: string | null;
 };
+type ExplorationMemory = {
+  regionCode: string;
+  lineCount: number;
+  unlocked: boolean;
+  photoUrl: string | null;
+  selectedAt: string | null;
+};
 
 const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
@@ -460,6 +467,18 @@ export default function Home() {
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
+  const [explorationMemory, setExplorationMemory] =
+    useState<ExplorationMemory>({
+      regionCode: "31220",
+      lineCount: 0,
+      unlocked: false,
+      photoUrl: null,
+      selectedAt: null,
+    });
+  const [explorationMemoryLoading, setExplorationMemoryLoading] =
+    useState(false);
+  const [explorationMemorySaving, setExplorationMemorySaving] =
+    useState(false);
   const [selectedMapRegion, setSelectedMapRegion] = useState({
     code: "31220",
     name: "안성시",
@@ -532,6 +551,7 @@ export default function Home() {
   const [trackingHydrated, setTrackingHydrated] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const albumInput = useRef<HTMLInputElement>(null);
+  const representativePhotoInput = useRef<HTMLInputElement>(null);
   const trackingWatchId = useRef<number | null>(null);
   const trackingStartedAt = useRef<number | null>(null);
   const lastTrackingPosition = useRef<{
@@ -764,6 +784,48 @@ export default function Home() {
   }, [activeTab, explorationMapSvg, explorationMapAttempt]);
 
   useEffect(() => {
+    if (activeTab !== "exploration") return;
+    setExplorationMemoryLoading(true);
+    void Promise.all([
+      fetch("/api/exploration/regions/31220", { credentials: "include" }).then(
+        async (response) => {
+          if (!response.ok) throw new Error("Memory unavailable");
+          return (await response.json()) as ExplorationMemory;
+        },
+      ),
+      apiFetch("/bingos")
+        .then(async (response) => {
+          if (!response.ok) return 0;
+          const payload = (await response.json()) as {
+            items: BingoCatalogItem[];
+          };
+          const anseong = payload.items.find(
+            (item) =>
+              item.type === "REGION" &&
+              item.regionName?.includes("안성") &&
+              item.sessionId,
+          );
+          if (!anseong?.sessionId) return 0;
+          const board = await apiFetch(`/bingos/sessions/${anseong.sessionId}`);
+          if (!board.ok) return 0;
+          const result = (await board.json()) as DailySession;
+          return result.completedLineKeys.length;
+        })
+        .catch(() => 0),
+    ])
+      .then(([memory, actualLineCount]) => {
+        const lineCount = Math.max(memory.lineCount, actualLineCount);
+        setExplorationMemory({
+          ...memory,
+          lineCount,
+          unlocked: lineCount >= 3,
+        });
+      })
+      .catch(() => undefined)
+      .finally(() => setExplorationMemoryLoading(false));
+  }, [activeTab]);
+
+  useEffect(() => {
     if (activeTab !== "exploration" || !explorationMapSvg) return;
     const paths = document.querySelectorAll<SVGPathElement>(
       ".exploration-map path[data-code]",
@@ -779,8 +841,69 @@ export default function Home() {
         "aria-label",
         `${path.dataset.province ?? ""} ${path.dataset.name ?? "지역"}`,
       );
+      if (path.dataset.code === "31220" && explorationMemory.photoUrl) {
+        path.classList.add("has-memory-photo");
+        path.style.setProperty(
+          "fill",
+          "url(#anseong-representative-photo)",
+          "important",
+        );
+      } else {
+        path.classList.remove("has-memory-photo");
+        path.style.removeProperty("fill");
+      }
     });
-  }, [activeTab, explorationMapSvg, selectedMapRegion.code]);
+  }, [
+    activeTab,
+    explorationMapSvg,
+    explorationMemory.photoUrl,
+    selectedMapRegion.code,
+  ]);
+
+  const saveRepresentativePhoto = async (photo?: File) => {
+    if (explorationMemory.lineCount < 3) {
+      setMessage("안성 지역 빙고 세 줄을 먼저 완성해주세요.");
+      return;
+    }
+    setExplorationMemorySaving(true);
+    setMessage(null);
+    try {
+      const response = photo
+        ? await fetch("/api/exploration/regions/31220", {
+            method: "POST",
+            credentials: "include",
+            body: (() => {
+              const form = new FormData();
+              form.set("photo", photo);
+              form.set("lineCount", String(explorationMemory.lineCount));
+              return form;
+            })(),
+          })
+        : await fetch("/api/exploration/regions/31220", {
+            method: "POST",
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              demo: true,
+              lineCount: explorationMemory.lineCount,
+            }),
+          });
+      if (!response.ok) throw new Error("Representative photo save failed");
+      setExplorationMemory((await response.json()) as ExplorationMemory);
+      setMessage("안성 대표 사진을 탐험 지도에 채웠어요.");
+    } catch {
+      setMessage("대표 사진을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setExplorationMemorySaving(false);
+    }
+  };
+
+  const explorationMapWithPhoto = explorationMemory.photoUrl
+    ? addRepresentativePhotoPattern(
+        explorationMapSvg,
+        explorationMemory.photoUrl,
+      )
+    : explorationMapSvg;
 
   const updateMapScale = (
     nextScale: number,
@@ -1877,7 +2000,7 @@ export default function Home() {
               <span>도전 중인 지역</span>
             </div>
             <div>
-              <b>0</b>
+              <b>{explorationMemory.photoUrl ? 1 : 0}</b>
               <span>사진을 채운 지역</span>
             </div>
             <div>
@@ -1922,7 +2045,9 @@ export default function Home() {
                 >
                   <div
                     className="exploration-map-svg"
-                    dangerouslySetInnerHTML={{ __html: explorationMapSvg }}
+                    dangerouslySetInnerHTML={{
+                      __html: explorationMapWithPhoto,
+                    }}
                   />
                 </div>
               )}
@@ -1964,7 +2089,11 @@ export default function Home() {
               <h2>{selectedMapRegion.name}</h2>
               <p>
                 {selectedMapRegion.code === "31220"
-                  ? "안성 여행 빙고에 도전 중이에요."
+                  ? explorationMemory.photoUrl
+                    ? "대표 사진으로 안성의 추억을 채웠어요."
+                    : explorationMemory.unlocked
+                      ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
+                      : "안성 여행 빙고에 도전 중이에요."
                   : "아직 이 지역의 여행 기록이 없어요."}
               </p>
             </div>
@@ -1975,21 +2104,91 @@ export default function Home() {
                   : "region-status"
               }
             >
-              {selectedMapRegion.code === "31220" ? "도전 중" : "미발견"}
+              {selectedMapRegion.code === "31220"
+                ? explorationMemory.photoUrl
+                  ? "사진 완료"
+                  : explorationMemory.unlocked
+                    ? "해금"
+                    : "도전 중"
+                : "미발견"}
             </span>
           </article>
 
           {selectedMapRegion.code === "31220" ? (
-            <div className="region-progress-note">
-              <span aria-hidden="true">✎</span>
-              <div>
-                <b>사진 해금까지 3 Bingo</b>
+            <div
+              className={`region-progress-note ${
+                explorationMemory.unlocked ? "unlocked" : ""
+              }`}
+            >
+              <span aria-hidden="true">
+                {explorationMemory.photoUrl ? "✓" : "✎"}
+              </span>
+              <div className="region-memory-content">
+                <b>
+                  {explorationMemory.photoUrl
+                    ? "안성 대표 사진을 채웠어요"
+                    : explorationMemory.unlocked
+                      ? "대표 사진 선택 가능"
+                      : "사진 해금까지 3 Bingo"}
+                </b>
                 <p>
-                  안성 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을
-                  남길 수 있어요.
+                  {explorationMemory.photoUrl
+                    ? "지도 속 안성 영역을 선택한 사진으로 표시하고 있어요."
+                    : explorationMemory.unlocked
+                      ? "여행 사진을 고르거나 샘플 사진으로 지도 표시를 확인해보세요."
+                      : "안성 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요."}
                 </p>
+                {!explorationMemoryLoading && !explorationMemory.unlocked && (
+                  <button
+                    type="button"
+                    className="memory-demo-unlock"
+                    onClick={() =>
+                      setExplorationMemory((current) => ({
+                        ...current,
+                        lineCount: 3,
+                        unlocked: true,
+                      }))
+                    }
+                  >
+                    시연용 3 Bingo 달성
+                  </button>
+                )}
+                {explorationMemory.unlocked && (
+                  <div className="memory-photo-actions">
+                    <input
+                      ref={representativePhotoInput}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(event) => {
+                        const photo = event.currentTarget.files?.[0];
+                        if (photo) void saveRepresentativePhoto(photo);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => representativePhotoInput.current?.click()}
+                      disabled={explorationMemorySaving}
+                    >
+                      {explorationMemory.photoUrl
+                        ? "대표 사진 바꾸기"
+                        : "내 사진 선택"}
+                    </button>
+                    <button
+                      type="button"
+                      className="sample"
+                      onClick={() => void saveRepresentativePhoto()}
+                      disabled={explorationMemorySaving}
+                    >
+                      {explorationMemorySaving
+                        ? "사진 채우는 중…"
+                        : "샘플 사진으로 확인"}
+                    </button>
+                  </div>
+                )}
               </div>
-              <strong>{Math.min(3, lineKeys.length)} / 3</strong>
+              <strong>{Math.min(3, explorationMemory.lineCount)} / 3</strong>
             </div>
           ) : (
             <div className="region-progress-note muted">
@@ -2646,4 +2845,19 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+function addRepresentativePhotoPattern(svg: string, photoUrl: string) {
+  if (!svg || svg.includes('id="anseong-representative-photo"')) return svg;
+  const safeUrl = photoUrl
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  const pattern = `<defs>
+    <pattern id="anseong-representative-photo" width="1" height="1" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox">
+      <image href="${safeUrl}" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
+    </pattern>
+  </defs>`;
+  return svg.replace(/(<svg\b[^>]*>)/, `$1${pattern}`);
 }
