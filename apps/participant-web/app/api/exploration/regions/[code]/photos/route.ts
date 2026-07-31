@@ -6,14 +6,14 @@ import {
   withGuestCookie,
 } from "../../../../../../db/photo-verifications";
 
-const SUPPORTED_REGION_CODES = new Set(["31220"]);
+const REGION_CODE_PATTERN = /^\d{2,10}$/;
 
 export async function GET(
   request: Request,
   context: { params: Promise<{ code: string }> },
 ) {
   const { code } = await context.params;
-  if (!SUPPORTED_REGION_CODES.has(code)) {
+  if (!REGION_CODE_PATTERN.test(code)) {
     return NextResponse.json({ error: "Unsupported region" }, { status: 404 });
   }
   const guest = resolveGuest(request);

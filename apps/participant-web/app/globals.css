@@ -1236,6 +1236,18 @@ button {
   font-size: 16px;
   font-weight: 800;
 }
+.exploration-map path.has-memory-photo {
+  stroke: #fff7d7 !important;
+  stroke-width: 3 !important;
+  filter:
+    drop-shadow(0 0 2px #244b34)
+    drop-shadow(0 0 7px #d7aa4a99);
+}
+.travel-note-year-group,
+.travel-note-list {
+  display: grid;
+  gap: 11px;
+}
 .travel-note-year i {
   flex: 1;
   border-top: 1px dashed #cfc2aa;

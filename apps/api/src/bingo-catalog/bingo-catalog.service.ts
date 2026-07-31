@@ -25,6 +25,7 @@ export interface BingoCatalogItem {
   readonly type: BingoCatalogType;
   readonly title: string;
   readonly regionName: string | null;
+  readonly regionCode: string | null;
   readonly state: BingoCatalogState;
   readonly completedCellCount: number;
   readonly totalCellCount: number;
@@ -39,6 +40,7 @@ export interface BingoBoardResult {
   readonly type: BingoCatalogType;
   readonly title: string;
   readonly regionName: string;
+  readonly regionCode: string;
   readonly status: string;
   readonly totalPoints: number;
   readonly completedCellCount: number;
@@ -112,6 +114,10 @@ export class BingoCatalogService {
           normalizeType(session.template.type) === "DAILY"
             ? null
             : session.template.region.name,
+        regionCode:
+          normalizeType(session.template.type) === "DAILY"
+            ? null
+            : session.template.region.administrativeCode,
         state: isCompleted(session.status) ? "COMPLETED" : "IN_PROGRESS",
         completedCellCount,
         totalCellCount: session.cells.length,
@@ -131,6 +137,7 @@ export class BingoCatalogService {
             type: normalizeType(template.type),
             title: template.title,
             regionName: template.region.name,
+            regionCode: template.region.administrativeCode,
             state: "AVAILABLE",
             completedCellCount: 0,
             totalCellCount: template._count.cells,
@@ -327,7 +334,10 @@ function toBoardResult(session: {
     readonly id: string;
     readonly type: string;
     readonly title: string;
-    readonly region: { readonly name: string };
+    readonly region: {
+      readonly name: string;
+      readonly administrativeCode: string;
+    };
   };
   readonly cells: readonly {
     readonly id: string;
@@ -349,6 +359,7 @@ function toBoardResult(session: {
     type: normalizeType(session.template.type),
     title: session.template.title,
     regionName: session.template.region.name,
+    regionCode: session.template.region.administrativeCode,
     status: session.status,
     totalPoints: session.totalPoints,
     completedCellCount: progress.completedCellCount,

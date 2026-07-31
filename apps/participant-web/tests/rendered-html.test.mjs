@@ -92,7 +92,7 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /fetch\("\/maps\/korea-sigungu\.svg"\)/);
   assert.match(pageSource, /대한민국 광역·시·군 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
-  assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
+  assert.match(pageSource, /selectedMapRegion\.code/);
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(pageSource, /className="exploration-header-side"/);
@@ -108,7 +108,7 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(styles, /\.exploration-map path\.is-selected/);
 });
 
-test("unlocks and fills Anseong with a persistent representative photo", async () => {
+test("unlocks and fills regions with persistent representative photos", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
@@ -140,15 +140,15 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
   );
 
   assert.doesNotMatch(pageSource, /시연용 3 Bingo 달성/);
-  assert.match(pageSource, /!explorationMemory\.unlocked/);
-  assert.match(pageSource, />안성<\/b>/);
+  assert.match(pageSource, /explorationRecords/);
+  assert.match(pageSource, /selectedRegionRecord/);
   assert.doesNotMatch(pageSource, /획득한 테두리/);
-  assert.match(pageSource, /addRepresentativePhotoPattern/);
-  assert.match(pageSource, /anseong-representative-photo/);
+  assert.match(pageSource, /addRepresentativePhotoPatterns/);
+  assert.match(pageSource, /memory-photo-/);
   assert.match(pageSource, /has-memory-photo/);
   assert.match(
     pageSource,
-    /fill:url\(#anseong-representative-photo\) !important/,
+    /fill:url\(#memory-photo-/,
   );
   assert.match(memoryRoute, /lineCount < 3/);
   assert.match(memoryRoute, /exploration_region_memories/);
@@ -157,6 +157,42 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
   assert.match(pageSource, /인증 사진에서 선택/);
   assert.match(pageSource, /memory-photo-picker/);
   assert.match(photoRoute, /getReviewPhoto/);
+});
+
+test("loads all active region progress for the exploration map", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const listRoute = await readFile(
+    path.join(
+      projectDirectory,
+      "app",
+      "api",
+      "exploration",
+      "regions",
+      "route.ts",
+    ),
+    "utf8",
+  );
+  const catalogService = await readFile(
+    path.join(
+      projectDirectory,
+      "..",
+      "api",
+      "src",
+      "bingo-catalog",
+      "bingo-catalog.service.ts",
+    ),
+    "utf8",
+  );
+
+  assert.match(pageSource, /fetch\("\/api\/exploration\/regions"/);
+  assert.match(pageSource, /item\.type === "REGION"/);
+  assert.match(pageSource, /travelRecordsByYear/);
+  assert.match(listRoute, /ORDER BY selected_at DESC/);
+  assert.match(catalogService, /regionCode/);
+  assert.match(catalogService, /administrativeCode/);
 });
 
 async function render(pathname = "/") {
@@ -554,7 +590,7 @@ test("shows completed exploration memories and opens their detail sheet", async 
 
   assert.match(pageSource, /탐험 완료 지역/);
   assert.match(pageSource, /추억 보기/);
-  assert.match(pageSource, /안성에서 남긴 한 장/);
+  assert.match(pageSource, /에서 남긴 한 장/);
   assert.match(pageSource, /대표 사진 바꾸기/);
   assert.match(stylesSource, /\.memory-detail-sheet/);
 });
