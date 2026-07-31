@@ -32,18 +32,25 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.match(svg, /data-region-type="COUNTY"/);
   assert.equal(
     (svg.match(/class="region administrative-region"/g) ?? []).length,
-    250,
+    162,
   );
-  assert.equal((svg.match(/class="region-label"/g) ?? []).length, 250);
+  assert.equal((svg.match(/class="region-label"/g) ?? []).length, 162);
   assert.match(svg, /id="korea-region-labels"/);
   assert.match(svg, />안성<\/text>/);
   assert.match(svg, /data-name="양평군"/);
   assert.match(svg, />양평<\/text>/);
-  assert.equal(metadata.regionCount, 250);
+  assert.match(svg, /data-name="서울특별시"/);
+  assert.match(svg, /data-name="수원시"/);
+  assert.doesNotMatch(svg, /data-name="수원시 영통구"/);
+  assert.doesNotMatch(svg, />영통<\/text>/);
+  assert.equal(metadata.regionCount, 162);
   assert.equal(
-    metadata.cityCount + metadata.countyCount + metadata.districtCount,
-    250,
+    metadata.metropolitanCount + metadata.cityCount + metadata.countyCount,
+    162,
   );
+  assert.equal(metadata.metropolitanCount, 8);
+  assert.equal(metadata.cityCount, 77);
+  assert.equal(metadata.countyCount, 77);
   assert.equal(metadata.boundarySimplificationToleranceM, 900);
   assert.equal(metadata.dokdo.preservedAsMarker, true);
   assert.match(svg, /id="korea-land-background"/);
@@ -79,7 +86,7 @@ test("connects the nationwide map to the exploration tab", async () => {
 
   assert.match(pageSource, /activeTab === "exploration"/);
   assert.match(pageSource, /fetch\("\/maps\/korea-sigungu\.svg"\)/);
-  assert.match(pageSource, /대한민국 시·군·구 탐험 지도/);
+  assert.match(pageSource, /대한민국 광역·시·군 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
   assert.match(pageSource, /updateMapScale/);
