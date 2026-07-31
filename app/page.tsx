@@ -536,6 +536,10 @@ export default function Home() {
   >([]);
   const [regionRecommendationsLoading, setRegionRecommendationsLoading] =
     useState(false);
+  const [pendingRegionChallenge, setPendingRegionChallenge] = useState<{
+    region: RegionRecommendation;
+    bingo: BingoCatalogItem;
+  } | null>(null);
   const [photoStage, setPhotoStage] = useState<
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
@@ -761,7 +765,11 @@ export default function Home() {
   }, [activeTab, rankingPeriod, rankingScope, nickname]);
 
   useEffect(() => {
-    if (activeTab !== "catalog") return;
+    if (
+      authStatus !== "authenticated" ||
+      (activeTab !== "catalog" && activeTab !== "home")
+    )
+      return;
     setBingoCatalogLoading(true);
     void apiFetch("/bingos")
       .then(async (response) => {
@@ -780,6 +788,7 @@ export default function Home() {
             type: "DAILY",
             title: "오늘의 산책 빙고",
             regionName: null,
+            regionCode: null,
             state: "IN_PROGRESS",
             completedCellCount: completeCount,
             totalCellCount: 25,
@@ -790,7 +799,7 @@ export default function Home() {
         ]);
       })
       .finally(() => setBingoCatalogLoading(false));
-  }, [activeTab, completeCount, points, sessionId]);
+  }, [activeTab, authStatus, completeCount, points, sessionId]);
 
   useEffect(() => {
     if (activeTab !== "exploration" || explorationMapSvg) return;
@@ -1008,6 +1017,17 @@ export default function Home() {
       (groups[year] ??= []).push(record);
       return groups;
     }, {});
+  const availableRegionRecommendations = regionRecommendations
+    .flatMap((region) => {
+      const bingo = bingoCatalog.find(
+        (item) =>
+          item.type === "REGION" &&
+          !item.sessionId &&
+          regionNamesMatch(region.name, item.regionName),
+      );
+      return bingo ? [{ region, bingo }] : [];
+    })
+    .slice(0, 3);
 
   const updateMapScale = (
     nextScale: number,
@@ -1090,7 +1110,7 @@ export default function Home() {
   }) => {
     setRegionRecommendationsLoading(true);
     try {
-      const query = new URLSearchParams({ limit: "3" });
+      const query = new URLSearchParams({ limit: "10" });
       if (coordinates) {
         query.set("latitude", String(coordinates.latitude));
         query.set("longitude", String(coordinates.longitude));
@@ -2007,13 +2027,11 @@ export default function Home() {
             </button>
           </div>
           <div className="region-cards">
-            {regionRecommendations.map((region, index) => (
+            {availableRegionRecommendations.map(({ region, bingo }, index) => (
               <button
                 type="button"
                 key={region.id}
-                onClick={() =>
-                  setMessage(`${region.name} 지역 빙고는 곧 공개할 예정이에요.`)
-                }
+                onClick={() => setPendingRegionChallenge({ region, bingo })}
               >
                 <span
                   className={region.attraction?.imageUrl ? "region-image" : ""}
@@ -2038,16 +2056,65 @@ export default function Home() {
                 </small>
               </button>
             ))}
-            {regionRecommendationsLoading && (
+            {(regionRecommendationsLoading || bingoCatalogLoading) && (
               <p className="region-state">활성 지역의 관광지를 찾고 있어요…</p>
             )}
             {!regionRecommendationsLoading &&
-              regionRecommendations.length === 0 && (
+              !bingoCatalogLoading &&
+              availableRegionRecommendations.length === 0 && (
                 <p className="region-state">
-                  현재 추천 가능한 활성 지역이 없어요.
+                  지금 새로 도전할 수 있는 추천 지역이 없어요.
                 </p>
               )}
           </div>
+          {pendingRegionChallenge && (
+            <div
+              className="region-challenge-backdrop"
+              role="presentation"
+              onClick={() => setPendingRegionChallenge(null)}
+            >
+              <section
+                className="region-challenge-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="region-challenge-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="region-challenge-stamp" aria-hidden="true">
+                  {pendingRegionChallenge.region.name.slice(-2, -1)}
+                </span>
+                <small>NEW REGION BINGO</small>
+                <h2 id="region-challenge-title">
+                  {pendingRegionChallenge.region.name}에<br />
+                  도전할까요?
+                </h2>
+                <p>
+                  확인하면 나만의 지역 빙고판을 만들고 바로 첫 미션을 시작할
+                  수 있어요.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingRegionChallenge(null)}
+                  >
+                    다음에
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={bingoCatalogLoading}
+                    onClick={() => {
+                      const challenge = pendingRegionChallenge;
+                      setPendingRegionChallenge(null);
+                      if (challenge) void openCatalogBingo(challenge.bingo);
+                    }}
+                  >
+                    {bingoCatalogLoading ? "빙고판 만드는 중…" : "도전하기"}
+                  </button>
+                </div>
+              </section>
+            </div>
+          )}
 
           <div className="home-section-title">
             <h2>진행 중 빙고</h2>
@@ -3266,4 +3333,19 @@ function provinceNameFor(regionCode: string): string {
       "39": "제주특별자치도",
     } as Record<string, string>
   )[prefix] ?? "대한민국";
+}
+
+function regionNamesMatch(left: string, right: string | null): boolean {
+  if (!right) return false;
+  const normalize = (value: string) =>
+    value
+      .replace(/서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|제주특별자치도|강원특별자치도|전북특별자치도|경기도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도/g, "")
+      .replace(/[시군구\s]/g, "");
+  const normalizedLeft = normalize(left);
+  const normalizedRight = normalize(right);
+  return (
+    normalizedLeft === normalizedRight ||
+    normalizedLeft.includes(normalizedRight) ||
+    normalizedRight.includes(normalizedLeft)
+  );
 }
