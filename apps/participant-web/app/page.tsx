@@ -1919,8 +1919,16 @@ export default function Home() {
                   style={{
                     transform: `translate3d(${mapTransform.x}px, ${mapTransform.y}px, 0) scale(${mapTransform.scale})`,
                   }}
-                  dangerouslySetInnerHTML={{ __html: explorationMapSvg }}
-                />
+                >
+                  <div
+                    className="exploration-map-svg"
+                    dangerouslySetInnerHTML={{ __html: explorationMapSvg }}
+                  />
+                  <div className="anseong-map-marker" aria-hidden="true">
+                    <i />
+                    <span>도전 중 · 안성</span>
+                  </div>
+                </div>
               )}
             </div>
             <div className="exploration-map-controls">

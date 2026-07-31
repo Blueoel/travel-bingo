@@ -65,10 +65,13 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /대한민국 시군구 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
+  assert.match(pageSource, /anseong-map-marker/);
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(styles, /\.exploration-map-viewport/);
   assert.match(styles, /path\[data-code="31220"\]/);
+  assert.match(styles, /stroke-width:\s*0\.45\s*!important/);
+  assert.match(styles, /fill:\s*#f06c42\s*!important/);
   assert.match(styles, /\.exploration-map path\.is-selected/);
 });
 
