@@ -414,8 +414,8 @@ button {
   border: 1px dashed #d8cdb9;
   border-radius: 7px 9px 6px 10px;
   background:
-    radial-gradient(circle at 22% 28%, #cfe3ed55 0 2px, transparent 3px),
-    linear-gradient(#fbfaf2, #f7f4e8);
+    radial-gradient(circle at 22% 28%, #fff2d955 0 2px, transparent 3px),
+    linear-gradient(145deg, #f49b83, #ef8f78);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -436,9 +436,9 @@ button {
   overflow: visible;
 }
 .exploration-map path[data-code] {
-  fill: #f5f2e9 !important;
-  stroke: #abb4aa !important;
-  stroke-width: 0.45 !important;
+  fill: #fffaf0 !important;
+  stroke: #e3a28e !important;
+  stroke-width: 0.68 !important;
   cursor: pointer;
   transition:
     fill 160ms ease,
@@ -446,12 +446,12 @@ button {
     filter 160ms ease;
 }
 .exploration-map path[data-code="31220"] {
-  fill: #f06c42 !important;
-  stroke: #8c321e !important;
-  stroke-width: 2.1 !important;
+  fill: #69a66f !important;
+  stroke: #2f6847 !important;
+  stroke-width: 1.9 !important;
   filter:
-    drop-shadow(0 0 2px #fffdf8)
-    drop-shadow(0 0 5px #e5552e);
+    drop-shadow(0 0 2px #fffaf0)
+    drop-shadow(0 0 4px #39785388);
 }
 .exploration-map path[data-code]:hover,
 .exploration-map path[data-code]:focus-visible {
@@ -461,51 +461,25 @@ button {
   outline: none;
 }
 .exploration-map path.is-selected {
-  fill: #f2bd55 !important;
-  stroke: #34553b !important;
+  fill: #f4c564 !important;
+  stroke: #356a50 !important;
   stroke-width: 2.2 !important;
   filter: drop-shadow(0 1px 2px #4b563b55);
 }
 .exploration-map path[data-code="31220"].is-selected {
-  fill: #f05a35 !important;
-  stroke: #7a2818 !important;
-  stroke-width: 2.5 !important;
+  fill: #5d9d67 !important;
+  stroke: #245c3d !important;
+  stroke-width: 2.2 !important;
   filter:
-    drop-shadow(0 0 2px #fffdf8)
-    drop-shadow(0 0 7px #ed5c34);
+    drop-shadow(0 0 2px #fffaf0)
+    drop-shadow(0 0 6px #2f684788);
 }
-.anseong-map-marker {
-  position: absolute;
-  z-index: 4;
-  top: 36.61%;
-  left: 37.74%;
-  display: grid;
-  justify-items: center;
-  transform: translate(-50%, -100%);
-  pointer-events: none;
+.exploration-map .city-label {
+  fill: #3c7465 !important;
 }
-.anseong-map-marker i {
-  width: 12px;
-  height: 12px;
-  border: 3px solid #fffdf8;
-  border-radius: 50%;
-  background: #df3f24;
-  box-shadow:
-    0 0 0 2px #7a2818,
-    0 2px 8px #7a281877;
-}
-.anseong-map-marker span {
-  position: absolute;
-  bottom: 18px;
-  padding: 5px 8px;
-  border: 1px solid #7a2818;
-  border-radius: 8px 10px 7px 9px;
-  background: #fffdf8f2;
-  box-shadow: 0 3px 8px #45241722;
-  color: #8b2e1e;
-  font-size: 9px;
-  font-weight: 900;
-  white-space: nowrap;
+.exploration-map .city-label[data-code="31220"] {
+  fill: #fffdf5 !important;
+  stroke: #2f6847 !important;
 }
 .exploration-map-state {
   position: absolute;

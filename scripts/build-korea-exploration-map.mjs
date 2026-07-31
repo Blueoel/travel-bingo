@@ -135,11 +135,22 @@ const landPath = pathFromMultiPolygon(
 );
 
 const metadata = [];
+const cityLabels = [];
 const cityPaths = cityRegions.map((city) => {
   const rawPoints = city.geometry.flat(2);
   const projectedPoints = rawPoints.map(project);
   const regionBounds = boundsOf(projectedPoints);
   const id = `region-${city.code}`;
+  const largestPolygon = [...city.geometry].sort(
+    (a, b) =>
+      Math.abs(ringArea(b[0] ?? [])) - Math.abs(ringArea(a[0] ?? [])),
+  )[0];
+  const labelPoint = project(
+    polygonCentroid(largestPolygon?.[0] ?? rawPoints),
+  );
+  cityLabels.push(
+    `<text class="city-label" data-code="${escapeXml(city.code)}" data-city-type="${city.cityType}" x="${round(labelPoint[0])}" y="${round(labelPoint[1])}">${escapeXml(shortCityName(city.name))}</text>`,
+  );
   metadata.push({
     code: city.code,
     name: city.name,
@@ -189,30 +200,46 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
   </metadata>
   <style>
     .land-background {
-      fill: #eee9dd;
-      stroke: #829083;
-      stroke-width: 1.2;
+      fill: #fff8e9;
+      stroke: #d78972;
+      stroke-width: 1.35;
       vector-effect: non-scaling-stroke;
       pointer-events: none;
     }
     .city-region {
-      fill: #f7f2e6;
-      fill-opacity: .96;
-      stroke: #65746a;
-      stroke-width: .8;
+      fill: #fffaf0;
+      fill-opacity: .98;
+      stroke: #e3a28e;
+      stroke-width: .68;
       vector-effect: non-scaling-stroke;
       cursor: pointer;
       transition: fill .18s ease, opacity .18s ease;
     }
-    .city-region:hover, .city-region:focus { fill: #dce9cb; outline: none; }
-    .dokdo-marker { fill: #506756; stroke: #fffdf8; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
-    .dokdo-label { fill: #506756; font: 700 11px sans-serif; }
+    .city-region:hover, .city-region:focus { fill: #e4edc9; outline: none; }
+    .city-label {
+      fill: #3c7465;
+      stroke: #fffaf0;
+      stroke-width: 2.4;
+      paint-order: stroke;
+      stroke-linejoin: round;
+      font: 800 15px "Pretendard", "Noto Sans KR", sans-serif;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+      vector-effect: non-scaling-stroke;
+    }
+    .city-label[data-city-type="METROPOLITAN"] { font-size: 17px; }
+    .dokdo-marker { fill: #3c7465; stroke: #fffaf0; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+    .dokdo-label { fill: #3c7465; stroke: #fffaf0; stroke-width: 2; paint-order: stroke; font: 800 13px sans-serif; }
   </style>
   <g id="korea-land-background">
     <path class="land-background" d="${landPath}" />
   </g>
   <g id="korea-city-regions">
 ${cityPaths.join("\n")}
+  </g>
+  <g id="korea-city-labels" aria-hidden="true">
+${cityLabels.join("\n")}
   </g>
   <g id="dokdo" aria-label="독도">
     <circle class="dokdo-marker" cx="${round(dokdoCenter[0])}" cy="${round(dokdoCenter[1])}" r="4.5" />
@@ -328,6 +355,40 @@ function ringArea(ring) {
     area += x1 * y2 - x2 * y1;
   }
   return area / 2;
+}
+
+function polygonCentroid(ring) {
+  if (!ring.length) return [0, 0];
+  let areaFactor = 0;
+  let centerX = 0;
+  let centerY = 0;
+  for (let index = 0; index < ring.length; index += 1) {
+    const [x1, y1] = ring[index];
+    const [x2, y2] = ring[(index + 1) % ring.length];
+    const cross = x1 * y2 - x2 * y1;
+    areaFactor += cross;
+    centerX += (x1 + x2) * cross;
+    centerY += (y1 + y2) * cross;
+  }
+  if (Math.abs(areaFactor) < Number.EPSILON) {
+    const fallbackBounds = boundsOfRaw(ring);
+    return [
+      (fallbackBounds.minX + fallbackBounds.maxX) / 2,
+      (fallbackBounds.minY + fallbackBounds.maxY) / 2,
+    ];
+  }
+  return [
+    centerX / (3 * areaFactor),
+    centerY / (3 * areaFactor),
+  ];
+}
+
+function shortCityName(name) {
+  return String(name)
+    .replace("특별자치시", "")
+    .replace("특별시", "")
+    .replace("광역시", "")
+    .replace(/시$/, "");
 }
 
 function simplifyClosedRing(points, tolerance) {

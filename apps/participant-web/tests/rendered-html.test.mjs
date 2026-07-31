@@ -31,6 +31,9 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.match(svg, /data-name="안성시"/);
   assert.match(svg, /data-city-type="MUNICIPAL"/);
   assert.equal((svg.match(/class="region city-region"/g) ?? []).length, 85);
+  assert.equal((svg.match(/class="city-label"/g) ?? []).length, 85);
+  assert.match(svg, /id="korea-city-labels"/);
+  assert.match(svg, />안성<\/text>/);
   assert.equal(metadata.regionCount, 85);
   assert.equal(metadata.municipalCityCount, 77);
   assert.equal(metadata.metropolitanCityCount, 8);
@@ -72,13 +75,13 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(pageSource, /대한민국 도시 탐험 지도/);
   assert.match(pageSource, /path\[data-code\]/);
   assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
-  assert.match(pageSource, /anseong-map-marker/);
   assert.match(pageSource, /updateMapScale/);
   assert.match(pageSource, /handleMapPointerMove/);
   assert.match(styles, /\.exploration-map-viewport/);
   assert.match(styles, /path\[data-code="31220"\]/);
-  assert.match(styles, /stroke-width:\s*0\.45\s*!important/);
-  assert.match(styles, /fill:\s*#f06c42\s*!important/);
+  assert.match(styles, /stroke-width:\s*0\.68\s*!important/);
+  assert.match(styles, /fill:\s*#69a66f\s*!important/);
+  assert.match(styles, /\.exploration-map \.city-label/);
   assert.match(styles, /\.exploration-map path\.is-selected/);
 });
 
