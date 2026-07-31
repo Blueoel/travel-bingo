@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 
 import { AuthScreen } from "./auth-screen";
 
@@ -449,8 +455,29 @@ export default function Home() {
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
   const [activeTab, setActiveTab] = useState<
-    "home" | "catalog" | "bingo" | "ranking" | "my"
+    "home" | "exploration" | "catalog" | "bingo" | "ranking" | "my"
   >("home");
+  const [explorationMapSvg, setExplorationMapSvg] = useState("");
+  const [explorationMapLoading, setExplorationMapLoading] = useState(false);
+  const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
+  const [selectedMapRegion, setSelectedMapRegion] = useState({
+    code: "31220",
+    name: "안성시",
+    province: "경기도",
+  });
+  const [mapTransform, setMapTransform] = useState({
+    scale: 0.92,
+    x: 18,
+    y: 0,
+  });
+  const mapPointer = useRef<{
+    id: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
   const [bingoCatalog, setBingoCatalog] = useState<BingoCatalogItem[]>([]);
   const [bingoCatalogLoading, setBingoCatalogLoading] = useState(false);
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
@@ -721,6 +748,114 @@ export default function Home() {
       })
       .finally(() => setBingoCatalogLoading(false));
   }, [activeTab, completeCount, points, sessionId]);
+
+  useEffect(() => {
+    if (activeTab !== "exploration" || explorationMapSvg) return;
+    setExplorationMapLoading(true);
+    void fetch("/maps/korea-sigungu.svg")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Map unavailable");
+        setExplorationMapSvg(await response.text());
+      })
+      .catch(() => {
+        setMessage("전국 지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+      })
+      .finally(() => setExplorationMapLoading(false));
+  }, [activeTab, explorationMapSvg, explorationMapAttempt]);
+
+  useEffect(() => {
+    if (activeTab !== "exploration" || !explorationMapSvg) return;
+    const paths = document.querySelectorAll<SVGPathElement>(
+      ".exploration-map path[data-code]",
+    );
+    paths.forEach((path) => {
+      path.classList.toggle(
+        "is-selected",
+        path.dataset.code === selectedMapRegion.code,
+      );
+      path.setAttribute("tabindex", "0");
+      path.setAttribute("role", "button");
+      path.setAttribute(
+        "aria-label",
+        `${path.dataset.province ?? ""} ${path.dataset.name ?? "지역"}`,
+      );
+    });
+  }, [activeTab, explorationMapSvg, selectedMapRegion.code]);
+
+  const updateMapScale = (
+    nextScale: number,
+    focusX = 180,
+    focusY = 280,
+  ) => {
+    setMapTransform((current) => {
+      const scale = Math.min(3.5, Math.max(0.72, nextScale));
+      const ratio = scale / current.scale;
+      return {
+        scale,
+        x: focusX - (focusX - current.x) * ratio,
+        y: focusY - (focusY - current.y) * ratio,
+      };
+    });
+  };
+
+  const handleMapWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    updateMapScale(
+      mapTransform.scale * (event.deltaY > 0 ? 0.9 : 1.1),
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    );
+  };
+
+  const handleMapPointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    mapPointer.current = {
+      id: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: mapTransform.x,
+      originY: mapTransform.y,
+      moved: false,
+    };
+  };
+
+  const handleMapPointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const pointer = mapPointer.current;
+    if (!pointer || pointer.id !== event.pointerId) return;
+    const deltaX = event.clientX - pointer.startX;
+    const deltaY = event.clientY - pointer.startY;
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 6) pointer.moved = true;
+    setMapTransform((current) => ({
+      ...current,
+      x: pointer.originX + deltaX,
+      y: pointer.originY + deltaY,
+    }));
+  };
+
+  const handleMapPointerUp = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const pointer = mapPointer.current;
+    if (!pointer || pointer.id !== event.pointerId) return;
+    if (!pointer.moved) {
+      const path = (event.target as Element).closest<SVGPathElement>(
+        "path[data-code]",
+      );
+      if (path?.dataset.code && path.dataset.name) {
+        setSelectedMapRegion({
+          code: path.dataset.code,
+          name: path.dataset.name,
+          province: path.dataset.province ?? "",
+        });
+      }
+    }
+    mapPointer.current = null;
+  };
 
   const loadRegionRecommendations = async (coordinates?: {
     latitude: number;
@@ -1725,6 +1860,144 @@ export default function Home() {
           </div>
         </section>
       )}
+      {activeTab === "exploration" && (
+        <section className="exploration-screen">
+          <header className="exploration-header">
+            <div>
+              <small>MY TRAVEL MAP</small>
+              <h1>나의 탐험 지도</h1>
+              <p>빙고로 발견한 지역에 추억을 채워보세요.</p>
+            </div>
+            <span aria-hidden="true">⌖</span>
+          </header>
+
+          <div className="exploration-summary">
+            <div>
+              <b>1</b>
+              <span>도전 중인 지역</span>
+            </div>
+            <div>
+              <b>0</b>
+              <span>사진을 채운 지역</span>
+            </div>
+            <div>
+              <b>0</b>
+              <span>획득한 테두리</span>
+            </div>
+          </div>
+
+          <div className="map-paper">
+            <div className="map-paper-tape" aria-hidden="true" />
+            <div
+              className="exploration-map-viewport"
+              onWheel={handleMapWheel}
+              onPointerDown={handleMapPointerDown}
+              onPointerMove={handleMapPointerMove}
+              onPointerUp={handleMapPointerUp}
+              onPointerCancel={() => {
+                mapPointer.current = null;
+              }}
+              aria-label="대한민국 시군구 탐험 지도"
+            >
+              {explorationMapLoading && (
+                <div className="exploration-map-state">
+                  전국 지도를 펼치고 있어요…
+                </div>
+              )}
+              {!explorationMapLoading && !explorationMapSvg && (
+                <button
+                  type="button"
+                  className="exploration-map-state retry"
+                  onClick={() => setExplorationMapAttempt((value) => value + 1)}
+                >
+                  지도를 다시 불러오기
+                </button>
+              )}
+              {explorationMapSvg && (
+                <div
+                  className="exploration-map"
+                  style={{
+                    transform: `translate3d(${mapTransform.x}px, ${mapTransform.y}px, 0) scale(${mapTransform.scale})`,
+                  }}
+                  dangerouslySetInnerHTML={{ __html: explorationMapSvg }}
+                />
+              )}
+            </div>
+            <div className="exploration-map-controls">
+              <button
+                type="button"
+                aria-label="지도 확대"
+                onClick={() => updateMapScale(mapTransform.scale * 1.25)}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                aria-label="지도 축소"
+                onClick={() => updateMapScale(mapTransform.scale * 0.8)}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                aria-label="지도 위치 초기화"
+                onClick={() =>
+                  setMapTransform({ scale: 0.92, x: 18, y: 0 })
+                }
+              >
+                ◎
+              </button>
+            </div>
+            <p className="map-gesture-tip">버튼으로 확대하고 끌어서 둘러보세요</p>
+          </div>
+
+          <article className="selected-region-card">
+            <div className="region-stamp" aria-hidden="true">
+              {selectedMapRegion.name.slice(0, 1)}
+            </div>
+            <div>
+              <small>{selectedMapRegion.province || "대한민국"}</small>
+              <h2>{selectedMapRegion.name}</h2>
+              <p>
+                {selectedMapRegion.code === "31220"
+                  ? "안성 여행 빙고에 도전 중이에요."
+                  : "아직 이 지역의 여행 기록이 없어요."}
+              </p>
+            </div>
+            <span
+              className={
+                selectedMapRegion.code === "31220"
+                  ? "region-status active"
+                  : "region-status"
+              }
+            >
+              {selectedMapRegion.code === "31220" ? "도전 중" : "미발견"}
+            </span>
+          </article>
+
+          {selectedMapRegion.code === "31220" ? (
+            <div className="region-progress-note">
+              <span aria-hidden="true">✎</span>
+              <div>
+                <b>사진 해금까지 3 Bingo</b>
+                <p>
+                  안성 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을
+                  남길 수 있어요.
+                </p>
+              </div>
+              <strong>{Math.min(3, lineKeys.length)} / 3</strong>
+            </div>
+          ) : (
+            <div className="region-progress-note muted">
+              <span aria-hidden="true">☆</span>
+              <div>
+                <b>새로운 여행을 기다리고 있어요</b>
+                <p>지역 빙고가 열리면 이곳에서 진행 상황을 확인할 수 있어요.</p>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
       {activeTab === "catalog" && (
         <section className="catalog-screen">
           <header className="catalog-header">
@@ -1974,7 +2247,13 @@ export default function Home() {
         >
           <span>⌂</span>홈
         </button>
-        <button onClick={() => setMessage("탐험 지도는 다음 단계에서 만나요.")}>
+        <button
+          className={activeTab === "exploration" ? "active" : ""}
+          onClick={() => {
+            setMessage(null);
+            setActiveTab("exploration");
+          }}
+        >
           <span>♧</span>탐험
         </button>
         <button
