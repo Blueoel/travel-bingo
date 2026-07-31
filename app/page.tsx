@@ -841,22 +841,10 @@ export default function Home() {
         "aria-label",
         `${path.dataset.province ?? ""} ${path.dataset.name ?? "지역"}`,
       );
-      if (path.dataset.code === "31220" && explorationMemory.photoUrl) {
-        path.classList.add("has-memory-photo");
-        path.style.setProperty(
-          "fill",
-          "url(#anseong-representative-photo)",
-          "important",
-        );
-      } else {
-        path.classList.remove("has-memory-photo");
-        path.style.removeProperty("fill");
-      }
     });
   }, [
     activeTab,
     explorationMapSvg,
-    explorationMemory.photoUrl,
     selectedMapRegion.code,
   ]);
 
@@ -2859,5 +2847,10 @@ function addRepresentativePhotoPattern(svg: string, photoUrl: string) {
       <image href="${safeUrl}" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
     </pattern>
   </defs>`;
-  return svg.replace(/(<svg\b[^>]*>)/, `$1${pattern}`);
+  return svg
+    .replace(/(<svg\b[^>]*>)/, `$1${pattern}`)
+    .replace(
+      /(<path id="region-31220" class=")([^"]*)(")/,
+      '$1$2 has-memory-photo$3 style="fill:url(#anseong-representative-photo) !important"',
+    );
 }
