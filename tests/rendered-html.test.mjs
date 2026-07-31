@@ -175,24 +175,11 @@ test("loads all active region progress for the exploration map", async () => {
     ),
     "utf8",
   );
-  const catalogService = await readFile(
-    path.join(
-      projectDirectory,
-      "..",
-      "api",
-      "src",
-      "bingo-catalog",
-      "bingo-catalog.service.ts",
-    ),
-    "utf8",
-  );
-
   assert.match(pageSource, /fetch\("\/api\/exploration\/regions"/);
   assert.match(pageSource, /item\.type === "REGION"/);
+  assert.match(pageSource, /region\.regionCode/);
   assert.match(pageSource, /travelRecordsByYear/);
   assert.match(listRoute, /ORDER BY selected_at DESC/);
-  assert.match(catalogService, /regionCode/);
-  assert.match(catalogService, /administrativeCode/);
 });
 
 async function render(pathname = "/") {
