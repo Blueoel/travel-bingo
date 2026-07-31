@@ -219,7 +219,7 @@ const dokdoRing = geometryRings(
 )
   .map((ring) => ({ ring, bounds: boundsOfRaw(ring) }))
   .sort((a, b) => b.bounds.maxX - a.bounds.maxX)[0];
-const dokdoCenter = [836, 475];
+const dokdoCenter = [864, 505];
 
 const cityCount = administrativeRegions.filter(
   (region) => region.regionType === "CITY",

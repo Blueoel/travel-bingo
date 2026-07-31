@@ -1980,9 +1980,6 @@ export default function Home() {
               <p>빙고로 발견한 지역에 추억을 채워보세요.</p>
             </div>
             <div className="exploration-header-side">
-              <span className="exploration-header-marker" aria-hidden="true">
-                ⌖
-              </span>
               <div className="exploration-summary">
                 {!explorationMemory.unlocked && (
                   <div>
@@ -1992,7 +1989,7 @@ export default function Home() {
                 )}
                 <div>
                   <b>{explorationMemory.photoUrl ? 1 : 0}</b>
-                  <span>사진 지역</span>
+                  <span>사진을 채운 지역</span>
                 </div>
               </div>
             </div>

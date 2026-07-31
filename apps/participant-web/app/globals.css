@@ -343,28 +343,16 @@ button {
   font-size: 11px;
 }
 .exploration-header-side {
-  min-width: 112px;
+  min-width: 122px;
   display: grid;
   justify-items: end;
-  gap: 7px;
-}
-.exploration-header-marker {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #c9b991;
-  border-radius: 50% 46% 52% 44%;
-  background: #fffdf5;
-  color: #56764c;
-  font-size: 23px;
-  transform: rotate(5deg);
+  padding-top: 3px;
 }
 .exploration-summary {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  min-width: 112px;
+  min-width: 122px;
   overflow: hidden;
   border: 1px solid #ded4c2;
   border-radius: 12px 15px 11px 14px;
