@@ -558,3 +558,20 @@ test("shows completed exploration memories and opens their detail sheet", async 
   assert.match(pageSource, /대표 사진 바꾸기/);
   assert.match(stylesSource, /\.memory-detail-sheet/);
 });
+
+test("connects completed exploration memories to the travel note", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /"main" \| "travel-note"/);
+  assert.match(pageSource, /빙고로 완성한 여행 이야기/);
+  assert.match(pageSource, /3 Bingo 탐험 완료/);
+  assert.match(pageSource, /첫 여행 기록을 기다리고 있어요/);
+  assert.match(stylesSource, /\.travel-note-card/);
+});

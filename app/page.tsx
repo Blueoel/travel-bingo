@@ -471,6 +471,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<
     "home" | "exploration" | "catalog" | "bingo" | "ranking" | "my"
   >("home");
+  const [myView, setMyView] = useState<"main" | "travel-note">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
@@ -2515,8 +2516,66 @@ export default function Home() {
       {activeTab === "my" && (
         <section className="my-screen">
           <header className="my-header">
-            <h1>마이</h1>
+            {myView === "travel-note" && (
+              <button
+                type="button"
+                className="my-back-button"
+                aria-label="마이 화면으로 돌아가기"
+                onClick={() => setMyView("main")}
+              >
+                ←
+              </button>
+            )}
+            <h1>{myView === "travel-note" ? "여행 노트" : "마이"}</h1>
           </header>
+          {myView === "travel-note" ? (
+            <div className="travel-note-view">
+              <div className="travel-note-intro">
+                <small>MY TRAVEL NOTE</small>
+                <h2>빙고로 완성한 여행 이야기</h2>
+                <p>탐험 완료 지역의 대표 사진이 한 장씩 기록돼요.</p>
+              </div>
+              <div className="travel-note-year">
+                <span>{new Date().getFullYear()}</span>
+                <i aria-hidden="true" />
+              </div>
+              {explorationMemory.photoUrl ? (
+                <button
+                  type="button"
+                  className="travel-note-card"
+                  onClick={() => {
+                    setSelectedMapRegion({
+                      code: "31220",
+                      name: "안성",
+                      province: "경기도",
+                    });
+                    setMemoryDetailOpen(true);
+                    setActiveTab("exploration");
+                  }}
+                >
+                  <img src={explorationMemory.photoUrl} alt="안성 여행 기록" />
+                  <span>
+                    <small>경기도</small>
+                    <strong>안성</strong>
+                    <em>3 Bingo 탐험 완료 · 추억 보기 ›</em>
+                  </span>
+                </button>
+              ) : (
+                <div className="travel-note-empty">
+                  <span aria-hidden="true">▧</span>
+                  <b>첫 여행 기록을 기다리고 있어요</b>
+                  <p>지역 빙고에서 3 Bingo를 완성하고 대표 사진을 골라보세요.</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("exploration")}
+                  >
+                    탐험 지도 보기
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
           <div className="my-profile-card">
             <span className="my-avatar">
               {(account?.nickname ?? nickname).slice(0, 1)}
@@ -2542,7 +2601,7 @@ export default function Home() {
             </div>
           </div>
           <div className="my-menu">
-            <button type="button">
+            <button type="button" onClick={() => setMyView("travel-note")}>
               <span>▤</span>
               여행 기록
               <b>›</b>
@@ -2571,6 +2630,8 @@ export default function Home() {
             <i>✿</i>
             <b>♧</b>
           </div>
+            </>
+          )}
         </section>
       )}
       {trackingMissionId && tracking.active && (
