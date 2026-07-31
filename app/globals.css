@@ -546,6 +546,19 @@ button {
   background: #fffdf9;
   box-shadow: 0 5px 13px #5647300c;
 }
+.memory-detail-button {
+  grid-column: 2 / -1;
+  justify-self: start;
+  margin-top: -3px;
+  padding: 4px 0 2px;
+  border: 0;
+  border-bottom: 1px solid #5f7f59;
+  background: transparent;
+  color: #4f714d;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .region-stamp {
   width: 48px;
   height: 48px;
@@ -661,6 +674,103 @@ button {
   padding: 18px;
   background: #20332880;
   backdrop-filter: blur(3px);
+}
+.memory-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 31;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 18px;
+  background: #2033288c;
+  backdrop-filter: blur(4px);
+}
+.memory-detail-sheet {
+  width: min(100%, 430px);
+  padding: 19px 17px 20px;
+  border: 1px solid #d5c7aa;
+  border-radius: 24px 21px 12px 14px;
+  background:
+    radial-gradient(circle at 7px 7px, #eadfca 1px, transparent 1.4px) 0 0 /
+      18px 18px,
+    #fffdf6;
+  box-shadow: 0 -10px 35px #27382b38;
+}
+.memory-detail-sheet header {
+  display: grid;
+  grid-template-columns: 1fr 36px;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+.memory-detail-sheet header small {
+  color: #789067;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.memory-detail-sheet header h2 {
+  margin: 3px 0 0;
+  color: #29472f;
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
+  font-size: 21px;
+}
+.memory-detail-sheet header button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d8cdb8;
+  border-radius: 50%;
+  background: #fffdf8;
+  color: #3b5741;
+  font-size: 24px;
+}
+.memory-detail-sheet figure {
+  margin: 0;
+  padding: 9px 9px 13px;
+  border: 1px solid #d8cdb8;
+  background: #fff;
+  box-shadow: 3px 4px 0 #e8decb;
+  transform: rotate(-0.5deg);
+}
+.memory-detail-sheet figure img {
+  width: 100%;
+  aspect-ratio: 1.3;
+  display: block;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.memory-detail-sheet figcaption {
+  display: grid;
+  gap: 2px;
+  padding: 10px 4px 0;
+}
+.memory-detail-sheet figcaption span,
+.memory-detail-sheet figcaption small {
+  color: #898173;
+  font-size: 9px;
+}
+.memory-detail-sheet figcaption strong {
+  color: #34513a;
+  font-size: 13px;
+}
+.memory-detail-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 17px;
+}
+.memory-detail-actions button {
+  min-height: 43px;
+  border: 1px solid #54764f;
+  border-radius: 11px 13px 10px 12px;
+  background: #577d50;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.memory-detail-actions button.secondary {
+  background: #fffdf7;
+  color: #52744c;
 }
 .memory-photo-picker {
   width: min(100%, 430px);
