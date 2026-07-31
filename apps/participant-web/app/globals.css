@@ -237,6 +237,87 @@ button {
   font-size: 11px;
   text-align: center;
 }
+.region-challenge-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #2033288c;
+  backdrop-filter: blur(4px);
+}
+.region-challenge-dialog {
+  position: relative;
+  width: min(100%, 360px);
+  padding: 27px 23px 22px;
+  overflow: hidden;
+  border: 1px solid #d4c5a8;
+  border-radius: 23px 18px 25px 19px;
+  background:
+    radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 /
+      18px 18px,
+    #fffdf6;
+  box-shadow: 7px 9px 0 #2b423b33;
+  text-align: center;
+}
+.region-challenge-stamp {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  border: 2px solid #67825c;
+  border-radius: 48% 52% 45% 55%;
+  background: #e8efd8;
+  color: #486442;
+  font-family: "Segoe Print", "Comic Sans MS", cursive;
+  font-size: 22px;
+  font-weight: 900;
+  transform: rotate(-4deg);
+}
+.region-challenge-dialog > small {
+  color: #7b916b;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.region-challenge-dialog h2 {
+  margin: 5px 0 7px;
+  color: #29472f;
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.region-challenge-dialog p {
+  margin: 0 auto 19px;
+  color: #7b766b;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.region-challenge-dialog > div {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 8px;
+}
+.region-challenge-dialog button {
+  min-height: 43px;
+  border: 1px solid #bdb3a2;
+  border-radius: 10px 12px 9px 11px;
+  background: #fffdf8;
+  color: #6d6a62;
+  font-size: 11px;
+  font-weight: 800;
+}
+.region-challenge-dialog button.primary {
+  border-color: #50734c;
+  background: #577d50;
+  color: #fff;
+}
+.region-challenge-dialog button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
 .ongoing-bingo-card {
   width: 100%;
   display: grid;

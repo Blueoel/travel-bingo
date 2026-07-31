@@ -54,7 +54,17 @@ export class RegionRecommendationService {
     }>
   > {
     const regions = await this.database.region.findMany({
-      where: { status: "ACTIVE" },
+      where: {
+        status: "ACTIVE",
+        templates: {
+          some: {
+            status: "PUBLISHED",
+            type: "REGION",
+            OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }],
+            AND: [{ OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] }],
+          },
+        },
+      },
       include: {
         places: {
           where: { status: "ACTIVE" },
