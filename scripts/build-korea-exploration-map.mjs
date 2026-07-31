@@ -7,7 +7,7 @@ const outputDirectory =
   process.argv[3] ?? "apps/participant-web/public/maps";
 const boundarySimplificationToleranceM = 900;
 const landSimplificationToleranceM = 2500;
-const minimumCityIslandAreaM2 = 1_000_000;
+const minimumCityIslandAreaM2 = 10_000_000;
 const minimumBackgroundIslandAreaM2 = 100_000_000;
 
 if (!sourceDirectory) {
@@ -148,14 +148,14 @@ const jejuGeometry = administrativeRegions
   .flatMap((region) => region.geometry);
 const jejuProject = createInsetProject(
   boundsOfRaw(jejuGeometry.flat(2)),
-  { x: 245, y: 1085, width: 245, height: 105 },
+  { x: 250, y: 1120, width: 230, height: 90 },
 );
 const ulleungRegion = administrativeRegions.find(
   (region) => region.code === "37430",
 );
 const ulleungProject = createInsetProject(
   boundsOfRaw(ulleungRegion?.geometry.flat(2) ?? []),
-  { x: 770, y: 455, width: 42, height: 42 },
+  { x: 830, y: 420, width: 32, height: 32 },
 );
 const projectRegionPoint = (region, point) => {
   if (region.code.startsWith("39")) return jejuProject(point);
@@ -219,7 +219,7 @@ const dokdoRing = geometryRings(
 )
   .map((ring) => ({ ring, bounds: boundsOfRaw(ring) }))
   .sort((a, b) => b.bounds.maxX - a.bounds.maxX)[0];
-const dokdoCenter = [864, 505];
+const dokdoCenter = [885, 455];
 
 const cityCount = administrativeRegions.filter(
   (region) => region.regionType === "CITY",
@@ -307,8 +307,8 @@ await writeFile(
       minimumCityIslandAreaM2,
       minimumBackgroundIslandAreaM2,
       visualInsets: {
-        jeju: [245, 1085, 245, 105],
-        ulleungdo: [770, 455, 42, 42],
+        jeju: [250, 1120, 230, 90],
+        ulleungdo: [830, 420, 32, 32],
         dokdo: dokdoCenter,
       },
       cityCount,

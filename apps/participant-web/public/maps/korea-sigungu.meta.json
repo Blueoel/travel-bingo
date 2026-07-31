@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T08:52:06.498Z",
+  "generatedAt": "2026-07-31T09:22:24.840Z",
   "sourceYear": 2020,
   "source": "StatGarten maps, derived from SGIS Open API",
   "sourceUrl": "https://github.com/statgarten/maps",
@@ -7,24 +7,24 @@
   "layerType": "CITY_COUNTY",
   "boundarySimplificationToleranceM": 900,
   "landSimplificationToleranceM": 2500,
-  "minimumCityIslandAreaM2": 1000000,
+  "minimumCityIslandAreaM2": 10000000,
   "minimumBackgroundIslandAreaM2": 100000000,
   "visualInsets": {
     "jeju": [
-      245,
-      1085,
-      245,
-      105
+      250,
+      1120,
+      230,
+      90
     ],
     "ulleungdo": [
-      770,
-      455,
-      42,
-      42
+      830,
+      420,
+      32,
+      32
     ],
     "dokdo": [
-      864,
-      505
+      885,
+      455
     ]
   },
   "cityCount": 77,
@@ -33,8 +33,8 @@
   "regionCount": 162,
   "dokdo": {
     "center": [
-      864,
-      505
+      885,
+      455
     ],
     "preservedAsMarker": true
   },
@@ -106,11 +106,11 @@
         "minX": 28,
         "minY": 264.55,
         "maxX": 393.95,
-        "maxY": 474.65
+        "maxY": 434.28
       },
       "center": [
         210.98,
-        369.6
+        349.42
       ]
     },
     {
@@ -324,14 +324,14 @@
       "regionType": "CITY",
       "id": "region-31090",
       "bounds": {
-        "minX": 322.8,
+        "minX": 349.29,
         "minY": 399.98,
         "maxX": 418.2,
-        "maxY": 458.22
+        "maxY": 439.09
       },
       "center": [
-        370.5,
-        429.1
+        383.75,
+        419.54
       ]
     },
     {
@@ -579,13 +579,13 @@
       "regionType": "CITY",
       "id": "region-31240",
       "bounds": {
-        "minX": 362.13,
+        "minX": 365.64,
         "minY": 417.57,
         "maxX": 455.68,
         "maxY": 477.09
       },
       "center": [
-        408.91,
+        410.66,
         447.33
       ]
     },
@@ -1242,13 +1242,13 @@
       "regionType": "CITY",
       "id": "region-34030",
       "bounds": {
-        "minX": 267.08,
+        "minX": 338.28,
         "minY": 580.34,
         "maxX": 382.42,
         "maxY": 655.06
       },
       "center": [
-        324.75,
+        360.35,
         617.7
       ]
     },
@@ -1327,14 +1327,14 @@
       "regionType": "CITY",
       "id": "region-34080",
       "bounds": {
-        "minX": 329.16,
-        "minY": 465.57,
+        "minX": 336.37,
+        "minY": 465.66,
         "maxX": 403.85,
         "maxY": 533
       },
       "center": [
-        366.51,
-        499.29
+        370.11,
+        499.33
       ]
     },
     {
@@ -1446,13 +1446,13 @@
       "regionType": "COUNTY",
       "id": "region-34380",
       "bounds": {
-        "minX": 265.22,
+        "minX": 276.36,
         "minY": 483.61,
         "maxX": 330.68,
         "maxY": 606.65
       },
       "center": [
-        297.95,
+        303.52,
         545.13
       ]
     },
@@ -1480,14 +1480,14 @@
       "regionType": "CITY",
       "id": "region-35020",
       "bounds": {
-        "minX": 249.45,
-        "minY": 663.2,
+        "minX": 330.45,
+        "minY": 679.04,
         "maxX": 412.43,
-        "maxY": 748.89
+        "maxY": 732.39
       },
       "center": [
-        330.94,
-        706.05
+        371.44,
+        705.71
       ]
     },
     {
@@ -1684,13 +1684,13 @@
       "regionType": "COUNTY",
       "id": "region-35380",
       "bounds": {
-        "minX": 272.91,
+        "minX": 296.45,
         "minY": 730.3,
         "maxX": 399.17,
         "maxY": 782.93
       },
       "center": [
-        336.04,
+        347.81,
         756.62
       ]
     },
@@ -1701,14 +1701,14 @@
       "regionType": "CITY",
       "id": "region-36010",
       "bounds": {
-        "minX": 304.11,
+        "minX": 312.1,
         "minY": 936.12,
         "maxX": 331.25,
-        "maxY": 957.12
+        "maxY": 949.85
       },
       "center": [
-        317.68,
-        946.62
+        321.68,
+        942.99
       ]
     },
     {
@@ -1718,14 +1718,14 @@
       "regionType": "CITY",
       "id": "region-36020",
       "bounds": {
-        "minX": 464.69,
+        "minX": 517.15,
         "minY": 925.5,
-        "maxX": 570.39,
-        "maxY": 1114.76
+        "maxX": 567.05,
+        "maxY": 1012.84
       },
       "center": [
-        517.54,
-        1020.13
+        542.1,
+        969.17
       ]
     },
     {
@@ -1837,14 +1837,14 @@
       "regionType": "COUNTY",
       "id": "region-36350",
       "bounds": {
-        "minX": 441.07,
+        "minX": 441.67,
         "minY": 940.65,
         "maxX": 519.85,
-        "maxY": 1035.36
+        "maxY": 1028.81
       },
       "center": [
-        480.46,
-        988
+        480.76,
+        984.73
       ]
     },
     {
@@ -1856,11 +1856,11 @@
       "bounds": {
         "minX": 420.69,
         "minY": 906.73,
-        "maxX": 507.9,
+        "maxX": 500.37,
         "maxY": 981.34
       },
       "center": [
-        464.29,
+        460.53,
         944.04
       ]
     },
@@ -1990,13 +1990,13 @@
       "regionType": "COUNTY",
       "id": "region-36440",
       "bounds": {
-        "minX": 251.98,
+        "minX": 303.89,
         "minY": 811.44,
         "maxX": 364.58,
         "maxY": 868.37
       },
       "center": [
-        308.28,
+        334.24,
         839.91
       ]
     },
@@ -2024,14 +2024,14 @@
       "regionType": "COUNTY",
       "id": "region-36460",
       "bounds": {
-        "minX": 332.02,
+        "minX": 337.58,
         "minY": 1018.41,
-        "maxX": 456.49,
-        "maxY": 1122.43
+        "maxX": 442.98,
+        "maxY": 1091.92
       },
       "center": [
-        394.26,
-        1070.42
+        390.28,
+        1055.17
       ]
     },
     {
@@ -2041,14 +2041,14 @@
       "regionType": "COUNTY",
       "id": "region-36470",
       "bounds": {
-        "minX": 222.09,
+        "minX": 252.06,
         "minY": 989.88,
         "maxX": 317.48,
-        "maxY": 1070.26
+        "maxY": 1056.29
       },
       "center": [
-        269.79,
-        1030.07
+        284.77,
+        1023.09
       ]
     },
     {
@@ -2059,13 +2059,13 @@
       "id": "region-36480",
       "bounds": {
         "minX": 87.36,
-        "minY": 871.39,
-        "maxX": 317.32,
+        "minY": 871.4,
+        "maxX": 316.21,
         "maxY": 1101.1
       },
       "center": [
-        202.34,
-        986.24
+        201.79,
+        986.25
       ]
     },
     {
@@ -2449,14 +2449,14 @@
       "regionType": "COUNTY",
       "id": "region-37430",
       "bounds": {
-        "minX": 770,
-        "minY": 456.48,
-        "maxX": 812,
-        "maxY": 495.52
+        "minX": 830,
+        "minY": 421.13,
+        "maxX": 862,
+        "maxY": 450.87
       },
       "center": [
-        791,
-        476
+        846,
+        436
       ]
     },
     {
@@ -2483,13 +2483,13 @@
       "regionType": "CITY",
       "id": "region-38050",
       "bounds": {
-        "minX": 622.22,
+        "minX": 629.62,
         "minY": 908.42,
-        "maxX": 703.14,
+        "maxX": 689.75,
         "maxY": 986.12
       },
       "center": [
-        662.68,
+        659.69,
         947.27
       ]
     },
@@ -2503,11 +2503,11 @@
         "minX": 579.06,
         "minY": 870.21,
         "maxX": 632.34,
-        "maxY": 928.04
+        "maxY": 921.46
       },
       "center": [
         605.7,
-        899.13
+        895.84
       ]
     },
     {
@@ -2551,13 +2551,13 @@
       "regionType": "CITY",
       "id": "region-38090",
       "bounds": {
-        "minX": 681.34,
+        "minX": 682.95,
         "minY": 894.32,
         "maxX": 731.77,
         "maxY": 966.29
       },
       "center": [
-        706.56,
+        707.36,
         930.31
       ]
     },
@@ -2588,11 +2588,11 @@
         "minX": 660.77,
         "minY": 819.75,
         "maxX": 747,
-        "maxY": 892.14
+        "maxY": 891.79
       },
       "center": [
         703.89,
-        855.95
+        855.77
       ]
     },
     {
@@ -2772,14 +2772,14 @@
       "regionType": "CITY",
       "id": "region-39010",
       "bounds": {
-        "minX": 323.25,
-        "minY": 1085,
-        "maxX": 411.75,
-        "maxY": 1175.43
+        "minX": 284.23,
+        "minY": 1120,
+        "maxX": 439.07,
+        "maxY": 1190.64
       },
       "center": [
-        367.5,
-        1130.22
+        361.65,
+        1155.32
       ]
     },
     {
@@ -2789,14 +2789,14 @@
       "regionType": "CITY",
       "id": "region-39020",
       "bounds": {
-        "minX": 324.09,
-        "minY": 1148.85,
-        "maxX": 408.87,
-        "maxY": 1190
+        "minX": 285.81,
+        "minY": 1140.48,
+        "maxX": 445.77,
+        "maxY": 1210
       },
       "center": [
-        366.48,
-        1169.43
+        365.79,
+        1175.24
       ]
     }
   ]

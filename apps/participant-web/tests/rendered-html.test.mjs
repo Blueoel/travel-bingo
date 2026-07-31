@@ -53,9 +53,10 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   assert.equal(metadata.countyCount, 77);
   assert.equal(metadata.boundarySimplificationToleranceM, 900);
   assert.equal(metadata.dokdo.preservedAsMarker, true);
-  assert.deepEqual(metadata.visualInsets.jeju, [245, 1085, 245, 105]);
-  assert.deepEqual(metadata.visualInsets.ulleungdo, [770, 455, 42, 42]);
-  assert.deepEqual(metadata.visualInsets.dokdo, [864, 505]);
+  assert.deepEqual(metadata.visualInsets.jeju, [250, 1120, 230, 90]);
+  assert.deepEqual(metadata.visualInsets.ulleungdo, [830, 420, 32, 32]);
+  assert.deepEqual(metadata.visualInsets.dokdo, [885, 455]);
+  assert.equal(metadata.minimumCityIslandAreaM2, 10_000_000);
   assert.match(svg, /id="korea-land-background"/);
   assert.match(svg, /id="dokdo"/);
   assert.deepEqual(
