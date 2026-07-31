@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
 import {
+  getEligibleMemoryPhoto,
   resolveGuest,
   withGuestCookie,
 } from "../../../../../db/photo-verifications";
+import { getReviewPhoto } from "../../../../../db/photo-storage";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const SUPPORTED_REGION_CODES = new Set(["31220"]);
@@ -93,23 +95,29 @@ export async function POST(
   const contentType = request.headers.get("content-type") ?? "";
   let bytes: Uint8Array;
   let mimeType: string;
-  let lineCount: number;
 
   if (contentType.includes("application/json")) {
     const input = (await request.json()) as {
-      demo?: boolean;
-      lineCount?: number;
+      photoId?: string;
     };
-    if (!input.demo) {
+    if (!input.photoId) {
       return NextResponse.json({ error: "Photo is required" }, { status: 400 });
     }
-    lineCount = Number(input.lineCount ?? 0);
-    mimeType = "image/svg+xml";
-    bytes = new TextEncoder().encode(demoAnseongPhoto());
+    const selectedPhoto = await getEligibleMemoryPhoto(
+      guest.guestId,
+      input.photoId,
+    );
+    const storedPhoto = selectedPhoto?.photoKey
+      ? await getReviewPhoto(selectedPhoto.photoKey)
+      : null;
+    if (!storedPhoto) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+    mimeType = storedPhoto.httpMetadata?.contentType ?? "image/jpeg";
+    bytes = new Uint8Array(await storedPhoto.arrayBuffer());
   } else {
     const form = await request.formData();
     const photo = form.get("photo");
-    lineCount = Number(form.get("lineCount") ?? 0);
     if (!(photo instanceof File) || !photo.type.startsWith("image/")) {
       return NextResponse.json(
         { error: "Image file is required" },
@@ -126,6 +134,7 @@ export async function POST(
     bytes = new Uint8Array(await photo.arrayBuffer());
   }
 
+  const lineCount = await actualAnseongLineCount(request);
   if (lineCount < 3) {
     return NextResponse.json(
       { error: "Three completed bingo lines are required" },
@@ -193,22 +202,38 @@ export async function POST(
   }
 }
 
-function demoAnseongPhoto() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#8cc9df"/>
-      <stop offset="1" stop-color="#f8df9c"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="520" fill="url(#sky)"/>
-  <circle cx="650" cy="105" r="50" fill="#ffd45f"/>
-  <path d="M0 335 Q140 230 290 330 T570 300 T800 320 V520 H0Z" fill="#7ca56a"/>
-  <path d="M0 390 Q170 300 350 390 T800 365 V520 H0Z" fill="#4f7d50"/>
-  <path d="M290 360 L400 260 L510 360 V455 H290Z" fill="#f7f0dc" stroke="#4a5d3d" stroke-width="10"/>
-  <path d="M270 365 L400 235 L530 365" fill="none" stroke="#573f2e" stroke-width="24" stroke-linecap="round"/>
-  <rect x="382" y="362" width="45" height="93" rx="4" fill="#7b5035"/>
-  <path d="M0 478 Q210 425 390 480 T800 455 V520 H0Z" fill="#d9b36c"/>
-  <text x="35" y="70" fill="#fffdf3" stroke="#385841" stroke-width="3" paint-order="stroke" font-family="sans-serif" font-size="40" font-weight="800">안성의 오늘</text>
-</svg>`;
+async function actualAnseongLineCount(request: Request): Promise<number> {
+  try {
+    const cookie = request.headers.get("cookie") ?? "";
+    const catalogResponse = await fetch(new URL("/api/backend/bingos", request.url), {
+      headers: { cookie },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!catalogResponse.ok) return 0;
+    const catalog = (await catalogResponse.json()) as {
+      items?: Array<{
+        type?: string;
+        regionName?: string | null;
+        sessionId?: string | null;
+      }>;
+    };
+    const anseong = catalog.items?.find(
+      (item) =>
+        item.type === "REGION" &&
+        item.regionName?.includes("안성") &&
+        item.sessionId,
+    );
+    if (!anseong?.sessionId) return 0;
+    const boardResponse = await fetch(
+      new URL(`/api/backend/bingos/sessions/${anseong.sessionId}`, request.url),
+      { headers: { cookie }, signal: AbortSignal.timeout(30_000) },
+    );
+    if (!boardResponse.ok) return 0;
+    const board = (await boardResponse.json()) as {
+      completedLineKeys?: string[];
+    };
+    return board.completedLineKeys?.length ?? 0;
+  } catch {
+    return 0;
+  }
 }

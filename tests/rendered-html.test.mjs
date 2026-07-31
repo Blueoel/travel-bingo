@@ -139,7 +139,7 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
     "utf8",
   );
 
-  assert.match(pageSource, /시연용 3 Bingo 달성/);
+  assert.doesNotMatch(pageSource, /시연용 3 Bingo 달성/);
   assert.match(pageSource, /!explorationMemory\.unlocked/);
   assert.match(pageSource, />안성<\/b>/);
   assert.doesNotMatch(pageSource, /획득한 테두리/);
@@ -152,7 +152,10 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
   );
   assert.match(memoryRoute, /lineCount < 3/);
   assert.match(memoryRoute, /exploration_region_memories/);
-  assert.match(memoryRoute, /demoAnseongPhoto/);
+  assert.doesNotMatch(memoryRoute, /demoAnseongPhoto/);
+  assert.match(memoryRoute, /getEligibleMemoryPhoto/);
+  assert.match(pageSource, /인증 사진에서 선택/);
+  assert.match(pageSource, /memory-photo-picker/);
   assert.match(photoRoute, /getReviewPhoto/);
 });
 

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, sum } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sum } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb } from "./index";
@@ -148,6 +148,42 @@ export async function listPhotoReviews(processed = false) {
     )
     .orderBy(desc(photoVerificationAttempts.submittedAt))
     .limit(100);
+}
+
+export async function listEligibleMemoryPhotos(guestId: string) {
+  const db = await getDb();
+  return db
+    .select({
+      id: photoVerificationAttempts.id,
+      missionId: photoVerificationAttempts.missionId,
+      missionTitle: photoVerificationAttempts.missionTitle,
+      photoKey: photoVerificationAttempts.photoKey,
+      submittedAt: photoVerificationAttempts.submittedAt,
+    })
+    .from(photoVerificationAttempts)
+    .where(
+      and(
+        eq(photoVerificationAttempts.guestId, guestId),
+        isNotNull(photoVerificationAttempts.photoKey),
+        or(
+          eq(photoVerificationAttempts.decision, "APPROVED"),
+          and(
+            eq(photoVerificationAttempts.decision, "NEEDS_REVIEW"),
+            eq(photoVerificationAttempts.reviewDecision, "APPROVED"),
+          ),
+        ),
+      ),
+    )
+    .orderBy(desc(photoVerificationAttempts.submittedAt))
+    .limit(100);
+}
+
+export async function getEligibleMemoryPhoto(
+  guestId: string,
+  verificationId: string,
+) {
+  const photos = await listEligibleMemoryPhotos(guestId);
+  return photos.find((photo) => photo.id === verificationId) ?? null;
 }
 
 export async function decidePhotoReview(input: {
