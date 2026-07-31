@@ -50,6 +50,28 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   );
 });
 
+test("connects the nationwide map to the exploration tab", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const styles = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /activeTab === "exploration"/);
+  assert.match(pageSource, /fetch\("\/maps\/korea-sigungu\.svg"\)/);
+  assert.match(pageSource, /대한민국 시군구 탐험 지도/);
+  assert.match(pageSource, /path\[data-code\]/);
+  assert.match(pageSource, /selectedMapRegion\.code === "31220"/);
+  assert.match(pageSource, /updateMapScale/);
+  assert.match(pageSource, /handleMapPointerMove/);
+  assert.match(styles, /\.exploration-map-viewport/);
+  assert.match(styles, /path\[data-code="31220"\]/);
+  assert.match(styles, /\.exploration-map path\.is-selected/);
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);
