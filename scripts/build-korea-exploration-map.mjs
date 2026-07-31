@@ -4,7 +4,7 @@ import path from "node:path";
 const sourceDirectory = process.argv[2];
 const outputDirectory =
   process.argv[3] ?? "apps/participant-web/public/maps";
-const boundarySimplificationToleranceM = 540;
+const boundarySimplificationToleranceM = 900;
 
 if (!sourceDirectory) {
   throw new Error(

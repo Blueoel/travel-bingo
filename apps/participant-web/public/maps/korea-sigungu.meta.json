@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-31T03:48:03.136Z",
+  "generatedAt": "2026-07-31T03:55:52.065Z",
   "sourceYear": 2020,
   "source": "StatGarten maps, derived from SGIS Open API",
   "sourceUrl": "https://github.com/statgarten/maps",
   "license": "MIT",
-  "boundarySimplificationToleranceM": 540,
+  "boundarySimplificationToleranceM": 900,
   "regionCount": 250,
   "viewBox": [
     0,
