@@ -131,6 +131,9 @@ test("unlocks and fills Anseong with a persistent representative photo", async (
   );
 
   assert.match(pageSource, /시연용 3 Bingo 달성/);
+  assert.match(pageSource, /!explorationMemory\.unlocked/);
+  assert.match(pageSource, />안성<\/b>/);
+  assert.doesNotMatch(pageSource, /획득한 테두리/);
   assert.match(pageSource, /addRepresentativePhotoPattern/);
   assert.match(pageSource, /anseong-representative-photo/);
   assert.match(pageSource, /has-memory-photo/);

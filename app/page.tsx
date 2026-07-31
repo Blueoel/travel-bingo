@@ -1983,17 +1983,15 @@ export default function Home() {
           </header>
 
           <div className="exploration-summary">
-            <div>
-              <b>1</b>
-              <span>도전 중인 지역</span>
-            </div>
+            {!explorationMemory.unlocked && (
+              <div>
+                <b>안성</b>
+                <span>도전 중인 지역</span>
+              </div>
+            )}
             <div>
               <b>{explorationMemory.photoUrl ? 1 : 0}</b>
               <span>사진을 채운 지역</span>
-            </div>
-            <div>
-              <b>0</b>
-              <span>획득한 테두리</span>
             </div>
           </div>
 
