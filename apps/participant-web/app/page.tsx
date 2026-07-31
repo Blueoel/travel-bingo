@@ -485,9 +485,9 @@ export default function Home() {
     province: "경기도",
   });
   const [mapTransform, setMapTransform] = useState({
-    scale: 0.92,
-    x: 18,
-    y: 0,
+    scale: 1.06,
+    x: -8,
+    y: -18,
   });
   const mapPointer = useRef<{
     id: number;
@@ -1979,21 +1979,24 @@ export default function Home() {
               <h1>나의 탐험 지도</h1>
               <p>빙고로 발견한 지역에 추억을 채워보세요.</p>
             </div>
-            <span aria-hidden="true">⌖</span>
-          </header>
-
-          <div className="exploration-summary">
-            {!explorationMemory.unlocked && (
-              <div>
-                <b>안성</b>
-                <span>도전 중인 지역</span>
+            <div className="exploration-header-side">
+              <span className="exploration-header-marker" aria-hidden="true">
+                ⌖
+              </span>
+              <div className="exploration-summary">
+                {!explorationMemory.unlocked && (
+                  <div>
+                    <b>안성</b>
+                    <span>도전 중</span>
+                  </div>
+                )}
+                <div>
+                  <b>{explorationMemory.photoUrl ? 1 : 0}</b>
+                  <span>사진 지역</span>
+                </div>
               </div>
-            )}
-            <div>
-              <b>{explorationMemory.photoUrl ? 1 : 0}</b>
-              <span>사진을 채운 지역</span>
             </div>
-          </div>
+          </header>
 
           <div className="map-paper">
             <div className="map-paper-tape" aria-hidden="true" />
@@ -2057,7 +2060,7 @@ export default function Home() {
                 type="button"
                 aria-label="지도 위치 초기화"
                 onClick={() =>
-                  setMapTransform({ scale: 0.92, x: 18, y: 0 })
+                  setMapTransform({ scale: 1.06, x: -8, y: -18 })
                 }
               >
                 ◎

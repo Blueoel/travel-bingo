@@ -58,10 +58,17 @@ for (const file of provinceFiles) {
   }
 }
 
-const allPoints = features.flatMap((feature) =>
+const isVisualInsetFeature = (feature) => {
+  const code = String(feature.properties?.id ?? "");
+  return code.startsWith("39") || code === "37430";
+};
+const mainlandFeatures = features.filter(
+  (feature) => !isVisualInsetFeature(feature),
+);
+const mainlandPoints = mainlandFeatures.flatMap((feature) =>
   geometryRings(feature.geometry).flat(),
 );
-const bounds = boundsOfRaw(allPoints);
+const bounds = boundsOfRaw(mainlandPoints);
 const width = 900;
 const height = 1260;
 const padding = 28;
@@ -136,9 +143,31 @@ const administrativeRegions = [...regionGroups.values()]
   })
   .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
+const jejuGeometry = administrativeRegions
+  .filter((region) => region.code.startsWith("39"))
+  .flatMap((region) => region.geometry);
+const jejuProject = createInsetProject(
+  boundsOfRaw(jejuGeometry.flat(2)),
+  { x: 245, y: 1085, width: 245, height: 105 },
+);
+const ulleungRegion = administrativeRegions.find(
+  (region) => region.code === "37430",
+);
+const ulleungProject = createInsetProject(
+  boundsOfRaw(ulleungRegion?.geometry.flat(2) ?? []),
+  { x: 770, y: 455, width: 42, height: 42 },
+);
+const projectRegionPoint = (region, point) => {
+  if (region.code.startsWith("39")) return jejuProject(point);
+  if (region.code === "37430") return ulleungProject(point);
+  return project(point);
+};
+
 const landGeometry = filterSmallPolygons(
   polygonClipping.union(
-    ...features.map((feature) => geometryToMultiPolygon(feature.geometry)),
+    ...mainlandFeatures.map((feature) =>
+      geometryToMultiPolygon(feature.geometry),
+    ),
   ),
   minimumBackgroundIslandAreaM2,
 );
@@ -152,14 +181,15 @@ const metadata = [];
 const regionLabels = [];
 const regionPaths = administrativeRegions.map((region) => {
   const rawPoints = region.geometry.flat(2);
-  const projectedPoints = rawPoints.map(project);
+  const regionProject = (point) => projectRegionPoint(region, point);
+  const projectedPoints = rawPoints.map(regionProject);
   const regionBounds = boundsOf(projectedPoints);
   const id = `region-${region.code}`;
   const largestPolygon = [...region.geometry].sort(
     (a, b) =>
       Math.abs(ringArea(b[0] ?? [])) - Math.abs(ringArea(a[0] ?? [])),
   )[0];
-  const labelPoint = project(
+  const labelPoint = regionProject(
     polygonCentroid(largestPolygon?.[0] ?? rawPoints),
   );
   regionLabels.push(
@@ -177,7 +207,7 @@ const regionPaths = administrativeRegions.map((region) => {
       round((regionBounds.minY + regionBounds.maxY) / 2),
     ],
   });
-  return `<path id="${id}" class="region administrative-region" data-code="${escapeXml(region.code)}" data-name="${escapeXml(region.name)}" data-province="${escapeXml(region.province)}" data-region-type="${region.regionType}" d="${pathFromMultiPolygon(region.geometry, project)}"><title>${escapeXml(region.province)} ${escapeXml(region.name)}</title></path>`;
+  return `<path id="${id}" class="region administrative-region" data-code="${escapeXml(region.code)}" data-name="${escapeXml(region.name)}" data-province="${escapeXml(region.province)}" data-region-type="${region.regionType}" d="${pathFromMultiPolygon(region.geometry, regionProject)}"><title>${escapeXml(region.province)} ${escapeXml(region.name)}</title></path>`;
 });
 
 const dokdoRing = geometryRings(
@@ -189,12 +219,7 @@ const dokdoRing = geometryRings(
 )
   .map((ring) => ({ ring, bounds: boundsOfRaw(ring) }))
   .sort((a, b) => b.bounds.maxX - a.bounds.maxX)[0];
-const dokdoCenter = dokdoRing
-  ? project([
-      (dokdoRing.bounds.minX + dokdoRing.bounds.maxX) / 2,
-      (dokdoRing.bounds.minY + dokdoRing.bounds.maxY) / 2,
-    ])
-  : [872, 398];
+const dokdoCenter = [836, 475];
 
 const cityCount = administrativeRegions.filter(
   (region) => region.regionType === "CITY",
@@ -214,6 +239,7 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
     Source: SGIS boundary data processed by StatGarten maps (2020).
     Derived dataset repository license: MIT, Copyright (c) 2022 StatGarten.
     District polygons are dissolved into their parent city or metropolitan municipality.
+    Jeju, Ulleungdo, and Dokdo are presented as visual insets closer to the mainland.
   </metadata>
   <style>
     .land-background {
@@ -280,6 +306,11 @@ await writeFile(
       landSimplificationToleranceM,
       minimumCityIslandAreaM2,
       minimumBackgroundIslandAreaM2,
+      visualInsets: {
+        jeju: [245, 1085, 245, 105],
+        ulleungdo: [770, 455, 42, 42],
+        dokdo: dokdoCenter,
+      },
       cityCount,
       countyCount,
       metropolitanCount,
@@ -488,6 +519,23 @@ function boundsOfRaw(regionPoints) {
     if (y > regionBounds.maxY) regionBounds.maxY = y;
   }
   return regionBounds;
+}
+
+function createInsetProject(sourceBounds, targetBox) {
+  const sourceWidth = sourceBounds.maxX - sourceBounds.minX;
+  const sourceHeight = sourceBounds.maxY - sourceBounds.minY;
+  const insetScale = Math.min(
+    targetBox.width / sourceWidth,
+    targetBox.height / sourceHeight,
+  );
+  const insetWidth = sourceWidth * insetScale;
+  const insetHeight = sourceHeight * insetScale;
+  const insetX = targetBox.x + (targetBox.width - insetWidth) / 2;
+  const insetY = targetBox.y + (targetBox.height - insetHeight) / 2;
+  return ([x, y]) => [
+    insetX + (x - sourceBounds.minX) * insetScale,
+    insetY + (sourceBounds.maxY - y) * insetScale,
+  ];
 }
 
 function round(value) {
