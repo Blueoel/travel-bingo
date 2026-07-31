@@ -8,7 +8,7 @@ import {
 import { getReviewPhoto } from "../../../../../db/photo-storage";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
-const SUPPORTED_REGION_CODES = new Set(["31220"]);
+const REGION_CODE_PATTERN = /^\d{2,10}$/;
 
 async function bindings() {
   const { env } = await import("cloudflare:workers");
@@ -39,7 +39,7 @@ export async function GET(
   context: { params: Promise<{ code: string }> },
 ) {
   const { code } = await context.params;
-  if (!SUPPORTED_REGION_CODES.has(code)) {
+  if (!REGION_CODE_PATTERN.test(code)) {
     return NextResponse.json({ error: "Unsupported region" }, { status: 404 });
   }
   const guest = resolveGuest(request);
@@ -87,7 +87,7 @@ export async function POST(
   context: { params: Promise<{ code: string }> },
 ) {
   const { code } = await context.params;
-  if (!SUPPORTED_REGION_CODES.has(code)) {
+  if (!REGION_CODE_PATTERN.test(code)) {
     return NextResponse.json({ error: "Unsupported region" }, { status: 404 });
   }
 
@@ -134,7 +134,7 @@ export async function POST(
     bytes = new Uint8Array(await photo.arrayBuffer());
   }
 
-  const lineCount = await actualAnseongLineCount(request);
+  const lineCount = await actualRegionLineCount(request, code);
   if (lineCount < 3) {
     return NextResponse.json(
       { error: "Three completed bingo lines are required" },
@@ -202,7 +202,10 @@ export async function POST(
   }
 }
 
-async function actualAnseongLineCount(request: Request): Promise<number> {
+async function actualRegionLineCount(
+  request: Request,
+  regionCode: string,
+): Promise<number> {
   try {
     const cookie = request.headers.get("cookie") ?? "";
     const catalogResponse = await fetch(new URL("/api/backend/bingos", request.url), {
@@ -214,18 +217,20 @@ async function actualAnseongLineCount(request: Request): Promise<number> {
       items?: Array<{
         type?: string;
         regionName?: string | null;
+        regionCode?: string | null;
         sessionId?: string | null;
       }>;
     };
-    const anseong = catalog.items?.find(
+    const region = catalog.items?.find(
       (item) =>
         item.type === "REGION" &&
-        item.regionName?.includes("안성") &&
+        (item.regionCode === regionCode ||
+          (regionCode === "31220" && item.regionCode === "41550")) &&
         item.sessionId,
     );
-    if (!anseong?.sessionId) return 0;
+    if (!region?.sessionId) return 0;
     const boardResponse = await fetch(
-      new URL(`/api/backend/bingos/sessions/${anseong.sessionId}`, request.url),
+      new URL(`/api/backend/bingos/sessions/${region.sessionId}`, request.url),
       { headers: { cookie }, signal: AbortSignal.timeout(30_000) },
     );
     if (!boardResponse.ok) return 0;
