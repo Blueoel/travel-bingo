@@ -99,6 +99,47 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.match(styles, /\.exploration-map path\.is-selected/);
 });
 
+test("unlocks and fills Anseong with a persistent representative photo", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const memoryRoute = await readFile(
+    path.join(
+      projectDirectory,
+      "app",
+      "api",
+      "exploration",
+      "regions",
+      "[code]",
+      "route.ts",
+    ),
+    "utf8",
+  );
+  const photoRoute = await readFile(
+    path.join(
+      projectDirectory,
+      "app",
+      "api",
+      "exploration",
+      "regions",
+      "[code]",
+      "photo",
+      "route.ts",
+    ),
+    "utf8",
+  );
+
+  assert.match(pageSource, /시연용 3 Bingo 달성/);
+  assert.match(pageSource, /addRepresentativePhotoPattern/);
+  assert.match(pageSource, /anseong-representative-photo/);
+  assert.match(pageSource, /has-memory-photo/);
+  assert.match(memoryRoute, /lineCount < 3/);
+  assert.match(memoryRoute, /exploration_region_memories/);
+  assert.match(memoryRoute, /demoAnseongPhoto/);
+  assert.match(photoRoute, /getReviewPhoto/);
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);
