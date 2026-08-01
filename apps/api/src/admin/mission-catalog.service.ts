@@ -149,6 +149,84 @@ export class MissionCatalogService {
     return { ...region, status };
   }
 
+  async publishRegionBoard(
+    id: string,
+    adminId: string,
+  ): Promise<RegionAdminSummary> {
+    await this.database.$transaction(async (transaction) => {
+      const region = await transaction.region.findUnique({
+        where: { id },
+        include: {
+          missionLinks: {
+            where: { mission: { status: "ACTIVE", scope: "REGION" } },
+            orderBy: { createdAt: "asc" },
+            select: { missionId: true },
+          },
+        },
+      });
+      if (!region) throw new NotFoundException("Region not found.");
+      if (region.missionLinks.length < 25) {
+        throw new BadRequestException(
+          `지역 빙고판을 공개하려면 활성 지역 미션이 25개 필요합니다. 현재 ${region.missionLinks.length}개입니다.`,
+        );
+      }
+
+      let theme = await transaction.bingoTheme.findFirst({
+        where: { regionId: id, status: "ACTIVE" },
+        orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+      });
+      if (!theme) {
+        theme = await transaction.bingoTheme.create({
+          data: {
+            regionId: id,
+            name: "대표 여행",
+            category: "지역 탐험",
+            isRequiredForRegionCompletion: true,
+            status: "ACTIVE",
+            displayOrder: 0,
+          },
+        });
+      }
+      const latest = await transaction.bingoTemplate.findFirst({
+        where: { themeId: theme.id },
+        orderBy: { version: "desc" },
+        select: { version: true },
+      });
+      await transaction.bingoTemplate.updateMany({
+        where: { regionId: id, type: "REGION", status: "PUBLISHED" },
+        data: { status: "ARCHIVED" },
+      });
+      await transaction.bingoTemplate.create({
+        data: {
+          regionId: id,
+          themeId: theme.id,
+          ownerId: adminId,
+          title: `${region.name} 여행 빙고`,
+          type: "REGION",
+          status: "PUBLISHED",
+          version: (latest?.version ?? 0) + 1,
+          startsAt: new Date(),
+          publishedAt: new Date(),
+          cells: {
+            create: region.missionLinks.slice(0, 25).map((link, position) => ({
+              missionId: link.missionId,
+              position,
+            })),
+          },
+        },
+      });
+      await transaction.region.update({
+        where: { id },
+        data: { status: "ACTIVE" },
+      });
+    });
+    const published = (await this.listRegions()).find(
+      (region) => region.id === id,
+    );
+    if (!published) throw new NotFoundException("Region not found.");
+    return published;
+  }
+
   async list(query: MissionCatalogQuery) {
     const where = {
       ...(query.q

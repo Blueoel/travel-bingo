@@ -148,10 +148,12 @@ export default function AdminPage() {
   });
   const [userQuery, setUserQuery] = useState("");
   const [regionQuery, setRegionQuery] = useState("");
+  const [managedRegionId, setManagedRegionId] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState("");
   const [attractionQuery, setAttractionQuery] = useState("");
   const [attractions, setAttractions] = useState<AttractionRecommendation[]>([]);
   const [attractionsLoading, setAttractionsLoading] = useState(false);
+  const [regionPublishing, setRegionPublishing] = useState(false);
   const [missionDraft, setMissionDraft] = useState<MissionDraft | null>(null);
   const [userStatus, setUserStatus] = useState("");
   const [userLoading, setUserLoading] = useState(false);
@@ -213,6 +215,7 @@ export default function AdminPage() {
   }
   async function loadAttractions(regionId: string, q = attractionQuery) {
     if (!regionId) return;
+    setManagedRegionId(regionId);
     setSelectedRegionId(regionId);
     setAttractionsLoading(true);
     try {
@@ -366,6 +369,37 @@ export default function AdminPage() {
     );
     await load();
   }
+  async function publishRegionBoard(region: Region) {
+    setRegionPublishing(true);
+    setError("");
+    try {
+      const result = await fetch(
+        `${API}/admin/missions/regions/${region.id}/publish-board`,
+        {
+          method: "POST",
+          headers: { "x-user-id": ADMIN },
+        },
+      );
+      if (!result.ok) {
+        const payload = (await result.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(payload?.message ?? "지역 빙고판을 공개하지 못했습니다.");
+      }
+      setNotice(
+        `${region.name} 25칸 빙고판을 생성하고 사용자 서비스를 공개했습니다.`,
+      );
+      await load();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "지역 빙고판을 공개하지 못했습니다.",
+      );
+    } finally {
+      setRegionPublishing(false);
+    }
+  }
   async function loadReviews() {
     try {
       const query = reviewMode === "history" ? "?status=history" : "";
@@ -499,6 +533,9 @@ export default function AdminPage() {
         region.administrativeCode?.includes(normalized),
     );
   }, [regionQuery, regions]);
+  const selectedRegion = regions.find(
+    (region) => region.id === managedRegionId,
+  );
   const dailyHealth = useMemo(() => {
     const difficultyCounts = [1, 2, 3].map(
       (level) =>
@@ -1033,6 +1070,16 @@ export default function AdminPage() {
                           <div className="regionActions">
                             <button
                               className="textButton"
+                              onClick={() => {
+                                setManagedRegionId(region.id);
+                                setSelectedRegionId("");
+                                setAttractions([]);
+                              }}
+                            >
+                              상세 관리
+                            </button>
+                            <button
+                              className="textButton"
                               onClick={() => void loadAttractions(region.id)}
                             >
                               관광지 추천
@@ -1070,15 +1117,123 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              {selectedRegion && (
+                <section className="regionDetailPanel">
+                  <div className="catalogHead">
+                    <div>
+                      <small>REGION PUBLISHING</small>
+                      <h2>{selectedRegion.name} 공개 준비</h2>
+                      <p>
+                        미션과 빙고판 조건을 모두 충족해야 사용자 지역 검색에
+                        ‘도전하기’로 표시됩니다.
+                      </p>
+                    </div>
+                    <button
+                      className="secondary"
+                      onClick={() => void loadAttractions(selectedRegion.id)}
+                    >
+                      관광지 추천 보기
+                    </button>
+                  </div>
+                  <div className="regionReadinessGrid">
+                    <article
+                      className={
+                        (selectedRegion.activeMissionCount ?? 0) >= 25
+                          ? "ready"
+                          : "pending"
+                      }
+                    >
+                      <span>
+                        {(selectedRegion.activeMissionCount ?? 0) >= 25
+                          ? "✓"
+                          : "1"}
+                      </span>
+                      <div>
+                        <small>STEP 1</small>
+                        <b>활성 지역 미션 25개</b>
+                        <p>
+                          {selectedRegion.activeMissionCount ?? 0} / 25개 등록
+                          {(selectedRegion.missingMissionCount ?? 0) > 0
+                            ? ` · ${selectedRegion.missingMissionCount}개 부족`
+                            : " · 기준 충족"}
+                        </p>
+                      </div>
+                    </article>
+                    <article
+                      className={
+                        (selectedRegion.publishedBoardCount ?? 0) > 0
+                          ? "ready"
+                          : "pending"
+                      }
+                    >
+                      <span>
+                        {(selectedRegion.publishedBoardCount ?? 0) > 0 ? "✓" : "2"}
+                      </span>
+                      <div>
+                        <small>STEP 2</small>
+                        <b>25칸 빙고판 공개</b>
+                        <p>
+                          공개 빙고판 {selectedRegion.publishedBoardCount ?? 0}개
+                        </p>
+                      </div>
+                    </article>
+                    <article
+                      className={
+                        selectedRegion.status === "ACTIVE" ? "ready" : "pending"
+                      }
+                    >
+                      <span>{selectedRegion.status === "ACTIVE" ? "✓" : "3"}</span>
+                      <div>
+                        <small>STEP 3</small>
+                        <b>사용자 서비스 노출</b>
+                        <p>
+                          {selectedRegion.status === "ACTIVE"
+                            ? "현재 도전 가능한 지역으로 노출 중"
+                            : "아직 준비 중으로 표시"}
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+                  <div className="regionPublishActions">
+                    {(selectedRegion.activeMissionCount ?? 0) < 25 ? (
+                      <p>
+                        미션을 {selectedRegion.missingMissionCount ?? 25}개 더
+                        등록하면 빙고판을 만들 수 있습니다.
+                      </p>
+                    ) : (selectedRegion.publishedBoardCount ?? 0) === 0 ? (
+                      <button
+                        className="primary"
+                        disabled={regionPublishing}
+                        onClick={() => void publishRegionBoard(selectedRegion)}
+                      >
+                        {regionPublishing
+                          ? "빙고판을 공개하는 중…"
+                          : "25칸 빙고판 생성 및 서비스 공개"}
+                      </button>
+                    ) : selectedRegion.status !== "ACTIVE" ? (
+                      <button
+                        className="primary"
+                        onClick={() =>
+                          void updateRegionStatus(selectedRegion, "ACTIVE")
+                        }
+                      >
+                        사용자 서비스 공개
+                      </button>
+                    ) : (
+                      <p className="publishedMessage">
+                        ✓ 공개 완료 · 사용자 지역 검색에서 바로 도전할 수 있습니다.
+                      </p>
+                    )}
+                  </div>
+                </section>
+              )}
               {selectedRegionId && (
                 <section className="attractionPanel">
                   <div className="catalogHead">
                     <div>
                       <h2>
                         {
-                          regions.find(
-                            (region) => region.id === selectedRegionId,
-                          )?.name
+                          selectedRegion?.name
                         }{" "}
                         관광지 추천
                       </h2>

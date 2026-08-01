@@ -65,6 +65,11 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /행정구역 코드 검색/);
   assert.match(pageSource, /updateRegionStatus/);
   assert.match(pageSource, /region\.canActivate/);
+  assert.match(pageSource, /상세 관리/);
+  assert.match(pageSource, /공개 준비/);
+  assert.match(pageSource, /25칸 빙고판 생성 및 서비스 공개/);
+  assert.match(pageSource, /publishRegionBoard/);
+  assert.match(pageSource, /publish-board/);
   assert.match(pageSource, /한국관광공사 Open API/);
   assert.match(pageSource, /관광지 추천/);
   assert.match(pageSource, /createMissionFromAttraction/);

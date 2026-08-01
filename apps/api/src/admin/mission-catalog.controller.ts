@@ -110,6 +110,16 @@ export class MissionCatalogController {
     return this.missions.updateRegionStatus(id, body.status);
   }
 
+  @Post("regions/:id/publish-board")
+  async publishRegionBoard(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+  ): Promise<RegionAdminSummary> {
+    const adminId = await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.publishRegionBoard(id, adminId);
+  }
+
   @Patch(":id")
   async update(
     @Param("id") id: string,

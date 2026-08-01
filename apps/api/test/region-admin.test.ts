@@ -75,4 +75,68 @@ describe("region administration", () => {
     );
     expect(database.region.update).not.toHaveBeenCalled();
   });
+
+  it("publishes a 25-cell board and activates the region in one operation", async () => {
+    const transaction = {
+      region: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "ready",
+          name: "경기도 준비시",
+          missionLinks: Array.from({ length: 25 }, (_, index) => ({
+            missionId: `mission-${index}`,
+          })),
+        }),
+        update: vi.fn(),
+      },
+      bingoTheme: {
+        findFirst: vi.fn().mockResolvedValue({ id: "theme" }),
+        create: vi.fn(),
+      },
+      bingoTemplate: {
+        findFirst: vi.fn().mockResolvedValue({ version: 1 }),
+        updateMany: vi.fn(),
+        create: vi.fn(),
+      },
+    };
+    const database = {
+      $transaction: vi.fn(async (operation) => operation(transaction)),
+      region: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "ready",
+            name: "경기도 준비시",
+            administrativeCode: "30000",
+            status: "ACTIVE",
+            missionLinks: Array.from({ length: 25 }, (_, index) => ({
+              missionId: `mission-${index}`,
+            })),
+            templates: [
+              {
+                id: "board",
+                title: "준비시 여행 빙고",
+                _count: { cells: 25 },
+              },
+            ],
+          },
+        ]),
+      },
+    };
+
+    const result = await new MissionCatalogService(database as never)
+      .publishRegionBoard("ready", "admin");
+
+    expect(transaction.bingoTemplate.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        status: "PUBLISHED",
+        type: "REGION",
+        version: 2,
+        cells: { create: expect.arrayContaining([expect.objectContaining({ position: 0 })]) },
+      }),
+    });
+    expect(transaction.region.update).toHaveBeenCalledWith({
+      where: { id: "ready" },
+      data: { status: "ACTIVE" },
+    });
+    expect(result).toMatchObject({ canActivate: true, status: "ACTIVE" });
+  });
 });
