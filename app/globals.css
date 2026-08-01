@@ -279,6 +279,93 @@ mark {
   gap: 10px;
   white-space: nowrap;
 }
+.regionDetailPanel {
+  margin: 18px 24px 24px;
+  overflow: hidden;
+  border: 1px solid #cfdad2;
+  border-radius: 14px;
+  background: #fbfdfb;
+}
+.regionDetailPanel .catalogHead {
+  padding-bottom: 18px;
+}
+.regionDetailPanel .catalogHead small {
+  color: #397454;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.regionReadinessGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 24px 20px;
+}
+.regionReadinessGrid article {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 11px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+}
+.regionReadinessGrid article > span {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef1ef;
+  color: #78817b;
+  font-weight: 900;
+}
+.regionReadinessGrid article.ready {
+  border-color: #afd0ba;
+  background: #f2faf4;
+}
+.regionReadinessGrid article.ready > span {
+  background: #347a55;
+  color: #fff;
+}
+.regionReadinessGrid article div {
+  display: grid;
+  gap: 4px;
+}
+.regionReadinessGrid small {
+  color: #7d8981;
+  font-size: 9px;
+  font-weight: 800;
+}
+.regionReadinessGrid b {
+  font-size: 13px;
+}
+.regionReadinessGrid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.regionPublishActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 68px;
+  padding: 14px 24px;
+  border-top: 1px solid #dce5df;
+  background: #f5f8f6;
+}
+.regionPublishActions p {
+  margin: 0;
+  color: #7a5c24;
+  font-size: 12px;
+}
+.regionPublishActions .publishedMessage {
+  color: #246b48;
+  font-weight: 800;
+}
+.regionPublishActions button {
+  min-width: 230px;
+}
 .attractionPanel {
   border-top: 8px solid #f3f6f3;
 }
@@ -722,6 +809,9 @@ textarea {
   gap: 8px;
 }
 @media (max-width: 900px) {
+  .regionReadinessGrid {
+    grid-template-columns: 1fr;
+  }
   .attractionGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -762,6 +852,15 @@ textarea {
   }
 }
 @media (max-width: 560px) {
+  .regionDetailPanel {
+    margin: 14px;
+  }
+  .regionPublishActions {
+    justify-content: stretch;
+  }
+  .regionPublishActions button {
+    width: 100%;
+  }
   .gpsMissionSettings {
     grid-template-columns: 1fr;
   }
