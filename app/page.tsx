@@ -1733,7 +1733,11 @@ export default function Home() {
         code?: string;
         message?: string;
       };
-      if (!response.ok || result.verificationStatus === "REJECTED") {
+      if (
+        !response.ok ||
+        result.verificationStatus === "REJECTED" ||
+        result.verificationStatus === "NEEDS_REVIEW"
+      ) {
         setPhotoStage("DETAIL");
         setMessage(friendlyError(result.reasonCode ?? result.code));
         return;
