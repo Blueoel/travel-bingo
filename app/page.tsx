@@ -2023,7 +2023,7 @@ export default function Home() {
           <div className="home-section-title">
             <h2>추천 지역</h2>
             <button type="button" onClick={recommendNearbyRegions}>
-              내 주변 ⌖
+              더보기 ›
             </button>
           </div>
           <div className="region-cards">
