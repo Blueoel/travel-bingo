@@ -152,6 +152,7 @@ export class MissionCatalogService {
   async publishRegionBoard(
     id: string,
     adminId: string,
+    requestedMissionIds?: readonly string[],
   ): Promise<RegionAdminSummary> {
     await this.database.$transaction(async (transaction) => {
       const region = await transaction.region.findUnique({
@@ -168,6 +169,22 @@ export class MissionCatalogService {
       if (region.missionLinks.length < 25) {
         throw new BadRequestException(
           `지역 빙고판을 공개하려면 활성 지역 미션이 25개 필요합니다. 현재 ${region.missionLinks.length}개입니다.`,
+        );
+      }
+
+      const availableMissionIds = new Set(
+        region.missionLinks.map((link) => link.missionId),
+      );
+      const missionIds = requestedMissionIds
+        ? [...requestedMissionIds]
+        : region.missionLinks.slice(0, 25).map((link) => link.missionId);
+      if (
+        missionIds.length !== 25 ||
+        new Set(missionIds).size !== 25 ||
+        missionIds.some((missionId) => !availableMissionIds.has(missionId))
+      ) {
+        throw new BadRequestException(
+          "이 지역에 연결된 활성 미션 중 서로 다른 25개를 선택해야 합니다.",
         );
       }
 
@@ -208,8 +225,8 @@ export class MissionCatalogService {
           startsAt: new Date(),
           publishedAt: new Date(),
           cells: {
-            create: region.missionLinks.slice(0, 25).map((link, position) => ({
-              missionId: link.missionId,
+            create: missionIds.map((missionId, position) => ({
+              missionId,
               position,
             })),
           },

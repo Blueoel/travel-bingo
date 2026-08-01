@@ -122,15 +122,24 @@ describe("region administration", () => {
       },
     };
 
+    const selectedMissionIds = Array.from(
+      { length: 25 },
+      (_, index) => `mission-${24 - index}`,
+    );
     const result = await new MissionCatalogService(database as never)
-      .publishRegionBoard("ready", "admin");
+      .publishRegionBoard("ready", "admin", selectedMissionIds);
 
     expect(transaction.bingoTemplate.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         status: "PUBLISHED",
         type: "REGION",
         version: 2,
-        cells: { create: expect.arrayContaining([expect.objectContaining({ position: 0 })]) },
+        cells: {
+          create: selectedMissionIds.map((missionId, position) => ({
+            missionId,
+            position,
+          })),
+        },
       }),
     });
     expect(transaction.region.update).toHaveBeenCalledWith({

@@ -112,6 +112,14 @@ const ADMIN = "10000000-0000-4000-8000-000000000002";
 const scopeName = { COMMON: "공통", REGION: "지역", EVENT: "이벤트" };
 const difficultyName = ["", "쉬움", "보통", "어려움", "특별"];
 const difficultyValue = ["EASY", "EASY", "NORMAL", "HARD", "SPECIAL"];
+const verificationName: Record<string, string> = {
+  PHOTO: "사진",
+  GPS: "GPS",
+  TEXT: "텍스트",
+  TIMER: "타이머",
+  QUIZ: "퀴즈",
+  MANUAL: "직접 인증",
+};
 
 export default function AdminPage() {
   const [missions, setMissions] = useState<Mission[]>([]),
@@ -154,6 +162,12 @@ export default function AdminPage() {
   const [attractions, setAttractions] = useState<AttractionRecommendation[]>([]);
   const [attractionsLoading, setAttractionsLoading] = useState(false);
   const [regionPublishing, setRegionPublishing] = useState(false);
+  const [regionMissions, setRegionMissions] = useState<Mission[]>([]);
+  const [regionMissionsLoading, setRegionMissionsLoading] = useState(false);
+  const [regionMissionQuery, setRegionMissionQuery] = useState("");
+  const [regionMissionDifficulty, setRegionMissionDifficulty] = useState("");
+  const [regionMissionVerification, setRegionMissionVerification] = useState("");
+  const [selectedRegionMissionIds, setSelectedRegionMissionIds] = useState<string[]>([]);
   const [missionDraft, setMissionDraft] = useState<MissionDraft | null>(null);
   const [userStatus, setUserStatus] = useState("");
   const [userLoading, setUserLoading] = useState(false);
@@ -238,6 +252,68 @@ export default function AdminPage() {
     } finally {
       setAttractionsLoading(false);
     }
+  }
+  async function openRegionComposer(region: Region) {
+    setManagedRegionId(region.id);
+    setSelectedRegionId("");
+    setAttractions([]);
+    setRegionMissionsLoading(true);
+    setRegionMissionQuery("");
+    setRegionMissionDifficulty("");
+    setRegionMissionVerification("");
+    try {
+      const params = new URLSearchParams({
+        regionId: region.id,
+        scope: "REGION",
+        status: "ACTIVE",
+        pageSize: "10000",
+      });
+      const response = await fetch(`${API}/admin/missions?${params}`, {
+        headers: { "x-user-id": ADMIN },
+      });
+      if (!response.ok) throw new Error("지역 미션을 불러오지 못했습니다.");
+      const items = ((await response.json()) as { items: Mission[] }).items;
+      setRegionMissions(items);
+      setSelectedRegionMissionIds(items.slice(0, 25).map((mission) => mission.id));
+      setError("");
+    } catch (cause) {
+      setRegionMissions([]);
+      setSelectedRegionMissionIds([]);
+      setError(cause instanceof Error ? cause.message : "지역 미션을 불러오지 못했습니다.");
+    } finally {
+      setRegionMissionsLoading(false);
+    }
+  }
+  function toggleRegionMission(missionId: string) {
+    setSelectedRegionMissionIds((current) => {
+      if (current.includes(missionId)) {
+        return current.filter((id) => id !== missionId);
+      }
+      if (current.length >= 25) {
+        setNotice("빙고판에는 25개 미션까지만 담을 수 있습니다.");
+        return current;
+      }
+      return [...current, missionId];
+    });
+  }
+  function moveRegionMission(index: number, direction: -1 | 1) {
+    setSelectedRegionMissionIds((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+  function shuffleRegionMissions() {
+    setSelectedRegionMissionIds((current) => {
+      const next = [...current];
+      for (let index = next.length - 1; index > 0; index -= 1) {
+        const target = Math.floor(Math.random() * (index + 1));
+        [next[index], next[target]] = [next[target], next[index]];
+      }
+      return next;
+    });
   }
   function createMissionFromAttraction(attraction: AttractionRecommendation) {
     setEditing(null);
@@ -377,7 +453,8 @@ export default function AdminPage() {
         `${API}/admin/missions/regions/${region.id}/publish-board`,
         {
           method: "POST",
-          headers: { "x-user-id": ADMIN },
+          headers: { "content-type": "application/json", "x-user-id": ADMIN },
+          body: JSON.stringify({ missionIds: selectedRegionMissionIds }),
         },
       );
       if (!result.ok) {
@@ -536,6 +613,53 @@ export default function AdminPage() {
   const selectedRegion = regions.find(
     (region) => region.id === managedRegionId,
   );
+  const visibleRegionMissions = useMemo(() => {
+    const normalized = regionMissionQuery.trim().toLocaleLowerCase("ko");
+    return regionMissions.filter((mission) => {
+      const verificationType = mission.verificationPolicy?.type ?? mission.kind;
+      return (
+        (!normalized ||
+          mission.title.toLocaleLowerCase("ko").includes(normalized) ||
+          mission.description.toLocaleLowerCase("ko").includes(normalized)) &&
+        (!regionMissionDifficulty ||
+          String(mission.difficulty) === regionMissionDifficulty) &&
+        (!regionMissionVerification ||
+          verificationType === regionMissionVerification)
+      );
+    });
+  }, [
+    regionMissionDifficulty,
+    regionMissionQuery,
+    regionMissionVerification,
+    regionMissions,
+  ]);
+  const selectedRegionMissions = useMemo(() => {
+    const byId = new Map(regionMissions.map((mission) => [mission.id, mission]));
+    return selectedRegionMissionIds
+      .map((id) => byId.get(id))
+      .filter((mission): mission is Mission => Boolean(mission));
+  }, [regionMissions, selectedRegionMissionIds]);
+  const regionBoardHealth = useMemo(() => {
+    const verificationCounts = new Map<string, number>();
+    const similarityCounts = new Map<string, number>();
+    selectedRegionMissions.forEach((mission) => {
+      const verificationType = mission.verificationPolicy?.type ?? mission.kind;
+      verificationCounts.set(
+        verificationType,
+        (verificationCounts.get(verificationType) ?? 0) + 1,
+      );
+      if (mission.similarityGroup) {
+        similarityCounts.set(
+          mission.similarityGroup,
+          (similarityCounts.get(mission.similarityGroup) ?? 0) + 1,
+        );
+      }
+    });
+    return {
+      verificationCounts: [...verificationCounts.entries()],
+      repeatedGroups: [...similarityCounts.entries()].filter(([, count]) => count > 1),
+    };
+  }, [selectedRegionMissions]);
   const dailyHealth = useMemo(() => {
     const difficultyCounts = [1, 2, 3].map(
       (level) =>
@@ -1070,11 +1194,7 @@ export default function AdminPage() {
                           <div className="regionActions">
                             <button
                               className="textButton"
-                              onClick={() => {
-                                setManagedRegionId(region.id);
-                                setSelectedRegionId("");
-                                setAttractions([]);
-                              }}
+                              onClick={() => void openRegionComposer(region)}
                             >
                               상세 관리
                             </button>
@@ -1194,37 +1314,138 @@ export default function AdminPage() {
                       </div>
                     </article>
                   </div>
-                  <div className="regionPublishActions">
-                    {(selectedRegion.activeMissionCount ?? 0) < 25 ? (
-                      <p>
-                        미션을 {selectedRegion.missingMissionCount ?? 25}개 더
-                        등록하면 빙고판을 만들 수 있습니다.
-                      </p>
-                    ) : (selectedRegion.publishedBoardCount ?? 0) === 0 ? (
-                      <button
-                        className="primary"
-                        disabled={regionPublishing}
-                        onClick={() => void publishRegionBoard(selectedRegion)}
-                      >
-                        {regionPublishing
-                          ? "빙고판을 공개하는 중…"
-                          : "25칸 빙고판 생성 및 서비스 공개"}
-                      </button>
-                    ) : selectedRegion.status !== "ACTIVE" ? (
-                      <button
-                        className="primary"
-                        onClick={() =>
-                          void updateRegionStatus(selectedRegion, "ACTIVE")
-                        }
-                      >
-                        사용자 서비스 공개
-                      </button>
+                  <section className="regionBoardComposer">
+                    <div className="composerHead">
+                      <div>
+                        <small>BOARD COMPOSER</small>
+                        <h2>지역 미션 25칸 구성</h2>
+                        <p>미션을 고른 순서대로 5×5 빙고판에 배치됩니다.</p>
+                      </div>
+                      <strong>{selectedRegionMissionIds.length} / 25 선택</strong>
+                    </div>
+                    {regionMissionsLoading ? (
+                      <p className="empty">지역 미션을 불러오는 중입니다.</p>
                     ) : (
-                      <p className="publishedMessage">
-                        ✓ 공개 완료 · 사용자 지역 검색에서 바로 도전할 수 있습니다.
-                      </p>
+                      <div className="composerLayout">
+                        <div className="missionPool">
+                          <div className="composerFilters">
+                            <input
+                              aria-label="지역 미션 검색"
+                              placeholder="미션명 또는 설명 검색"
+                              value={regionMissionQuery}
+                              onChange={(event) => setRegionMissionQuery(event.target.value)}
+                            />
+                            <select
+                              aria-label="지역 미션 난이도"
+                              value={regionMissionDifficulty}
+                              onChange={(event) => setRegionMissionDifficulty(event.target.value)}
+                            >
+                              <option value="">모든 난이도</option>
+                              <option value="1">쉬움</option>
+                              <option value="2">보통</option>
+                              <option value="3">어려움</option>
+                            </select>
+                            <select
+                              aria-label="지역 미션 인증 방식"
+                              value={regionMissionVerification}
+                              onChange={(event) => setRegionMissionVerification(event.target.value)}
+                            >
+                              <option value="">모든 인증 방식</option>
+                              <option value="PHOTO">사진</option>
+                              <option value="GPS">GPS</option>
+                              <option value="TEXT">텍스트</option>
+                              <option value="TIMER">타이머</option>
+                              <option value="QUIZ">퀴즈</option>
+                            </select>
+                          </div>
+                          <div className="missionPoolList">
+                            {visibleRegionMissions.map((mission) => {
+                              const selected = selectedRegionMissionIds.includes(mission.id);
+                              return (
+                                <button
+                                  type="button"
+                                  className={selected ? "missionPoolItem selected" : "missionPoolItem"}
+                                  key={mission.id}
+                                  onClick={() => toggleRegionMission(mission.id)}
+                                >
+                                  <span>{selected ? "✓" : "+"}</span>
+                                  <div>
+                                    <b>{mission.title}</b>
+                                    <small>
+                                      {difficultyName[mission.difficulty]} · {verificationName[mission.verificationPolicy?.type ?? mission.kind] ?? mission.kind}
+                                      {mission.similarityGroup ? ` · ${mission.similarityGroup}` : ""}
+                                    </small>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                            {!visibleRegionMissions.length && (
+                              <p className="empty">조건에 맞는 활성 지역 미션이 없습니다.</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="boardWorkbench">
+                          <div className="boardToolbar">
+                            <b>5×5 배치 미리보기</b>
+                            <button type="button" className="secondary" onClick={shuffleRegionMissions}>
+                              자동 섞기
+                            </button>
+                          </div>
+                          <div className="regionBoardPreview">
+                            {Array.from({ length: 25 }, (_, index) => {
+                              const mission = selectedRegionMissions[index];
+                              return (
+                                <article key={mission?.id ?? `empty-${index}`} className={mission ? "filled" : ""}>
+                                  <span>{index + 1}</span>
+                                  {mission ? (
+                                    <>
+                                      <b>{mission.title}</b>
+                                      <small>{verificationName[mission.verificationPolicy?.type ?? mission.kind] ?? mission.kind}</small>
+                                      <div>
+                                        <button type="button" disabled={index === 0} onClick={() => moveRegionMission(index, -1)}>←</button>
+                                        <button type="button" onClick={() => toggleRegionMission(mission.id)}>삭제</button>
+                                        <button type="button" disabled={index === selectedRegionMissions.length - 1} onClick={() => moveRegionMission(index, 1)}>→</button>
+                                      </div>
+                                    </>
+                                  ) : <small>빈 칸</small>}
+                                </article>
+                              );
+                            })}
+                          </div>
+                          <div className="boardChecks">
+                            <p className={selectedRegionMissionIds.length === 25 ? "pass" : "warning"}>
+                              {selectedRegionMissionIds.length === 25
+                                ? "✓ 25칸 구성이 완료되었습니다."
+                                : `미션 ${25 - selectedRegionMissionIds.length}개를 더 선택해주세요.`}
+                            </p>
+                            <p>
+                              인증 방식 · {regionBoardHealth.verificationCounts.length
+                                ? regionBoardHealth.verificationCounts.map(([type, count]) => `${verificationName[type] ?? type} ${count}`).join(" / ")
+                                : "선택 없음"}
+                            </p>
+                            {regionBoardHealth.repeatedGroups.length > 0 && (
+                              <p className="warning">
+                                유사 미션 확인 · {regionBoardHealth.repeatedGroups.map(([group, count]) => `${group} ${count}개`).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                          <div className="regionPublishActions">
+                            <button
+                              className="primary"
+                              disabled={regionPublishing || selectedRegionMissionIds.length !== 25}
+                              onClick={() => void publishRegionBoard(selectedRegion)}
+                            >
+                              {regionPublishing
+                                ? "빙고판을 공개하는 중…"
+                                : (selectedRegion.publishedBoardCount ?? 0) > 0
+                                  ? "선택한 구성으로 새 버전 공개"
+                                  : "선택한 25칸으로 생성 및 공개"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                  </div>
+                  </section>
                 </section>
               )}
               {selectedRegionId && (

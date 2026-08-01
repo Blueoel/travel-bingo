@@ -115,9 +115,10 @@ export class MissionCatalogController {
     @Param("id") id: string,
     @Headers("cookie") cookie: string | undefined,
     @Headers("x-user-id") developmentUserId: string | undefined,
+    @Body() body: { missionIds?: string[] },
   ): Promise<RegionAdminSummary> {
     const adminId = await this.auth.requireAdminId(cookie, developmentUserId);
-    return this.missions.publishRegionBoard(id, adminId);
+    return this.missions.publishRegionBoard(id, adminId, body.missionIds);
   }
 
   @Patch(":id")
