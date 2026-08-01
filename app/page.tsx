@@ -340,6 +340,8 @@ export default function AdminPage() {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
     const verificationType = String(data.verificationType);
+    const usesEstimatedTime =
+      verificationType === "GPS_STAY" || verificationType === "TIMER";
     const verificationPolicy =
       verificationType === "TEXT"
         ? { type: "TEXT", maxLength: Number(data.textMaxLength) }
@@ -392,8 +394,12 @@ export default function AdminPage() {
         headers: { "content-type": "application/json", "x-user-id": ADMIN },
         body: JSON.stringify({
           ...data,
-          estimatedMinutesMin: Number(data.estimatedMinutesMin),
-          estimatedMinutesMax: Number(data.estimatedMinutesMax),
+          estimatedMinutesMin: usesEstimatedTime
+            ? Number(data.estimatedMinutesMin)
+            : null,
+          estimatedMinutesMax: usesEstimatedTime
+            ? Number(data.estimatedMinutesMax)
+            : null,
           verificationPolicy,
           radiusM:
             verificationType === "GPS" ? Number(data.radiusM) : null,
@@ -2076,24 +2082,31 @@ export default function AdminPage() {
                   </small>
                 </label>
               )}
-              <label>
-                최소 시간(분)
-                <input
-                  name="estimatedMinutesMin"
-                  type="number"
-                  min="1"
-                  defaultValue={editing?.estimatedMinutesMin ?? 5}
-                />
-              </label>
-              <label>
-                최대 시간(분)
-                <input
-                  name="estimatedMinutesMax"
-                  type="number"
-                  min="1"
-                  defaultValue={editing?.estimatedMinutesMax ?? 10}
-                />
-              </label>
+              {(formVerificationType === "GPS_STAY" ||
+                formVerificationType === "TIMER") && (
+                <>
+                  <label>
+                    최소 시간(분)
+                    <input
+                      name="estimatedMinutesMin"
+                      type="number"
+                      min="1"
+                      required
+                      defaultValue={editing?.estimatedMinutesMin ?? 5}
+                    />
+                  </label>
+                  <label>
+                    최대 시간(분)
+                    <input
+                      name="estimatedMinutesMax"
+                      type="number"
+                      min="1"
+                      required
+                      defaultValue={editing?.estimatedMinutesMax ?? 10}
+                    />
+                  </label>
+                </>
+              )}
               <label>
                 운영 상태
                 <select

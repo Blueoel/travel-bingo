@@ -61,6 +61,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /최대 글자 수/);
   assert.match(pageSource, /목표 시간\(분\)/);
   assert.match(pageSource, /durationSeconds/);
+  assert.match(pageSource, /const usesEstimatedTime/);
+  assert.match(pageSource, /formVerificationType === "GPS_STAY"/);
+  assert.match(pageSource, /usesEstimatedTime\s*\? Number\(data\.estimatedMinutesMin\)\s*: null/);
   assert.match(pageSource, /name="quizAnswer"/);
   assert.match(pageSource, /정답은\s*참가자 화면에 공개되지/);
   assert.match(pageSource, /admin\/missions\/photo-reviews/);
