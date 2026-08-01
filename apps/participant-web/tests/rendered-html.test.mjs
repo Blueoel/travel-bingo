@@ -297,6 +297,8 @@ test("provides a data-connected home screen after login", async () => {
   assert.match(pageSource, /좋은 오후예요/);
   assert.match(pageSource, /Daily Bingo/);
   assert.match(pageSource, /추천 지역/);
+  assert.match(pageSource, /더보기 ›/);
+  assert.doesNotMatch(pageSource, /내 주변 ⌖/);
   assert.match(pageSource, /진행 중 빙고/);
   assert.match(pageSource, /completeCount\} \/ 25 완료/);
   assert.match(pageSource, /onClick=\{\(\) => setActiveTab\("bingo"\)\}/);
