@@ -28,6 +28,7 @@ type Mission = {
     maximumAccuracyM?: number;
     maximumAgeMs?: number;
     photoVerificationMode?: "AI" | "RECORD";
+    answer?: string;
   };
   radiusM?: number | null;
   place?: {
@@ -63,6 +64,7 @@ type PhotoReview = {
   reviewerEmail: string | null;
   reviewedAt: string | null;
   imageUrl: string;
+  source?: "BACKEND";
 };
 type UserRecord = {
   id: string;
@@ -352,12 +354,14 @@ export default function AdminPage() {
                 maximumAccuracyM: Number(data.maximumAccuracyM),
                 maximumAgeMs: 60_000,
               }
-            : verificationType === "PHOTO"
+          : verificationType === "PHOTO"
               ? {
                   type: "PHOTO",
                   photoVerificationMode: String(data.photoVerificationMode),
                   requiredPhotoCount: 1,
                 }
+              : verificationType === "QUIZ"
+                ? { type: "QUIZ", answer: String(data.quizAnswer) }
               : { type: verificationType };
     const place =
       verificationType === "GPS"
@@ -480,15 +484,22 @@ export default function AdminPage() {
   async function loadReviews() {
     try {
       const query = reviewMode === "history" ? "?status=history" : "";
-      const result = await fetch(
-        `${PHOTO_API}/api/admin/photo-reviews${query}`,
-        {
-          credentials: "include",
-          headers: { "x-user-id": ADMIN },
-        },
-      );
-      if (!result.ok) throw new Error("사진 검수 목록을 불러오지 못했습니다.");
-      setReviews(((await result.json()) as { reviews: PhotoReview[] }).reviews);
+      const options = {
+        credentials: "include" as const,
+        headers: { "x-user-id": ADMIN },
+      };
+      const [localResult, backendResult] = await Promise.allSettled([
+        fetch(`${PHOTO_API}/api/admin/photo-reviews${query}`, options),
+        fetch(`${API}/admin/missions/photo-reviews${query}`, options),
+      ]);
+      const loaded: PhotoReview[] = [];
+      for (const result of [localResult, backendResult]) {
+        if (result.status !== "fulfilled" || !result.value.ok) continue;
+        loaded.push(
+          ...(((await result.value.json()) as { reviews: PhotoReview[] }).reviews ?? []),
+        );
+      }
+      setReviews(loaded);
       setError("");
     } catch (e) {
       setError(
@@ -503,7 +514,11 @@ export default function AdminPage() {
     if (decision === "REJECTED" && !reason) {
       return setError("거절 사유를 먼저 선택해주세요.");
     }
-    const result = await fetch(`${PHOTO_API}/api/admin/photo-reviews/${id}`, {
+    const review = reviews.find((item) => item.id === id);
+    const endpoint = review?.source === "BACKEND"
+      ? `${API}/admin/missions/photo-reviews/${id}`
+      : `${PHOTO_API}/api/admin/photo-reviews/${id}`;
+    const result = await fetch(endpoint, {
       method: "POST",
       credentials: "include",
       headers: { "content-type": "application/json", "x-user-id": ADMIN },
@@ -710,7 +725,7 @@ export default function AdminPage() {
       <aside>
         <div className="brand">
           <i>W</i>
-          <b>walkbingo</b>
+          <b>Travel Bingo</b>
           <small>ADMIN</small>
         </div>
         <nav>
@@ -1916,6 +1931,22 @@ export default function AdminPage() {
                     특정 사물이나 색처럼 정답이 분명할 때만 AI 판정형을
                     사용하세요. 장소 기록, 분위기, 오래된 흔적처럼 주관적인
                     미션은 자유 기록형이 적합합니다.
+                  </small>
+                </label>
+              )}
+              {formVerificationType === "QUIZ" && (
+                <label className="verificationSetting">
+                  정답
+                  <input
+                    name="quizAnswer"
+                    required
+                    maxLength={100}
+                    defaultValue={editing?.verificationPolicy?.answer ?? ""}
+                    placeholder="참가자가 입력해야 할 정답"
+                  />
+                  <small>
+                    띄어쓰기 앞뒤와 영문 대소문자는 구분하지 않습니다. 정답은
+                    참가자 화면에 공개되지 않습니다.
                   </small>
                 </label>
               )}
