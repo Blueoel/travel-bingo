@@ -344,6 +344,12 @@ button {
   color: #263e2d; font: inherit; font-size: 15px;
 }
 .region-search-box input::placeholder { color: #aaa69d; }
+.region-search-box input::-webkit-search-cancel-button,
+.region-search-box input::-webkit-search-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.region-search-box input::-ms-clear { display: none; }
 .region-search-box button { border: 0; background: transparent; color: #8c887f; font-size: 21px; cursor: pointer; }
 .region-directory-summary {
   display: flex; justify-content: space-between; padding: 22px 3px 10px;

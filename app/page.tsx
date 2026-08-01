@@ -3570,12 +3570,27 @@ function hangulInitials(value: string): string {
     .join("");
 }
 
+function matchesHangulPattern(value: string, query: string): boolean {
+  const targetCharacters = Array.from(value.replace(/\s/g, ""));
+  const queryCharacters = Array.from(query.replace(/\s/g, ""));
+  if (!queryCharacters.some((character) => /^[ㄱ-ㅎ]$/.test(character))) {
+    return false;
+  }
+  return targetCharacters.some((_, startIndex) =>
+    queryCharacters.every((queryCharacter, offset) => {
+      const targetCharacter = targetCharacters[startIndex + offset];
+      if (!targetCharacter) return false;
+      return /^[ㄱ-ㅎ]$/.test(queryCharacter)
+        ? hangulInitials(targetCharacter) === queryCharacter
+        : targetCharacter === queryCharacter;
+    }),
+  );
+}
+
 function matchesRegionSearch(value: string, query: string): boolean {
   const compactValue = value.toLocaleLowerCase("ko").replace(/\s/g, "");
   const compactQuery = query.toLocaleLowerCase("ko").replace(/\s/g, "");
   if (!compactQuery) return true;
   if (compactValue.includes(compactQuery)) return true;
-  return /^[ㄱ-ㅎ]+$/.test(compactQuery)
-    ? hangulInitials(compactValue).includes(compactQuery)
-    : false;
+  return matchesHangulPattern(compactValue, compactQuery);
 }

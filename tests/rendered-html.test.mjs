@@ -651,14 +651,21 @@ test("searches the full region directory and separates ready regions", async () 
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
   );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
   assert.match(pageSource, /도전할 지역 찾기/);
   assert.match(pageSource, /지역명을 입력해보세요/);
   assert.match(pageSource, /korea-sigungu\.meta\.json/);
   assert.match(pageSource, /setRegionSearch\(event\.target\.value\)/);
   assert.match(pageSource, /const HANGUL_INITIALS/);
   assert.match(pageSource, /function hangulInitials/);
+  assert.match(pageSource, /function matchesHangulPattern/);
   assert.match(pageSource, /matchesRegionSearch\(searchTarget, normalizedRegionSearch\)/);
-  assert.match(pageSource, /\^\[ㄱ-ㅎ\]\+\$/);
+  assert.match(pageSource, /matchesHangulPattern\(compactValue, compactQuery\)/);
+  assert.match(stylesSource, /::-webkit-search-cancel-button/);
+  assert.match(stylesSource, /::-ms-clear/);
   assert.match(pageSource, /item\.state === "IN_PROGRESS"/);
   assert.match(pageSource, /지금 지역 빙고에 도전할 수 있어요/);
   assert.match(pageSource, /지역 빙고 준비 중/);
