@@ -36,7 +36,11 @@ export type MissionEvidence =
       readonly completedAt: Date;
     }
   | { readonly type: "QUIZ"; readonly answer: string }
-  | { readonly type: "PHOTO"; readonly analysis: PhotoAnalysis }
+  | {
+      readonly type: "PHOTO";
+      readonly analysis: PhotoAnalysis;
+      readonly imageDataUrl?: string;
+    }
   | {
       readonly type: "GPS";
       readonly latitude: number;
@@ -63,7 +67,7 @@ export interface MissionCompletionResult {
   readonly completedLineKeys: readonly BingoLineKey[];
   readonly totalPoints: number;
   readonly pointsEarned: number;
-  readonly verificationStatus?: "APPROVED" | "REJECTED";
+  readonly verificationStatus?: "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
   readonly reasonCode?: string;
 }
 
@@ -135,7 +139,9 @@ export class MissionCompletionService {
           ? "APPROVED"
           : existingVerification.status === "REJECTED"
             ? "REJECTED"
-            : undefined,
+            : existingVerification.status === "NEEDS_REVIEW"
+              ? "NEEDS_REVIEW"
+              : undefined,
         existingVerification.reasonCode ?? undefined,
       );
     }
@@ -163,13 +169,14 @@ export class MissionCompletionService {
         command.now ?? new Date(),
       );
       if (!decision.approved) {
+        const needsReview = decision.reasonCode === "PHOTO_NEEDS_REVIEW";
         const verification = await transaction.verification.create({
           data: {
             sessionCellId: cell.id,
             userId: command.userId,
             idempotencyKey: command.idempotencyKey,
             type: verificationType(evidence),
-            status: "REJECTED",
+            status: needsReview ? "NEEDS_REVIEW" : "REJECTED",
             latitude: isGpsEvidence(evidence) ? evidence.latitude : null,
             longitude: isGpsEvidence(evidence) ? evidence.longitude : null,
             accuracyM: isGpsEvidence(evidence) ? evidence.accuracyM : null,
@@ -177,16 +184,16 @@ export class MissionCompletionService {
             distanceM: decision.distanceM ?? null,
             evidence: publicEvidence(evidence),
             reasonCode: decision.reasonCode,
-            decidedAt: command.now ?? new Date(),
+            decidedAt: needsReview ? null : (command.now ?? new Date()),
           },
         });
         await transaction.sessionCell.update({
           where: { id: cell.id },
-          data: { status: "REJECTED" },
+          data: { status: needsReview ? "SUBMITTED" : "REJECTED" },
         });
         await transaction.outboxEvent.create({
           data: {
-            topic: "mission.rejected",
+            topic: needsReview ? "mission.review_requested" : "mission.rejected",
             aggregateId: verification.id,
             payload: {
               userId: command.userId,
@@ -198,7 +205,9 @@ export class MissionCompletionService {
         });
         return {
           pointsEarned: 0,
-          verificationStatus: "REJECTED" as const,
+          verificationStatus: needsReview
+            ? ("NEEDS_REVIEW" as const)
+            : ("REJECTED" as const),
           reasonCode: decision.reasonCode,
         };
       }
@@ -345,7 +354,7 @@ export class MissionCompletionService {
     sessionId: string,
     cellId: string,
     pointsEarned: number,
-    verificationStatus?: "APPROVED" | "REJECTED",
+    verificationStatus?: "APPROVED" | "REJECTED" | "NEEDS_REVIEW",
     reasonCode?: string,
   ): Promise<MissionCompletionResult> {
     const session = await this.database.bingoSession.findUnique({
@@ -613,6 +622,7 @@ function publicEvidence(
       failureReasons: [...evidence.analysis.failureReasons],
       retryGuide: evidence.analysis.retryGuide,
       model: evidence.analysis.model,
+      imageDataUrl: evidence.imageDataUrl ?? null,
     };
   }
   if (evidence.type === "TEXT") {

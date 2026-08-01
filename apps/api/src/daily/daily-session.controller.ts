@@ -96,6 +96,7 @@ export class DailySessionController {
       return this.missionCompletionService.verify(command, {
         type: "PHOTO",
         analysis,
+        imageDataUrl: input.imageDataUrl,
       });
     }
     return this.missionCompletionService.verify(command, parseEvidence(body));

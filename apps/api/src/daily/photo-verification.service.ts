@@ -143,6 +143,7 @@ export class PhotoVerificationService {
     const payload = (await response.json()) as unknown;
     return enforceApprovalPolicy(
       parseAnalysis(extractGeminiText(payload), model),
+      verificationPolicy,
     );
   }
 }
@@ -252,14 +253,25 @@ function parseAnalysis(text: string, model: string): PhotoAnalysis {
   }
 }
 
-function enforceApprovalPolicy(analysis: PhotoAnalysis): PhotoAnalysis {
+function enforceApprovalPolicy(
+  analysis: PhotoAnalysis,
+  policy: Record<string, unknown> | null,
+): PhotoAnalysis {
   if (!analysis.targetVisible) {
+    const hasObjectiveRule = Boolean(
+      policy?.requiredSubject ||
+        policy?.requiredColor ||
+        policy?.requiredObjects ||
+        policy?.requiredText,
+    );
     return {
       ...analysis,
-      decision: "REJECTED",
+      decision: hasObjectiveRule ? "REJECTED" : "NEEDS_REVIEW",
       retryGuide:
         analysis.retryGuide ??
-        "미션 대상이 사진에 보이지 않아요. 대상이 분명하게 나오도록 다시 촬영해 주세요.",
+        (hasObjectiveRule
+          ? "미션 대상이 사진에 보이지 않아요. 대상이 분명하게 나오도록 다시 촬영해 주세요."
+          : "정답이 정해지지 않은 사진이라 관리자가 직접 확인할 예정이에요."),
     };
   }
 

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseClient } from "@travel-bingo/database";
 import {
   pointsForDifficulty,
@@ -470,9 +470,105 @@ export class MissionCatalogService {
     });
     return this.getDailyCollection();
   }
+
+  async listPhotoReviews(history = false) {
+    const verifications = await this.database.verification.findMany({
+      where: history
+        ? { type: "PHOTO", status: { in: ["APPROVED", "REJECTED"] } }
+        : { type: "PHOTO", status: "NEEDS_REVIEW" },
+      include: {
+        user: { select: { nickname: true, email: true } },
+        sessionCell: { select: { missionSnapshot: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take: 100,
+    });
+    return {
+      reviews: verifications.map((verification) => {
+        const mission = asRecord(verification.sessionCell.missionSnapshot);
+        const evidence = asRecord(verification.evidence);
+        return {
+          id: verification.id,
+          missionTitle: String(mission?.title ?? "사진 미션"),
+          missionDescription: String(mission?.description ?? ""),
+          verificationLabel: "사진 인증",
+          guestId:
+            verification.user.nickname || verification.user.email || "참가자",
+          points: Number(mission?.points ?? 0),
+          confidence: Number(evidence?.confidence ?? 0),
+          evidence: stringList(evidence?.evidence),
+          failureReasons: stringList(evidence?.failureReasons),
+          submittedAt: verification.submittedAt.toISOString(),
+          reviewDecision:
+            verification.status === "APPROVED"
+              ? "APPROVED"
+              : verification.status === "REJECTED"
+                ? "REJECTED"
+                : null,
+          reviewReason: verification.reasonDetail,
+          reviewerEmail: null,
+          reviewedAt: verification.decidedAt?.toISOString() ?? null,
+          imageUrl: String(evidence?.imageDataUrl ?? ""),
+          source: "BACKEND" as const,
+        };
+      }),
+    };
+  }
+
+  async reviewPhoto(
+    id: string,
+    decision: "APPROVED" | "REJECTED",
+    reason: string | undefined,
+  ) {
+    return this.database.$transaction(async (transaction) => {
+      const verification = await transaction.verification.findUnique({
+        where: { id },
+        include: { sessionCell: { include: { session: true } } },
+      });
+      if (!verification || verification.status !== "NEEDS_REVIEW") {
+        throw new NotFoundException("검수 대기 중인 사진 인증을 찾을 수 없습니다.");
+      }
+      const mission = asRecord(verification.sessionCell.missionSnapshot);
+      const points = Math.max(0, Number(mission?.points ?? 0));
+      const approved = decision === "APPROVED";
+      await transaction.verification.update({
+        where: { id },
+        data: {
+          status: decision,
+          reasonCode: approved ? "PHOTO_ADMIN_APPROVED" : "PHOTO_ADMIN_REJECTED",
+          reasonDetail: reason?.trim() || null,
+          decidedAt: new Date(),
+        },
+      });
+      await transaction.sessionCell.update({
+        where: { id: verification.sessionCellId },
+        data: approved
+          ? { status: "VERIFIED", verifiedAt: new Date() }
+          : { status: "REJECTED" },
+      });
+      if (approved && points > 0) {
+        await transaction.pointLedger.create({
+          data: {
+            userId: verification.userId,
+            sessionId: verification.sessionCell.sessionId,
+            referenceType: "SESSION_CELL",
+            referenceId: verification.sessionCellId,
+            reason: "MISSION_COMPLETED",
+            points,
+          },
+        });
+        await transaction.bingoSession.update({
+          where: { id: verification.sessionCell.sessionId },
+          data: { totalPoints: { increment: points } },
+        });
+      }
+      return { id, decision };
+    });
+  }
 }
 
 function missionData(input: MissionCatalogInput) {
+  const verificationPolicy = normalizeVerificationPolicy(input);
   return {
     title: input.title.trim(),
     description: input.description.trim(),
@@ -484,9 +580,7 @@ function missionData(input: MissionCatalogInput) {
     estimatedMinutesMin: input.estimatedMinutesMin ?? null,
     estimatedMinutesMax: input.estimatedMinutesMax ?? null,
     similarityGroup: input.similarityGroup?.trim() || null,
-    verificationPolicy: input.verificationPolicy ?? {
-      type: input.verificationType ?? "MANUAL",
-    },
+    verificationPolicy,
     targetValue: input.targetValue ?? null,
     targetUnit: input.targetUnit?.trim() || null,
     radiusM: input.radiusM ?? null,
@@ -550,6 +644,15 @@ function validateVerificationPolicy(input: MissionCatalogInput): void {
       );
     }
   }
+
+  if (type === "QUIZ") {
+    const answer = policy?.answer;
+    if (typeof answer !== "string" || !answer.trim() || answer.length > 100) {
+      throw new BadRequestException(
+        "Quiz missions require an answer between 1 and 100 characters.",
+      );
+    }
+  }
   if (type === "GPS") {
     const place = input.place;
     if (
@@ -571,6 +674,23 @@ function validateVerificationPolicy(input: MissionCatalogInput): void {
       );
     }
   }
+}
+
+function normalizeVerificationPolicy(
+  input: MissionCatalogInput,
+): Record<string, unknown> {
+  const policy = input.verificationPolicy ?? {
+    type: input.verificationType ?? "MANUAL",
+  };
+  if (policy.type !== "QUIZ") return policy;
+  const answer = String(policy.answer ?? "").trim();
+  return {
+    ...policy,
+    answer,
+    answerHash: createHash("sha256")
+      .update(answer.toLocaleLowerCase("ko-KR").normalize("NFC"))
+      .digest("hex"),
+  };
 }
 
 async function resolvePlaceId(
@@ -675,4 +795,16 @@ function estimatedMinutes(mission: {
 
 function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }

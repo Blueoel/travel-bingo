@@ -175,6 +175,11 @@ describe("BingoCatalogService", () => {
       bingoTemplate: {
         findFirst: vi.fn().mockResolvedValue({
           id: "region-template",
+          type: "REGION",
+          version: 1,
+          region: {
+            missionLinks: templateCells.map(({ mission }) => ({ mission })),
+          },
           cells: templateCells,
         }),
       },

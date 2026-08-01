@@ -51,6 +51,30 @@ export class MissionCatalogController {
     return this.missions.list(parseQuery(query));
   }
 
+  @Get("photo-reviews")
+  async listPhotoReviews(
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Query("status") status: string | undefined,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.listPhotoReviews(status === "history");
+  }
+
+  @Post("photo-reviews/:id")
+  async reviewPhoto(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Body() body: { decision?: string; reason?: string },
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    if (body.decision !== "APPROVED" && body.decision !== "REJECTED") {
+      throw new BadRequestException("검수 결과는 승인 또는 거절이어야 합니다.");
+    }
+    return this.missions.reviewPhoto(id, body.decision, body.reason);
+  }
+
   @Get("export.csv")
   async exportCsv(
     @Headers("cookie") cookie: string | undefined,

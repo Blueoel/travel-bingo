@@ -8,8 +8,11 @@ import type { DatabaseClient } from "@travel-bingo/database";
 import {
   BOARD_CELL_COUNT,
   calculateBingoProgress,
+  createDailyLayout,
+  selectPersonalizedDailyMissions,
   toBoardPosition,
   type BingoLineKey,
+  type DailyLayoutIdentity,
 } from "@travel-bingo/domain";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
@@ -185,6 +188,20 @@ export class BingoCatalogService {
         ],
       },
       include: {
+        region: {
+          include: {
+            missionLinks: {
+              where: {
+                mission: {
+                  scope: "REGION",
+                  status: "ACTIVE",
+                  difficulty: { in: [1, 2, 3] },
+                },
+              },
+              include: { mission: { include: { place: true } } },
+            },
+          },
+        },
         cells: {
           include: { mission: { include: { place: true } } },
           orderBy: { position: "asc" },
@@ -200,6 +217,28 @@ export class BingoCatalogService {
       );
     }
 
+    const identity: DailyLayoutIdentity = {
+      date: `region:${template.id}`,
+      userId: input.userId,
+      dailyVersion: template.version,
+    };
+    const regionalCandidates = template.region.missionLinks.map(
+      (link) => link.mission,
+    );
+    const sessionMissions =
+      normalizeType(template.type) === "REGION"
+        ? selectPersonalizedDailyMissions(identity, regionalCandidates)
+        : template.cells.map((cell) => cell.mission);
+    if (sessionMissions.length !== BOARD_CELL_COUNT) {
+      throw new ConflictException(
+        `지역 빙고 후보에는 활성 미션 ${BOARD_CELL_COUNT}개 이상이 필요합니다.`,
+      );
+    }
+    const layout =
+      normalizeType(template.type) === "REGION"
+        ? createDailyLayout(identity)
+        : Array.from({ length: BOARD_CELL_COUNT }, (_, index) => index);
+
     try {
       const session = await this.database.bingoSession.create({
         data: {
@@ -209,9 +248,11 @@ export class BingoCatalogService {
           dailyDate: null,
           layoutVariant: null,
           cells: {
-            create: template.cells.map(({ position, mission }) => ({
+            create: layout.map((sourcePosition, position) => ({
               position,
-              missionSnapshot: missionSnapshot(mission) as never,
+              missionSnapshot: missionSnapshot(
+                sessionMissions[sourcePosition]!,
+              ) as never,
             })),
           },
         },

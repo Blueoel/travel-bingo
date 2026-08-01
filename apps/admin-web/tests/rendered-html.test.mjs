@@ -32,6 +32,7 @@ test("renders mission editing and Daily composition controls", async () => {
     "utf8",
   );
   assert.match(pageSource, /검수 대기 목록/);
+  assert.match(pageSource, /<b>Travel Bingo<\/b>/);
   assert.match(pageSource, /decideReview/);
   assert.match(pageSource, /PHOTO_REVIEW_API_URL/);
   assert.match(pageSource, /처리 이력/);
@@ -60,6 +61,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /최대 글자 수/);
   assert.match(pageSource, /목표 시간\(분\)/);
   assert.match(pageSource, /durationSeconds/);
+  assert.match(pageSource, /name="quizAnswer"/);
+  assert.match(pageSource, /정답은\s*참가자 화면에 공개되지/);
+  assert.match(pageSource, /admin\/missions\/photo-reviews/);
   assert.match(pageSource, /화면을 벗어나도 실제 경과 시간/);
   assert.match(pageSource, /지역 서비스 준비 현황/);
   assert.match(pageSource, /행정구역 코드 검색/);
