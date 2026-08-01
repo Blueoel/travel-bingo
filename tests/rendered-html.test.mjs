@@ -645,3 +645,19 @@ test("starts available recommended region bingos after confirmation", async () =
     assert.match(recommendationService, /status: "PUBLISHED"/);
   }
 });
+
+test("searches the full region directory and separates ready regions", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  assert.match(pageSource, /도전할 지역 찾기/);
+  assert.match(pageSource, /지역명을 입력해보세요/);
+  assert.match(pageSource, /korea-sigungu\.meta\.json/);
+  assert.match(pageSource, /setRegionSearch\(event\.target\.value\)/);
+  assert.match(pageSource, /item\.state === "IN_PROGRESS"/);
+  assert.match(pageSource, /지금 지역 빙고에 도전할 수 있어요/);
+  assert.match(pageSource, /지역 빙고 준비 중/);
+  assert.match(pageSource, /disabled=\{!bingo\}/);
+  assert.match(pageSource, /void openCatalogBingo\(challenge\.bingo\)/);
+});

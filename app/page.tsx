@@ -161,6 +161,12 @@ type BingoCatalogItem = {
   startsAt: string | null;
   endsAt: string | null;
 };
+type RegionDirectoryItem = {
+  code: string;
+  name: string;
+  province: string;
+  regionType: "CITY" | "COUNTY" | "METROPOLITAN";
+};
 type ExplorationMemory = {
   regionCode: string;
   lineCount: number;
@@ -476,7 +482,13 @@ export default function Home() {
   const [online, setOnline] = useState(true);
   const [nickname, setNickname] = useState("여행자");
   const [activeTab, setActiveTab] = useState<
-    "home" | "exploration" | "catalog" | "bingo" | "ranking" | "my"
+    | "home"
+    | "regions"
+    | "exploration"
+    | "catalog"
+    | "bingo"
+    | "ranking"
+    | "my"
   >("home");
   const [myView, setMyView] = useState<"main" | "travel-note">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
@@ -522,6 +534,9 @@ export default function Home() {
   } | null>(null);
   const [bingoCatalog, setBingoCatalog] = useState<BingoCatalogItem[]>([]);
   const [bingoCatalogLoading, setBingoCatalogLoading] = useState(false);
+  const [regionDirectory, setRegionDirectory] = useState<RegionDirectoryItem[]>([]);
+  const [regionDirectoryLoading, setRegionDirectoryLoading] = useState(false);
+  const [regionSearch, setRegionSearch] = useState("");
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [ranking, setRanking] = useState<RankingResult>({
@@ -767,7 +782,9 @@ export default function Home() {
   useEffect(() => {
     if (
       authStatus !== "authenticated" ||
-      (activeTab !== "catalog" && activeTab !== "home")
+      (activeTab !== "catalog" &&
+        activeTab !== "home" &&
+        activeTab !== "regions")
     )
       return;
     setBingoCatalogLoading(true);
@@ -800,6 +817,23 @@ export default function Home() {
       })
       .finally(() => setBingoCatalogLoading(false));
   }, [activeTab, authStatus, completeCount, points, sessionId]);
+
+  useEffect(() => {
+    if (activeTab !== "regions" || regionDirectory.length > 0) return;
+    setRegionDirectoryLoading(true);
+    void fetch("/maps/korea-sigungu.meta.json")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Region directory unavailable");
+        const payload = (await response.json()) as {
+          regions: RegionDirectoryItem[];
+        };
+        setRegionDirectory(payload.regions);
+      })
+      .catch(() =>
+        setMessage("지역 목록을 불러오지 못했어요. 잠시 후 다시 시도해주세요."),
+      )
+      .finally(() => setRegionDirectoryLoading(false));
+  }, [activeTab, regionDirectory.length]);
 
   useEffect(() => {
     if (activeTab !== "exploration" || explorationMapSvg) return;
@@ -1028,6 +1062,41 @@ export default function Home() {
       return bingo ? [{ region, bingo }] : [];
     })
     .slice(0, 3);
+  const normalizedRegionSearch = regionSearch.trim().toLocaleLowerCase("ko");
+  const regionDirectoryResults = regionDirectory
+    .filter((region) => {
+      const fullName =
+        region.regionType === "METROPOLITAN" || region.name === region.province
+          ? region.name
+          : `${region.province} ${region.name}`;
+      const isInProgress = bingoCatalog.some(
+        (item) =>
+          item.type === "REGION" &&
+          item.state === "IN_PROGRESS" &&
+          regionNamesMatch(fullName, item.regionName),
+      );
+      if (isInProgress) return false;
+      if (!normalizedRegionSearch) return true;
+      const searchTarget = `${fullName} ${region.name} ${region.province}`
+        .toLocaleLowerCase("ko")
+        .replace(/\s/g, "");
+      return searchTarget.includes(normalizedRegionSearch.replace(/\s/g, ""));
+    })
+    .map((region) => {
+      const fullName =
+        region.regionType === "METROPOLITAN" || region.name === region.province
+          ? region.name
+          : `${region.province} ${region.name}`;
+      const bingo = bingoCatalog.find(
+        (item) =>
+          item.type === "REGION" &&
+          item.state === "AVAILABLE" &&
+          !item.sessionId &&
+          regionNamesMatch(fullName, item.regionName),
+      );
+      return { region, fullName, bingo };
+    })
+    .sort((a, b) => Number(Boolean(b.bingo)) - Number(Boolean(a.bingo)));
 
   const updateMapScale = (
     nextScale: number,
@@ -2022,7 +2091,7 @@ export default function Home() {
 
           <div className="home-section-title">
             <h2>추천 지역</h2>
-            <button type="button" onClick={recommendNearbyRegions}>
+            <button type="button" onClick={() => setActiveTab("regions")}>
               더보기 ›
             </button>
           </div>
@@ -2152,6 +2221,134 @@ export default function Home() {
               <b>작은 발견 하나가 여행의 시작이에요.</b>
             </div>
           </div>
+        </section>
+      )}
+      {activeTab === "regions" && (
+        <section className="region-directory-screen">
+          <header className="region-directory-header">
+            <button
+              type="button"
+              aria-label="홈으로 돌아가기"
+              onClick={() => setActiveTab("home")}
+            >
+              ←
+            </button>
+            <div>
+              <small>REGION BINGO</small>
+              <h1>도전할 지역 찾기</h1>
+            </div>
+          </header>
+          <label className="region-search-box">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={regionSearch}
+              onChange={(event) => setRegionSearch(event.target.value)}
+              placeholder="지역명을 입력해보세요"
+              autoComplete="off"
+              aria-label="지역명 검색"
+            />
+            {regionSearch && (
+              <button
+                type="button"
+                aria-label="검색어 지우기"
+                onClick={() => setRegionSearch("")}
+              >
+                ×
+              </button>
+            )}
+          </label>
+          <div className="region-directory-summary">
+            <b>{regionSearch ? `‘${regionSearch}’ 검색 결과` : "전체 지역"}</b>
+            <span>{regionDirectoryResults.length}곳</span>
+          </div>
+          {regionDirectoryLoading || bingoCatalogLoading ? (
+            <p className="region-directory-state">지역 목록을 펼치고 있어요…</p>
+          ) : regionDirectoryResults.length === 0 ? (
+            <p className="region-directory-state">
+              입력한 이름과 일치하는 지역이 없어요.
+            </p>
+          ) : (
+            <div className="region-directory-list" role="list">
+              {regionDirectoryResults.map(({ region, fullName, bingo }) => (
+                <button
+                  type="button"
+                  role="listitem"
+                  key={region.code}
+                  className={bingo ? "available" : "preparing"}
+                  disabled={!bingo}
+                  onClick={() => {
+                    if (!bingo) return;
+                    setPendingRegionChallenge({
+                      bingo,
+                      region: {
+                        id: region.code,
+                        name: fullName,
+                        distanceKm: null,
+                        attraction: null,
+                      },
+                    });
+                  }}
+                >
+                  <span className="region-directory-pin" aria-hidden="true">
+                    {bingo ? "⌖" : "·"}
+                  </span>
+                  <span>
+                    <strong>{fullName}</strong>
+                    <small>
+                      {bingo ? "지금 지역 빙고에 도전할 수 있어요" : "지역 빙고 준비 중"}
+                    </small>
+                  </span>
+                  <em>{bingo ? "도전하기 ›" : "준비 중"}</em>
+                </button>
+              ))}
+            </div>
+          )}
+          {pendingRegionChallenge && (
+            <div
+              className="region-challenge-backdrop"
+              role="presentation"
+              onClick={() => setPendingRegionChallenge(null)}
+            >
+              <section
+                className="region-challenge-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="directory-region-challenge-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className="region-challenge-stamp" aria-hidden="true">
+                  {pendingRegionChallenge.region.name.replace(/\s/g, "").slice(-2, -1)}
+                </span>
+                <small>NEW REGION BINGO</small>
+                <h2 id="directory-region-challenge-title">
+                  {pendingRegionChallenge.region.name}에<br />
+                  도전할까요?
+                </h2>
+                <p>
+                  확인하면 나만의 지역 빙고판을 만들고 바로 첫 미션을 시작할 수
+                  있어요.
+                </p>
+                <div>
+                  <button type="button" onClick={() => setPendingRegionChallenge(null)}>
+                    다음에
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={bingoCatalogLoading}
+                    onClick={() => {
+                      const challenge = pendingRegionChallenge;
+                      setPendingRegionChallenge(null);
+                      if (challenge) void openCatalogBingo(challenge.bingo);
+                    }}
+                  >
+                    {bingoCatalogLoading ? "빙고판 만드는 중…" : "도전하기"}
+                  </button>
+                </div>
+              </section>
+            </div>
+          )}
         </section>
       )}
       {activeTab === "exploration" && (
@@ -3337,15 +3534,23 @@ function provinceNameFor(regionCode: string): string {
 
 function regionNamesMatch(left: string, right: string | null): boolean {
   if (!right) return false;
-  const normalize = (value: string) =>
-    value
-      .replace(/서울특별시|부산광역시|대구광역시|인천광역시|광주광역시|대전광역시|울산광역시|세종특별자치시|제주특별자치도|강원특별자치도|전북특별자치도|경기도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도/g, "")
-      .replace(/[시군구\s]/g, "");
+  const normalize = (value: string) => {
+    const compact = value.replace(/\s/g, "");
+    const metropolitan = compact.match(
+      /^(서울|부산|대구|인천|광주|대전|울산|세종)(?:특별시|광역시|특별자치시)$/,
+    );
+    if (metropolitan) return metropolitan[1];
+    return compact
+      .replace(/^(제주특별자치도|강원특별자치도|전북특별자치도|경기도|충청북도|충청남도|전라북도|전라남도|경상북도|경상남도)/, "")
+      .replace(/[시군구]$/, "");
+  };
   const normalizedLeft = normalize(left);
   const normalizedRight = normalize(right);
   return (
-    normalizedLeft === normalizedRight ||
-    normalizedLeft.includes(normalizedRight) ||
-    normalizedRight.includes(normalizedLeft)
+    normalizedLeft.length > 0 &&
+    normalizedRight.length > 0 &&
+    (normalizedLeft === normalizedRight ||
+      normalizedLeft.includes(normalizedRight) ||
+      normalizedRight.includes(normalizedLeft))
   );
 }
