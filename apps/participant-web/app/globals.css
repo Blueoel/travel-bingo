@@ -318,6 +318,62 @@ button {
   cursor: wait;
   opacity: 0.62;
 }
+.region-directory-screen {
+  min-height: calc(100vh - 72px);
+  padding: 24px 18px 34px;
+  background: radial-gradient(circle at 7px 7px, #eadfca 1px, transparent 1.4px) 0 0 / 18px 18px, #fffdf7;
+}
+.region-directory-header { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
+.region-directory-header > button {
+  width: 39px; height: 39px; border: 1px solid #d8cdb8; border-radius: 50% 46% 51% 45%;
+  background: #fffefa; color: #2f5037; font-size: 21px; cursor: pointer;
+}
+.region-directory-header small { color: #789067; font-size: 8px; font-weight: 900; letter-spacing: 1.4px; }
+.region-directory-header h1 {
+  margin: 2px 0 0; color: #284a32;
+  font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive; font-size: 23px;
+}
+.region-search-box {
+  min-height: 54px; display: grid; grid-template-columns: 28px minmax(0, 1fr) 30px;
+  align-items: center; padding: 0 13px; border: 2px solid #66845f;
+  border-radius: 15px 12px 17px 13px; background: #fff; box-shadow: 4px 5px 0 #dfe8d3;
+}
+.region-search-box > span { color: #52744c; font-size: 22px; }
+.region-search-box input {
+  min-width: 0; border: 0; outline: 0; background: transparent;
+  color: #263e2d; font: inherit; font-size: 15px;
+}
+.region-search-box input::placeholder { color: #aaa69d; }
+.region-search-box button { border: 0; background: transparent; color: #8c887f; font-size: 21px; cursor: pointer; }
+.region-directory-summary {
+  display: flex; justify-content: space-between; padding: 22px 3px 10px;
+  color: #485f4b; font-size: 12px;
+}
+.region-directory-summary span { color: #918c82; }
+.region-directory-list { display: grid; gap: 8px; }
+.region-directory-list > button {
+  min-height: 65px; display: grid; grid-template-columns: 39px minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; padding: 10px 13px; border: 1px solid #ded5c6;
+  border-radius: 13px 16px 12px 15px; background: #fffefa; color: #3d563f; text-align: left;
+}
+.region-directory-list > button.available { border-color: #a9bd91; background: #fbfdf5; cursor: pointer; }
+.region-directory-list > button.preparing { opacity: 0.72; }
+.region-directory-pin {
+  width: 36px; height: 36px; display: grid; place-items: center;
+  border-radius: 50% 46% 51% 45%; background: #eef1e5; color: #6e8262; font-size: 17px;
+}
+.region-directory-list button.available .region-directory-pin { background: #dfeccb; color: #466d45; }
+.region-directory-list button > span:nth-child(2) { min-width: 0; display: grid; gap: 4px; }
+.region-directory-list strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.region-directory-list small { color: #8d887e; font-size: 9px; }
+.region-directory-list em {
+  color: #52744c; font-size: 10px; font-style: normal; font-weight: 800; white-space: nowrap;
+}
+.region-directory-list button.preparing em { color: #9b978e; }
+.region-directory-state {
+  margin: 0; padding: 42px 12px; border: 1px dashed #d8d1c4;
+  border-radius: 13px; color: #858178; font-size: 12px; text-align: center;
+}
 .ongoing-bingo-card {
   width: 100%;
   display: grid;
