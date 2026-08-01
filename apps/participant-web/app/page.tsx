@@ -1077,10 +1077,8 @@ export default function Home() {
       );
       if (isInProgress) return false;
       if (!normalizedRegionSearch) return true;
-      const searchTarget = `${fullName} ${region.name} ${region.province}`
-        .toLocaleLowerCase("ko")
-        .replace(/\s/g, "");
-      return searchTarget.includes(normalizedRegionSearch.replace(/\s/g, ""));
+      const searchTarget = `${fullName} ${region.name} ${region.province}`;
+      return matchesRegionSearch(searchTarget, normalizedRegionSearch);
     })
     .map((region) => {
       const fullName =
@@ -3553,4 +3551,31 @@ function regionNamesMatch(left: string, right: string | null): boolean {
       normalizedLeft.includes(normalizedRight) ||
       normalizedRight.includes(normalizedLeft))
   );
+}
+
+const HANGUL_INITIALS = [
+  "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ",
+  "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ",
+];
+
+function hangulInitials(value: string): string {
+  return Array.from(value.replace(/\s/g, ""))
+    .map((character) => {
+      const code = character.charCodeAt(0);
+      if (code >= 0xac00 && code <= 0xd7a3) {
+        return HANGUL_INITIALS[Math.floor((code - 0xac00) / 588)];
+      }
+      return /^[ㄱ-ㅎ]$/.test(character) ? character : "";
+    })
+    .join("");
+}
+
+function matchesRegionSearch(value: string, query: string): boolean {
+  const compactValue = value.toLocaleLowerCase("ko").replace(/\s/g, "");
+  const compactQuery = query.toLocaleLowerCase("ko").replace(/\s/g, "");
+  if (!compactQuery) return true;
+  if (compactValue.includes(compactQuery)) return true;
+  return /^[ㄱ-ㅎ]+$/.test(compactQuery)
+    ? hangulInitials(compactValue).includes(compactQuery)
+    : false;
 }
