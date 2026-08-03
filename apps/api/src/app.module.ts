@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AdminModule } from "./admin/admin.module.js";
+import { AnnouncementsModule } from "./announcements/announcements.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { BingoCatalogModule } from "./bingo-catalog/bingo-catalog.module.js";
 import { DailyModule } from "./daily/daily.module.js";
@@ -17,6 +18,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module.
     HealthModule,
     DailyModule,
     AdminModule,
+    AnnouncementsModule,
     RankingModule,
     RecommendationsModule,
   ],

@@ -80,6 +80,12 @@ enum MissionScope {
   EVENT
 }
 
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ENDED
+}
+
 model User {
   id               String                 @id @default(uuid()) @db.Uuid
   role             UserRole               @default(USER)
@@ -96,8 +102,36 @@ model User {
   authSessions     AuthSession[]
   missionRevisions MissionRevision[]      @relation("MissionRevisionAuthor")
   dailyRankings    DailyRankingSnapshot[]
+  announcementReads AnnouncementRead[]
 
   @@index([status, createdAt])
+}
+
+model Announcement {
+  id          String             @id @default(uuid()) @db.Uuid
+  title       String             @db.VarChar(160)
+  content     String
+  status      AnnouncementStatus @default(DRAFT)
+  isImportant Boolean            @default(false)
+  startsAt    DateTime?          @db.Timestamptz(3)
+  endsAt      DateTime?          @db.Timestamptz(3)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @db.Timestamptz(3)
+  reads       AnnouncementRead[]
+
+  @@index([status, startsAt, endsAt])
+  @@index([isImportant, createdAt])
+}
+
+model AnnouncementRead {
+  announcementId String       @db.Uuid
+  userId         String       @db.Uuid
+  readAt         DateTime     @default(now()) @db.Timestamptz(3)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@index([userId, readAt])
 }
 
 model AuthSession {

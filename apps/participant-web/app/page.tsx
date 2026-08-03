@@ -136,6 +136,14 @@ type AccountUser = {
   email: string | null;
   role: "USER" | "ADMIN";
 };
+type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  isImportant: boolean;
+  createdAt: string;
+  isRead: boolean;
+};
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -475,6 +483,9 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -690,6 +701,39 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAnnouncements = async () => {
+    try {
+      const response = await apiFetch("/announcements");
+      if (!response.ok) return;
+      const loaded = (await response.json()) as Announcement[];
+      setAnnouncements(loaded);
+      const unreadImportant = loaded.find((item) => item.isImportant && !item.isRead);
+      if (unreadImportant) setSelectedAnnouncement(unreadImportant);
+    } catch {
+      // 공지 조회 실패는 빙고 이용을 막지 않습니다.
+    }
+  };
+
+  useEffect(() => {
+    if (authStatus === "authenticated") void loadAnnouncements();
+  }, [authStatus]);
+
+  const openAnnouncement = (item: Announcement) => {
+    setSelectedAnnouncement(item);
+    if (!item.isRead) {
+      setAnnouncements((current) => current.map((value) => value.id === item.id ? { ...value, isRead: true } : value));
+      void apiFetch(`/announcements/${item.id}/read`, { method: "POST" });
+    }
+  };
+
+  const closeAnnouncement = () => {
+    if (selectedAnnouncement && !selectedAnnouncement.isRead) {
+      setAnnouncements((current) => current.map((value) => value.id === selectedAnnouncement.id ? { ...value, isRead: true } : value));
+      void apiFetch(`/announcements/${selectedAnnouncement.id}/read`, { method: "POST" });
+    }
+    setSelectedAnnouncement(null);
   };
 
   const enterHomeAfterLogin = async (
@@ -2085,9 +2129,10 @@ export default function Home() {
             <button
               type="button"
               aria-label="알림"
-              onClick={() => setMessage("새로운 알림이 아직 없어요.")}
+              className="notice-bell"
+              onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧
+              ♧{announcements.some((item) => !item.isRead) && <i />}
             </button>
           </header>
 
@@ -2106,6 +2151,19 @@ export default function Home() {
               <i>⌁</i>
             </div>
           </div>
+
+          {announcements.length > 0 && (
+            <section className="home-announcements">
+              <div className="home-section-title"><h2>공지사항</h2><button type="button" onClick={() => setAnnouncementsOpen(true)}>더보기 ›</button></div>
+              {announcements.slice(0, 2).map((item) => (
+                <button type="button" key={item.id} onClick={() => openAnnouncement(item)}>
+                  <span>{item.isImportant ? "중요" : "안내"}</span>
+                  <b>{item.title}</b>
+                  {!item.isRead && <i>새 소식</i>}
+                </button>
+              ))}
+            </section>
+          )}
 
           <button
             className="daily-home-card"
@@ -3140,6 +3198,34 @@ export default function Home() {
           <em>{trackingTime(tracking.elapsedSeconds)}</em>
           <strong>미션으로 돌아가기 ›</strong>
         </button>
+      )}
+      {announcementsOpen && (
+        <div className="announcement-backdrop" onClick={() => setAnnouncementsOpen(false)}>
+          <section className="announcement-sheet" onClick={(event) => event.stopPropagation()}>
+            <header><div><small>TRAVEL BINGO NEWS</small><h2>공지사항</h2></div><button type="button" aria-label="공지사항 닫기" onClick={() => setAnnouncementsOpen(false)}>×</button></header>
+            <div className="announcement-sheet-list">
+              {announcements.length ? announcements.map((item) => (
+                <button type="button" key={item.id} onClick={() => { setAnnouncementsOpen(false); openAnnouncement(item); }}>
+                  <span>{item.isImportant ? "중요" : "안내"}</span>
+                  <div><b>{item.title}</b><small>{new Date(item.createdAt).toLocaleDateString("ko-KR")}</small></div>
+                  {!item.isRead && <i>NEW</i>}
+                </button>
+              )) : <p>등록된 공지사항이 없어요.</p>}
+            </div>
+          </section>
+        </div>
+      )}
+      {selectedAnnouncement && (
+        <div className="announcement-backdrop" onClick={closeAnnouncement}>
+          <article className="announcement-detail" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="announcement-close" aria-label="공지 닫기" onClick={closeAnnouncement}>×</button>
+            <span>{selectedAnnouncement.isImportant ? "IMPORTANT" : "NOTICE"}</span>
+            <h2>{selectedAnnouncement.title}</h2>
+            <time>{new Date(selectedAnnouncement.createdAt).toLocaleDateString("ko-KR")}</time>
+            <p>{selectedAnnouncement.content}</p>
+            <button type="button" className="announcement-confirm" onClick={closeAnnouncement}>확인했어요</button>
+          </article>
+        </div>
       )}
       <nav>
         <button

@@ -82,6 +82,17 @@ type UserSummary = {
   suspended: number;
   deleted: number;
 };
+type Announcement = {
+  id: string;
+  title: string;
+  content: string;
+  status: "DRAFT" | "PUBLISHED" | "ENDED";
+  isImportant: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  _count: { reads: number };
+};
 type AttractionRecommendation = {
   contentId: string;
   contentTypeId: string | null;
@@ -122,6 +133,8 @@ const verificationName: Record<string, string> = {
   QUIZ: "퀴즈",
   MANUAL: "직접 인증",
 };
+const toLocalInput = (value?: string | null) =>
+  value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
 
 export default function AdminPage() {
   const [missions, setMissions] = useState<Mission[]>([]),
@@ -137,7 +150,7 @@ export default function AdminPage() {
     [similarityGroup, setSimilarityGroup] = useState(""),
     [dailyCandidate, setDailyCandidate] = useState("");
   const [view, setView] = useState<
-    "catalog" | "daily" | "regions" | "reviews" | "users"
+    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements"
   >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
@@ -150,6 +163,8 @@ export default function AdminPage() {
   );
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [userSummary, setUserSummary] = useState<UserSummary>({
     total: 0,
     active: 0,
@@ -606,6 +621,57 @@ export default function AdminPage() {
     );
     await loadUsers();
   }
+  async function loadAnnouncements() {
+    const result = await fetch(`${API}/admin/announcements`, {
+      credentials: "include",
+      headers: { "x-user-id": ADMIN },
+    });
+    if (!result.ok) return setError("공지사항을 불러오지 못했습니다.");
+    setAnnouncements(await result.json());
+    setError("");
+  }
+  useEffect(() => {
+    if (view === "announcements") void loadAnnouncements();
+  }, [view]);
+  async function saveAnnouncement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const result = await fetch(
+      editingAnnouncement
+        ? `${API}/admin/announcements/${editingAnnouncement.id}`
+        : `${API}/admin/announcements`,
+      {
+        method: editingAnnouncement ? "PATCH" : "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json", "x-user-id": ADMIN },
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          status: data.status,
+          isImportant: data.isImportant === "on",
+          startsAt: data.startsAt ? new Date(String(data.startsAt)).toISOString() : null,
+          endsAt: data.endsAt ? new Date(String(data.endsAt)).toISOString() : null,
+        }),
+      },
+    );
+    if (!result.ok) return setError(`공지 저장 실패: ${await result.text()}`);
+    setEditingAnnouncement(null);
+    event.currentTarget.reset();
+    setNotice(editingAnnouncement ? "공지사항을 수정했습니다." : "공지사항을 등록했습니다.");
+    await loadAnnouncements();
+  }
+  async function deleteAnnouncement(item: Announcement) {
+    if (!window.confirm(`'${item.title}' 공지를 삭제할까요?`)) return;
+    const result = await fetch(`${API}/admin/announcements/${item.id}`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "x-user-id": ADMIN },
+    });
+    if (!result.ok) return setError("공지사항을 삭제하지 못했습니다.");
+    if (editingAnnouncement?.id === item.id) setEditingAnnouncement(null);
+    setNotice("공지사항을 삭제했습니다.");
+    await loadAnnouncements();
+  }
   const common = missions.filter((m) => m.scope === "COMMON").length,
     regional = missions.filter((m) => m.scope === "REGION").length,
     dailyCandidates = missions.filter(
@@ -766,6 +832,12 @@ export default function AdminPage() {
           >
             사용자 관리
           </button>
+          <button
+            className={view === "announcements" ? "selected" : ""}
+            onClick={() => setView("announcements")}
+          >
+            공지사항
+          </button>
         </nav>
         <div className="user">
           선　<b>관리자</b>
@@ -784,6 +856,8 @@ export default function AdminPage() {
                     ? "지역 관리"
                   : view === "reviews"
                     ? "사진 검수"
+                  : view === "announcements"
+                    ? "공지사항"
                     : "사용자 관리"}
             </h1>
             <p>
@@ -795,6 +869,8 @@ export default function AdminPage() {
                     ? "지역 빙고 준비 상태를 확인하고 서비스 노출을 관리합니다."
                   : view === "reviews"
                     ? "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."
+                  : view === "announcements"
+                    ? "참가자 앱에 전달할 안내와 중요 소식을 관리합니다."
                     : "가입 계정과 이용 상태를 안전하게 관리합니다."}
             </p>
           </div>
@@ -1682,6 +1758,41 @@ export default function AdminPage() {
             ) : (
               <p className="empty">현재 검수 대기 사진이 없습니다.</p>
             )}
+          </section>
+        ) : view === "announcements" ? (
+          <section className="announcementAdmin">
+            <form className="announcementForm" onSubmit={saveAnnouncement} key={editingAnnouncement?.id ?? "new"}>
+              <div className="catalogHead">
+                <div>
+                  <h2>{editingAnnouncement ? "공지 수정" : "새 공지 작성"}</h2>
+                  <p>중요 공지는 참가자 앱에서 읽을 때까지 한 번 안내됩니다.</p>
+                </div>
+              </div>
+              <label>제목<input name="title" required maxLength={160} defaultValue={editingAnnouncement?.title} /></label>
+              <label>내용<textarea name="content" required rows={6} defaultValue={editingAnnouncement?.content} /></label>
+              <div className="announcementOptions">
+                <label>상태<select name="status" defaultValue={editingAnnouncement?.status ?? "DRAFT"}><option value="DRAFT">임시저장</option><option value="PUBLISHED">게시</option><option value="ENDED">종료</option></select></label>
+                <label>게시 시작<input name="startsAt" type="datetime-local" defaultValue={toLocalInput(editingAnnouncement?.startsAt)} /></label>
+                <label>게시 종료<input name="endsAt" type="datetime-local" defaultValue={toLocalInput(editingAnnouncement?.endsAt)} /></label>
+              </div>
+              <label className="importantCheck"><input name="isImportant" type="checkbox" defaultChecked={editingAnnouncement?.isImportant} /> 중요 공지로 표시</label>
+              <div className="actions">
+                {editingAnnouncement && <button type="button" className="secondary" onClick={() => setEditingAnnouncement(null)}>수정 취소</button>}
+                <button className="primary">{editingAnnouncement ? "변경 저장" : "공지 등록"}</button>
+              </div>
+            </form>
+            <div className="announcementList">
+              <h2>등록된 공지</h2>
+              {announcements.length ? announcements.map((item) => (
+                <article key={item.id}>
+                  <div><span className={`announcementStatus ${item.status.toLowerCase()}`}>{item.status === "DRAFT" ? "임시저장" : item.status === "PUBLISHED" ? "게시 중" : "종료"}</span>{item.isImportant && <mark>중요</mark>}</div>
+                  <h3>{item.title}</h3>
+                  <p>{item.content}</p>
+                  <small>{new Date(item.createdAt).toLocaleDateString("ko-KR")} · 읽음 {item._count.reads}명</small>
+                  <div className="announcementActions"><button className="textButton" onClick={() => setEditingAnnouncement(item)}>수정</button><button className="withdrawButton" onClick={() => void deleteAnnouncement(item)}>삭제</button></div>
+                </article>
+              )) : <p className="empty">등록된 공지사항이 없습니다.</p>}
+            </div>
           </section>
         ) : (
           <>
