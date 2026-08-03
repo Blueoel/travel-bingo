@@ -1298,6 +1298,38 @@ button {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.ranking-region-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #ded8c9;
+  border-radius: 12px;
+  background: #fffdf8;
+  color: #35563f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ranking-region-select select {
+  min-width: 0;
+  max-width: 62%;
+  padding: 7px 9px;
+  border: 1px solid #cfc7b5;
+  border-radius: 8px;
+  background: #fff;
+  color: #263c2d;
+}
+.ranking-scope-notice {
+  margin: 12px 0 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #f6f1e7;
+  color: #746a57;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .ranking-timer {
   margin: 14px 4px 5px;
   text-align: right;

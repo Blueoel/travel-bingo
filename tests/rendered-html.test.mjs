@@ -318,6 +318,10 @@ test("lists Daily, region, and event bingo entries from one catalog", async () =
   assert.match(pageSource, /activeTab === "catalog"/);
   assert.match(pageSource, /apiFetch\("\/bingos"\)/);
   assert.match(pageSource, /"DAILY" \| "REGION" \| "EVENT"/);
+  assert.match(pageSource, /"ALL" \| "COMMON" \| "REGION" \| "FRIEND"/);
+  assert.match(pageSource, /도전 중인 지역/);
+  assert.match(pageSource, /regionCode", rankingRegionCode/);
+  assert.match(pageSource, /친구 추가 기능이 준비되면/);
   assert.match(pageSource, /result\.verificationStatus === "NEEDS_REVIEW"/);
   assert.match(pageSource, /진행 중인 빙고를 이어가거나/);
   assert.match(pageSource, /setActiveTab\("catalog"\)/);

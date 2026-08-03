@@ -115,7 +115,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 type RankingPeriod = "DAILY" | "WEEKLY" | "MONTHLY" | "TOTAL";
-type RankingScope = "ALL" | "COMMON" | "REGION";
+type RankingScope = "ALL" | "COMMON" | "REGION" | "FRIEND";
 type RankingEntry = {
   userId: string;
   nickname: string;
@@ -126,6 +126,9 @@ type RankingResult = {
   entries: RankingEntry[];
   me: RankingEntry | null;
   endsAt: string | null;
+  regionCode?: string | null;
+  available?: boolean;
+  unavailableReason?: string | null;
 };
 type AccountUser = {
   id: string;
@@ -539,6 +542,7 @@ export default function Home() {
   const [regionSearch, setRegionSearch] = useState("");
   const [rankingPeriod, setRankingPeriod] = useState<RankingPeriod>("WEEKLY");
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
+  const [rankingRegionCode, setRankingRegionCode] = useState("");
   const [ranking, setRanking] = useState<RankingResult>({
     entries: demoRanking,
     me: { userId: "me", nickname: "선", points: 420, rank: 18 },
@@ -763,7 +767,14 @@ export default function Home() {
     if (activeTab !== "ranking") return;
     const timer = window.setInterval(() => setClock(Date.now()), 1000);
     setRankingLoading(true);
-    void apiFetch(`/rankings?period=${rankingPeriod}&scope=${rankingScope}`)
+    const params = new URLSearchParams({
+      period: rankingPeriod,
+      scope: rankingScope,
+    });
+    if (rankingScope === "REGION" && rankingRegionCode) {
+      params.set("regionCode", rankingRegionCode);
+    }
+    void apiFetch(`/rankings?${params}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Ranking API unavailable");
         setRanking((await response.json()) as RankingResult);
@@ -777,14 +788,15 @@ export default function Home() {
       })
       .finally(() => setRankingLoading(false));
     return () => window.clearInterval(timer);
-  }, [activeTab, rankingPeriod, rankingScope, nickname]);
+  }, [activeTab, rankingPeriod, rankingRegionCode, rankingScope, nickname]);
 
   useEffect(() => {
     if (
       authStatus !== "authenticated" ||
       (activeTab !== "catalog" &&
         activeTab !== "home" &&
-        activeTab !== "regions")
+        activeTab !== "regions" &&
+        activeTab !== "ranking")
     )
       return;
     setBingoCatalogLoading(true);
@@ -817,6 +829,30 @@ export default function Home() {
       })
       .finally(() => setBingoCatalogLoading(false));
   }, [activeTab, authStatus, completeCount, points, sessionId]);
+
+  const activeRankingRegions = [
+    ...new Map(
+      bingoCatalog
+        .filter(
+          (item) =>
+            item.type === "REGION" &&
+            item.state === "IN_PROGRESS" &&
+            item.regionCode,
+        )
+        .map((item) => [item.regionCode!, item]),
+    ).values(),
+  ];
+
+  useEffect(() => {
+    if (rankingScope !== "REGION") return;
+    if (
+      rankingRegionCode &&
+      activeRankingRegions.some((region) => region.regionCode === rankingRegionCode)
+    ) {
+      return;
+    }
+    setRankingRegionCode(activeRankingRegions[0]?.regionCode ?? "");
+  }, [bingoCatalog, rankingRegionCode, rankingScope]);
 
   useEffect(() => {
     if (activeTab !== "regions" || regionDirectory.length > 0) return;
@@ -2864,6 +2900,7 @@ export default function Home() {
                 ["ALL", "전체"],
                 ["COMMON", "공통"],
                 ["REGION", "지역"],
+                ["FRIEND", "친구"],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -2874,14 +2911,40 @@ export default function Home() {
                 {label}
               </button>
             ))}
-            <button disabled title="친구 기능 준비 중">
-              친구
-            </button>
           </div>
+          {rankingScope === "REGION" && activeRankingRegions.length > 0 && (
+            <label className="ranking-region-select">
+              <span>도전 중인 지역</span>
+              <select
+                value={rankingRegionCode}
+                onChange={(event) => setRankingRegionCode(event.target.value)}
+              >
+                {activeRankingRegions.map((region) => (
+                  <option key={region.regionCode} value={region.regionCode!}>
+                    {region.regionName ?? region.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {rankingScope === "REGION" &&
+            !bingoCatalogLoading &&
+            activeRankingRegions.length === 0 && (
+              <p className="ranking-scope-notice">
+                현재 도전 중인 지역 빙고가 없어요.
+              </p>
+            )}
+          {rankingScope === "FRIEND" && (
+            <p className="ranking-scope-notice">
+              친구 추가 기능이 준비되면 친구끼리의 순위를 확인할 수 있어요.
+            </p>
+          )}
           <p className="ranking-timer">
             {ranking.endsAt
               ? `이번 랭킹 종료까지 ${remainingTime(ranking.endsAt, clock)}`
-              : "랭킹 집계 데이터를 준비하고 있어요"}
+              : rankingPeriod === "TOTAL"
+                ? "서비스 시작 이후 누적 포인트 순위"
+                : "랭킹 집계 데이터를 준비하고 있어요"}
           </p>
           {ranking.me && (
             <div className="my-rank-card">
@@ -2914,7 +2977,9 @@ export default function Home() {
                 <span>{entry.points.toLocaleString()} P</span>
               </div>
             ))}
-            {!rankingLoading && ranking.entries.length === 0 && (
+            {!rankingLoading &&
+              ranking.available !== false &&
+              ranking.entries.length === 0 && (
               <p className="ranking-empty">
                 아직 랭킹에 등록된 참여자가 없어요.
               </p>
