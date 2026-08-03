@@ -451,7 +451,7 @@ button {
   font-size: 11px;
 }
 .notice-bell { position: relative; }
-.notice-bell i { position: absolute; top: 4px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #ef7659; border: 1px solid #fffaf0; }
+.notice-bell i { position: absolute; top: -2px; right: -5px; display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ef7659; color: white; border: 1px solid #fffaf0; font-size: 9px; font-style: normal; font-weight: 900; line-height: 1; }
 .home-announcements { display: grid; gap: 8px; margin-top: 18px; }
 .home-announcements > button { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; width: 100%; padding: 12px 14px; border: 1px solid #ded2bd; border-radius: 10px 13px 9px 12px; background: #fffdf7; text-align: left; }
 .home-announcements > button span { padding: 3px 7px; border-radius: 999px; background: #f6dca8; color: #6d5020; font-size: 10px; font-weight: 800; }

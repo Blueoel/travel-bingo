@@ -84,6 +84,7 @@ test("shows published announcements and records important notice reads", async (
   assert.match(pageSource, /\/announcements\/\$\{item\.id\}\/read/);
   assert.match(pageSource, /unreadImportant/);
   assert.match(pageSource, /공지사항/);
+  assert.match(pageSource, /Math\.min\(99, announcements\.filter/);
 });
 
 test("connects the nationwide map to the exploration tab", async () => {

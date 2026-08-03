@@ -2132,7 +2132,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{announcements.some((item) => !item.isRead) && <i />}
+              ♧{announcements.some((item) => !item.isRead) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length)}</i>}
             </button>
           </header>
 
