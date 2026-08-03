@@ -476,6 +476,18 @@ button {
 .announcement-detail time { color: #948c7d; font-size: 11px; }
 .announcement-detail p { min-height: 120px; margin: 24px 0; padding-top: 20px; border-top: 1px dashed #d8cbb5; color: #4b514b; line-height: 1.75; white-space: pre-wrap; }
 .announcement-confirm { width: 100%; padding: 14px; border: 0; border-radius: 13px; background: #4f7b4f; color: white; font: inherit; font-weight: 800; }
+.friend-manage-button { width: 100%; border: 1px dashed #cfc2aa; cursor: pointer; }
+.friend-sheet { width: min(100%, 460px); max-height: 82vh; overflow: auto; padding: 22px 18px 28px; border-radius: 24px 24px 0 0; background: #fffdf7; }
+.friend-sheet header { display: flex; justify-content: space-between; align-items: start; }
+.friend-sheet header h2 { margin: 4px 0 16px; color: #294b35; }
+.friend-sheet header small { color: #62825b; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.friend-sheet header > button { border: 0; background: transparent; font-size: 26px; }
+.friend-search input { width: 100%; padding: 13px; border: 1px solid #d7ccb8; border-radius: 12px; font: inherit; }
+.friend-sheet h3 { margin: 22px 0 8px; color: #39583f; }
+.friend-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 4px; border-bottom: 1px dashed #dfd5c3; }
+.friend-row span { display: grid; gap: 2px; }
+.friend-row small { color: #8f887b; }
+.friend-row button { padding: 7px 10px; border: 1px solid #769273; border-radius: 9px; background: #f8fbf4; color: #365c3b; font-weight: 700; }
 .exploration-screen {
   position: absolute;
   inset: 0 0 76px;

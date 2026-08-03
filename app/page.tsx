@@ -144,6 +144,8 @@ type Announcement = {
   createdAt: string;
   isRead: boolean;
 };
+type FriendUser = { id: string; nickname: string; email: string | null };
+type Friendship = { id: string; status: "PENDING" | "ACCEPTED" | "REJECTED"; direction: "SENT" | "RECEIVED"; user: FriendUser };
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -486,6 +488,10 @@ export default function Home() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const [friends, setFriends] = useState<Friendship[]>([]);
+  const [friendQuery, setFriendQuery] = useState("");
+  const [friendResults, setFriendResults] = useState<FriendUser[]>([]);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -734,6 +740,24 @@ export default function Home() {
       void apiFetch(`/announcements/${selectedAnnouncement.id}/read`, { method: "POST" });
     }
     setSelectedAnnouncement(null);
+  };
+  const loadFriends = async () => {
+    const response = await apiFetch("/friends");
+    if (response.ok) setFriends(await response.json());
+  };
+  const searchFriends = async (query: string) => {
+    setFriendQuery(query);
+    if (query.trim().length < 2) return setFriendResults([]);
+    const response = await apiFetch(`/friends/search?q=${encodeURIComponent(query.trim())}`);
+    if (response.ok) setFriendResults(await response.json());
+  };
+  const requestFriend = async (userId: string) => {
+    await apiFetch("/friends", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId }) });
+    setFriendResults([]); setFriendQuery(""); await loadFriends();
+  };
+  const decideFriend = async (id: string, accept: boolean) => {
+    await apiFetch(`/friends/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ accept }) });
+    await loadFriends();
   };
 
   const enterHomeAfterLogin = async (
@@ -2993,9 +3017,9 @@ export default function Home() {
               </p>
             )}
           {rankingScope === "FRIEND" && (
-            <p className="ranking-scope-notice">
-              친구 추가 기능이 준비되면 친구끼리의 순위를 확인할 수 있어요.
-            </p>
+            <button className="ranking-scope-notice friend-manage-button" type="button" onClick={() => { setFriendsOpen(true); void loadFriends(); }}>
+              친구 관리 · 요청 확인
+            </button>
           )}
           <p className="ranking-timer">
             {ranking.endsAt
@@ -3225,6 +3249,17 @@ export default function Home() {
             <p>{selectedAnnouncement.content}</p>
             <button type="button" className="announcement-confirm" onClick={closeAnnouncement}>확인했어요</button>
           </article>
+        </div>
+      )}
+      {friendsOpen && (
+        <div className="announcement-backdrop" onClick={() => setFriendsOpen(false)}>
+          <section className="friend-sheet" onClick={(event) => event.stopPropagation()}>
+            <header><div><small>WALK TOGETHER</small><h2>친구 관리</h2></div><button type="button" onClick={() => setFriendsOpen(false)}>×</button></header>
+            <label className="friend-search"><input value={friendQuery} onChange={(event) => void searchFriends(event.target.value)} placeholder="닉네임 또는 이메일 검색" /></label>
+            {friendResults.map((user) => <div className="friend-row" key={user.id}><span><b>{user.nickname}</b><small>{user.email}</small></span><button type="button" onClick={() => void requestFriend(user.id)}>친구 요청</button></div>)}
+            <h3>친구와 요청</h3>
+            {friends.filter((item) => item.status !== "REJECTED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.status === "ACCEPTED" ? "친구" : item.direction === "RECEIVED" ? "받은 요청" : "요청 보냄"}</small></span>{item.status === "PENDING" && item.direction === "RECEIVED" && <div><button type="button" onClick={() => void decideFriend(item.id, true)}>수락</button><button type="button" onClick={() => void decideFriend(item.id, false)}>거절</button></div>}</div>)}
+          </section>
         </div>
       )}
       <nav>
