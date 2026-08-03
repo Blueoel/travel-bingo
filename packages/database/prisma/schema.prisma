@@ -86,6 +86,12 @@ enum AnnouncementStatus {
   ENDED
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id               String                 @id @default(uuid()) @db.Uuid
   role             UserRole               @default(USER)
@@ -103,8 +109,25 @@ model User {
   missionRevisions MissionRevision[]      @relation("MissionRevisionAuthor")
   dailyRankings    DailyRankingSnapshot[]
   announcementReads AnnouncementRead[]
+  sentFriendships    Friendship[] @relation("FriendshipRequester")
+  receivedFriendships Friendship[] @relation("FriendshipAddressee")
 
   @@index([status, createdAt])
+}
+
+model Friendship {
+  id          String           @id @default(uuid()) @db.Uuid
+  requesterId String           @db.Uuid
+  addresseeId String           @db.Uuid
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
 
 model Announcement {

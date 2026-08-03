@@ -7,6 +7,7 @@ import { BingoCatalogModule } from "./bingo-catalog/bingo-catalog.module.js";
 import { DailyModule } from "./daily/daily.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { FriendsModule } from "./friends/friends.module.js";
 import { RankingModule } from "./ranking/ranking.module.js";
 import { RecommendationsModule } from "./recommendations/recommendations.module.js";
 
@@ -19,6 +20,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module.
     DailyModule,
     AdminModule,
     AnnouncementsModule,
+    FriendsModule,
     RankingModule,
     RecommendationsModule,
   ],

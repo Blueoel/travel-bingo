@@ -21,25 +21,7 @@ export class RankingService {
     regionCode?: string,
   ) {
     const window = rankingWindow(period, now);
-    if (scope === "FRIEND") {
-      const me = await this.database.user.findUnique({
-        where: { id: userId },
-        select: { id: true, nickname: true },
-      });
-      return {
-        period,
-        scope,
-        startsAt: window.startsAt?.toISOString() ?? null,
-        endsAt: window.endsAt?.toISOString() ?? null,
-        entries: [],
-        me: me
-          ? { userId: me.id, nickname: me.nickname, points: 0, rank: 1 }
-          : null,
-        regionCode: null,
-        available: false,
-        unavailableReason: "친구 추가 기능을 준비하고 있어요.",
-      };
-    }
+    const friendUserIds = scope === "FRIEND" ? await this.findFriendUserIds(userId) : undefined;
     const selectedRegionCode =
       scope === "REGION"
         ? regionCode || (await this.findCurrentRegionCode(userId))
@@ -47,6 +29,7 @@ export class RankingService {
     const grouped = await this.database.pointLedger.groupBy({
       by: ["userId"],
       where: {
+        ...(friendUserIds ? { userId: { in: friendUserIds } } : {}),
         reason: { notIn: ["DAILY_RANK_REWARD", "DAILY_LUCKY"] },
         ...(window.startsAt
           ? { createdAt: { gte: window.startsAt, lt: window.endsAt } }
@@ -133,8 +116,16 @@ export class RankingService {
       me,
       regionCode: selectedRegionCode ?? null,
       available: true,
-      unavailableReason: null,
+      unavailableReason: scope === "FRIEND" && friendUserIds?.length === 1 ? "친구를 추가하면 함께 순위를 볼 수 있어요." : null,
     };
+  }
+
+  private async findFriendUserIds(userId: string): Promise<string[]> {
+    const rows = await this.database.friendship.findMany({
+      where: { status: "ACCEPTED", OR: [{ requesterId: userId }, { addresseeId: userId }] },
+      select: { requesterId: true, addresseeId: true },
+    });
+    return [userId, ...rows.map((row) => row.requesterId === userId ? row.addresseeId : row.requesterId)];
   }
 
   private async findCurrentRegionCode(userId: string): Promise<string | undefined> {

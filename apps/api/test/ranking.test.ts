@@ -35,12 +35,14 @@ describe("RankingService filters", () => {
     expect(result.regionCode).toBe("31220");
   });
 
-  it("returns a prepared empty friend ranking without mixing all users", async () => {
+  it("limits friend rankings to accepted friends and the current user", async () => {
     const database = {
-      pointLedger: { groupBy: vi.fn() },
+      pointLedger: { groupBy: vi.fn().mockResolvedValue([]) },
       user: {
         findUnique: vi.fn().mockResolvedValue({ id: "me", nickname: "여행자" }),
+        findMany: vi.fn().mockResolvedValue([]),
       },
+      friendship: { findMany: vi.fn().mockResolvedValue([{ requesterId: "me", addresseeId: "friend-1" }]) },
     };
     const result = await new RankingService(database as never).get(
       "me",
@@ -48,8 +50,8 @@ describe("RankingService filters", () => {
       "FRIEND",
     );
 
-    expect(result.available).toBe(false);
+    expect(result.available).toBe(true);
     expect(result.entries).toEqual([]);
-    expect(database.pointLedger.groupBy).not.toHaveBeenCalled();
+    expect(database.pointLedger.groupBy).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: { in: ["me", "friend-1"] } }) }));
   });
 });
