@@ -936,6 +936,8 @@ textarea {
 .announcementForm .importantCheck input { width: auto; }
 .announcementList { display: grid; gap: 12px; }
 .announcementList > h2 { margin: 0 0 4px; }
+.announcementFilters { display: grid; grid-template-columns: 1fr 140px; gap: 8px; margin-bottom: 4px; }
+.announcementFilters input, .announcementFilters select { min-width: 0; border: 1px solid #d3d9d3; border-radius: 9px; padding: 10px 11px; font: inherit; }
 .announcementList article { padding: 18px; border: 1px solid #e2e6e1; border-radius: 12px; }
 .announcementList article h3 { margin: 10px 0 6px; }
 .announcementList article p { white-space: pre-wrap; color: #58605a; line-height: 1.6; }
@@ -943,6 +945,8 @@ textarea {
 .announcementList mark { margin-left: 7px; border-radius: 999px; padding: 3px 8px; background: #fff0bd; color: #765100; }
 .announcementStatus { border-radius: 999px; padding: 3px 8px; font-size: 12px; font-weight: 800; background: #eef1ed; }
 .announcementStatus.published { background: #e1f2e5; color: #28713a; }
+.announcementStatus.active { background: #e1f2e5; color: #28713a; }
+.announcementStatus.scheduled { background: #e6eefb; color: #315f97; }
 .announcementStatus.ended { color: #7a7f7a; }
 .announcementActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
 @media (max-width: 900px) {

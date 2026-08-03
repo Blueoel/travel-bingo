@@ -135,6 +135,13 @@ const verificationName: Record<string, string> = {
 };
 const toLocalInput = (value?: string | null) =>
   value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
+const announcementPhase = (item: Announcement) => {
+  const now = Date.now();
+  if (item.status === "DRAFT") return { key: "DRAFT", label: "임시저장" };
+  if (item.status === "ENDED" || (item.endsAt && new Date(item.endsAt).getTime() <= now)) return { key: "ENDED", label: "종료" };
+  if (item.startsAt && new Date(item.startsAt).getTime() > now) return { key: "SCHEDULED", label: "예약" };
+  return { key: "ACTIVE", label: "게시 중" };
+};
 
 export default function AdminPage() {
   const [missions, setMissions] = useState<Mission[]>([]),
@@ -165,6 +172,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [announcementQuery, setAnnouncementQuery] = useState("");
+  const [announcementFilter, setAnnouncementFilter] = useState<"ALL" | "DRAFT" | "ACTIVE" | "SCHEDULED" | "ENDED">("ALL");
   const [userSummary, setUserSummary] = useState<UserSummary>({
     total: 0,
     active: 0,
@@ -672,6 +681,21 @@ export default function AdminPage() {
     setNotice("공지사항을 삭제했습니다.");
     await loadAnnouncements();
   }
+  const visibleAnnouncements = useMemo(() => {
+    const now = Date.now();
+    const query = announcementQuery.trim().toLocaleLowerCase("ko-KR");
+    return announcements.filter((item) => {
+      const phase = item.status === "DRAFT"
+        ? "DRAFT"
+        : item.status === "ENDED" || (item.endsAt && new Date(item.endsAt).getTime() <= now)
+          ? "ENDED"
+          : item.startsAt && new Date(item.startsAt).getTime() > now
+            ? "SCHEDULED"
+            : "ACTIVE";
+      return (announcementFilter === "ALL" || phase === announcementFilter) &&
+        (!query || `${item.title} ${item.content}`.toLocaleLowerCase("ko-KR").includes(query));
+    });
+  }, [announcements, announcementFilter, announcementQuery]);
   const common = missions.filter((m) => m.scope === "COMMON").length,
     regional = missions.filter((m) => m.scope === "REGION").length,
     dailyCandidates = missions.filter(
@@ -1783,15 +1807,21 @@ export default function AdminPage() {
             </form>
             <div className="announcementList">
               <h2>등록된 공지</h2>
-              {announcements.length ? announcements.map((item) => (
+              <div className="announcementFilters">
+                <input value={announcementQuery} onChange={(event) => setAnnouncementQuery(event.target.value)} placeholder="제목 또는 내용 검색" aria-label="공지 검색" />
+                <select value={announcementFilter} onChange={(event) => setAnnouncementFilter(event.target.value as typeof announcementFilter)} aria-label="공지 상태 필터">
+                  <option value="ALL">전체 상태</option><option value="DRAFT">임시저장</option><option value="ACTIVE">게시 중</option><option value="SCHEDULED">예약</option><option value="ENDED">종료</option>
+                </select>
+              </div>
+              {visibleAnnouncements.length ? visibleAnnouncements.map((item) => (
                 <article key={item.id}>
-                  <div><span className={`announcementStatus ${item.status.toLowerCase()}`}>{item.status === "DRAFT" ? "임시저장" : item.status === "PUBLISHED" ? "게시 중" : "종료"}</span>{item.isImportant && <mark>중요</mark>}</div>
+                  <div><span className={`announcementStatus ${announcementPhase(item).key.toLowerCase()}`}>{announcementPhase(item).label}</span>{item.isImportant && <mark>중요</mark>}</div>
                   <h3>{item.title}</h3>
                   <p>{item.content}</p>
                   <small>{new Date(item.createdAt).toLocaleDateString("ko-KR")} · 읽음 {item._count.reads}명</small>
                   <div className="announcementActions"><button className="textButton" onClick={() => setEditingAnnouncement(item)}>수정</button><button className="withdrawButton" onClick={() => void deleteAnnouncement(item)}>삭제</button></div>
                 </article>
-              )) : <p className="empty">등록된 공지사항이 없습니다.</p>}
+              )) : <p className="empty">조건에 맞는 공지사항이 없습니다.</p>}
             </div>
           </section>
         ) : (
