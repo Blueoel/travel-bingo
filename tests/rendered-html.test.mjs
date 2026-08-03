@@ -78,6 +78,14 @@ test("ships an interactive nationwide administrative SVG map", async () => {
   );
 });
 
+test("shows published announcements and records important notice reads", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  assert.match(pageSource, /apiFetch\("\/announcements"\)/);
+  assert.match(pageSource, /\/announcements\/\$\{item\.id\}\/read/);
+  assert.match(pageSource, /unreadImportant/);
+  assert.match(pageSource, /공지사항/);
+});
+
 test("connects the nationwide map to the exploration tab", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
