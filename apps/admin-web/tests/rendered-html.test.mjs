@@ -86,6 +86,10 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /createMissionFromAttraction/);
   assert.match(pageSource, /이 장소로 미션 만들기/);
   assert.match(pageSource, /const API = "\/api\/backend"/);
+  assert.match(pageSource, /공지사항/);
+  assert.match(pageSource, /announcementFilter/);
+  assert.match(pageSource, /제목 또는 내용 검색/);
+  assert.match(pageSource, /예약/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),
