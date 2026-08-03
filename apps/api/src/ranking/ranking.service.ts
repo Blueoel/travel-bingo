@@ -5,7 +5,7 @@ import { DATABASE_CLIENT } from "../database/database.module.js";
 import { getDailyCycle } from "../daily/daily-date.js";
 
 export type RankingPeriod = "DAILY" | "WEEKLY" | "MONTHLY" | "TOTAL";
-export type RankingScope = "ALL" | "COMMON" | "REGION";
+export type RankingScope = "ALL" | "COMMON" | "REGION" | "FRIEND";
 
 @Injectable()
 export class RankingService {
@@ -18,8 +18,32 @@ export class RankingService {
     period: RankingPeriod,
     scope: RankingScope,
     now = new Date(),
+    regionCode?: string,
   ) {
     const window = rankingWindow(period, now);
+    if (scope === "FRIEND") {
+      const me = await this.database.user.findUnique({
+        where: { id: userId },
+        select: { id: true, nickname: true },
+      });
+      return {
+        period,
+        scope,
+        startsAt: window.startsAt?.toISOString() ?? null,
+        endsAt: window.endsAt?.toISOString() ?? null,
+        entries: [],
+        me: me
+          ? { userId: me.id, nickname: me.nickname, points: 0, rank: 1 }
+          : null,
+        regionCode: null,
+        available: false,
+        unavailableReason: "친구 추가 기능을 준비하고 있어요.",
+      };
+    }
+    const selectedRegionCode =
+      scope === "REGION"
+        ? regionCode || (await this.findCurrentRegionCode(userId))
+        : undefined;
     const grouped = await this.database.pointLedger.groupBy({
       by: ["userId"],
       where: {
@@ -30,7 +54,20 @@ export class RankingService {
         ...(scope === "COMMON"
           ? { session: { template: { type: "DAILY" } } }
           : scope === "REGION"
-            ? { session: { template: { type: { not: "DAILY" } } } }
+            ? {
+                session: {
+                  template: {
+                    type: "REGION",
+                    ...(selectedRegionCode
+                      ? {
+                          region: {
+                            administrativeCode: selectedRegionCode,
+                          },
+                        }
+                      : {}),
+                  },
+                },
+              }
             : {}),
       },
       _sum: { points: true },
@@ -94,7 +131,27 @@ export class RankingService {
       endsAt: window.endsAt?.toISOString() ?? null,
       entries: entries.slice(0, 10),
       me,
+      regionCode: selectedRegionCode ?? null,
+      available: true,
+      unavailableReason: null,
     };
+  }
+
+  private async findCurrentRegionCode(userId: string): Promise<string | undefined> {
+    const session = await this.database.bingoSession.findFirst({
+      where: {
+        userId,
+        status: { in: ["ACTIVE", "CLEAR"] },
+        template: { type: "REGION" },
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        template: {
+          select: { region: { select: { administrativeCode: true } } },
+        },
+      },
+    });
+    return session?.template.region.administrativeCode;
   }
 }
 

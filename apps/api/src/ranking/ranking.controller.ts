@@ -20,6 +20,7 @@ export class RankingController {
     @Headers("x-user-id") developmentUserId: string | undefined,
     @Query("period") periodValue?: string,
     @Query("scope") scopeValue?: string,
+    @Query("regionCode") regionCode?: string,
   ) {
     const userId = await this.auth.requireUserId(cookie, developmentUserId);
     const period = parseValue(
@@ -28,12 +29,14 @@ export class RankingController {
     );
     const scope = parseValue(
       scopeValue ?? "ALL",
-      ["ALL", "COMMON", "REGION"] as const,
+      ["ALL", "COMMON", "REGION", "FRIEND"] as const,
     );
     return this.rankings.get(
       userId,
       period as RankingPeriod,
       scope as RankingScope,
+      new Date(),
+      regionCode?.trim() || undefined,
     );
   }
 }
