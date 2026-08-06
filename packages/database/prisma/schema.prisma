@@ -92,6 +92,12 @@ enum FriendshipStatus {
   REJECTED
 }
 
+enum UserReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
 model User {
   id               String                 @id @default(uuid()) @db.Uuid
   role             UserRole               @default(USER)
@@ -111,6 +117,10 @@ model User {
   announcementReads AnnouncementRead[]
   sentFriendships    Friendship[] @relation("FriendshipRequester")
   receivedFriendships Friendship[] @relation("FriendshipAddressee")
+  blocksCreated       UserBlock[]  @relation("UserBlockCreator")
+  blocksReceived      UserBlock[]  @relation("UserBlockTarget")
+  reportsCreated      UserReport[] @relation("UserReportCreator")
+  reportsReceived     UserReport[] @relation("UserReportTarget")
 
   @@index([status, createdAt])
 }
@@ -129,6 +139,34 @@ model Friendship {
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status])
   @@index([requesterId, status])
+}
+
+model UserBlock {
+  id        String   @id @default(uuid()) @db.Uuid
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  blocker   User     @relation("UserBlockCreator", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("UserBlockTarget", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model UserReport {
+  id         String           @id @default(uuid()) @db.Uuid
+  reporterId String           @db.Uuid
+  reportedId String           @db.Uuid
+  reason     String           @db.VarChar(40)
+  detail     String?          @db.VarChar(500)
+  status     UserReportStatus @default(OPEN)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(3)
+  resolvedAt DateTime?        @db.Timestamptz(3)
+  reporter   User             @relation("UserReportCreator", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported   User             @relation("UserReportTarget", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([reportedId, status])
 }
 
 model Announcement {

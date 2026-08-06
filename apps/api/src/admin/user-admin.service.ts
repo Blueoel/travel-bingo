@@ -174,4 +174,21 @@ export class UserAdminService {
       });
     });
   }
+
+  async listReports(status?: string): Promise<unknown> {
+    const selected = status === "RESOLVED" || status === "DISMISSED" ? status : "OPEN";
+    return this.database.userReport.findMany({
+      where: { status: selected },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      include: {
+        reporter: { select: { id: true, nickname: true, email: true } },
+        reported: { select: { id: true, nickname: true, email: true, status: true } },
+      },
+    });
+  }
+
+  async resolveReport(id: string, status: "RESOLVED" | "DISMISSED"): Promise<unknown> {
+    return this.database.userReport.update({ where: { id }, data: { status, resolvedAt: new Date() } });
+  }
 }

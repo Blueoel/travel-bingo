@@ -82,6 +82,7 @@ type UserSummary = {
   suspended: number;
   deleted: number;
 };
+type UserReport = { id: string; reason: string; detail: string | null; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string; reporter: { nickname: string; email: string | null }; reported: { id: string; nickname: string; email: string | null; status: string } };
 type Announcement = {
   id: string;
   title: string;
@@ -157,7 +158,7 @@ export default function AdminPage() {
     [similarityGroup, setSimilarityGroup] = useState(""),
     [dailyCandidate, setDailyCandidate] = useState("");
   const [view, setView] = useState<
-    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements"
+    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements" | "reports"
   >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
@@ -170,6 +171,8 @@ export default function AdminPage() {
   );
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [reports, setReports] = useState<UserReport[]>([]);
+  const [reportStatus, setReportStatus] = useState<"OPEN" | "RESOLVED" | "DISMISSED">("OPEN");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [announcementQuery, setAnnouncementQuery] = useState("");
@@ -594,6 +597,19 @@ export default function AdminPage() {
   useEffect(() => {
     if (view === "users") void loadUsers();
   }, [view, userQuery, userStatus]);
+  async function loadReports() {
+    const result = await fetch(`${API}/admin/users/reports/list?status=${reportStatus}`, { credentials: "include", headers: { "x-user-id": ADMIN } });
+    if (!result.ok) return setError("사용자 신고를 불러오지 못했습니다.");
+    setReports(await result.json());
+    setError("");
+  }
+  useEffect(() => { if (view === "reports") void loadReports(); }, [view, reportStatus]);
+  async function resolveReport(id: string, status: "RESOLVED" | "DISMISSED") {
+    const result = await fetch(`${API}/admin/users/reports/${id}`, { method: "PATCH", credentials: "include", headers: { "content-type": "application/json", "x-user-id": ADMIN }, body: JSON.stringify({ status }) });
+    if (!result.ok) return setError("신고 상태를 변경하지 못했습니다.");
+    setNotice(status === "RESOLVED" ? "신고를 처리 완료했습니다." : "신고를 기각했습니다.");
+    await loadReports();
+  }
   async function manageUser(
     user: UserRecord,
     action: "SUSPEND" | "ACTIVATE" | "WITHDRAW",
@@ -862,6 +878,7 @@ export default function AdminPage() {
           >
             공지사항
           </button>
+          <button className={view === "reports" ? "selected" : ""} onClick={() => setView("reports")}>사용자 신고</button>
         </nav>
         <div className="user">
           선　<b>관리자</b>
@@ -882,6 +899,8 @@ export default function AdminPage() {
                     ? "사진 검수"
                   : view === "announcements"
                     ? "공지사항"
+                    : view === "reports"
+                      ? "사용자 신고"
                     : "사용자 관리"}
             </h1>
             <p>
@@ -895,6 +914,8 @@ export default function AdminPage() {
                     ? "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."
                   : view === "announcements"
                     ? "참가자 앱에 전달할 안내와 중요 소식을 관리합니다."
+                    : view === "reports"
+                      ? "참가자가 접수한 신고를 확인하고 처리합니다."
                     : "가입 계정과 이용 상태를 안전하게 관리합니다."}
             </p>
           </div>
@@ -1823,6 +1844,11 @@ export default function AdminPage() {
                 </article>
               )) : <p className="empty">조건에 맞는 공지사항이 없습니다.</p>}
             </div>
+          </section>
+        ) : view === "reports" ? (
+          <section className="reportAdmin">
+            <div className="catalogHead"><div><h2>사용자 신고</h2><p>신고자와 대상, 접수 사유를 확인하고 처리 상태를 기록합니다.</p></div><select value={reportStatus} onChange={(event) => setReportStatus(event.target.value as typeof reportStatus)}><option value="OPEN">처리 대기</option><option value="RESOLVED">처리 완료</option><option value="DISMISSED">기각</option></select></div>
+            <div className="reportAdminList">{reports.length ? reports.map((report) => <article key={report.id}><header><mark>{report.reason}</mark><time>{new Date(report.createdAt).toLocaleString("ko-KR")}</time></header><h3>{report.reported.nickname} 신고</h3><p>{report.detail || "상세 내용 없음"}</p><dl><div><dt>신고자</dt><dd>{report.reporter.nickname} · {report.reporter.email}</dd></div><div><dt>신고 대상</dt><dd>{report.reported.nickname} · {report.reported.email}</dd></div></dl>{reportStatus === "OPEN" && <footer><button className="secondary" onClick={() => void resolveReport(report.id, "DISMISSED")}>기각</button><button className="primary" onClick={() => void resolveReport(report.id, "RESOLVED")}>처리 완료</button></footer>}</article>) : <p className="empty">해당 상태의 신고가 없습니다.</p>}</div>
           </section>
         ) : (
           <>

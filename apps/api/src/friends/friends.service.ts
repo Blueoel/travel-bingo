@@ -38,7 +38,9 @@ export class FriendsService {
     const connectedUserIds = connected.map((row) =>
       row.requesterId === userId ? row.addresseeId : row.requesterId,
     );
-    return this.db.user.findMany({ where: { id: { notIn: [userId, ...connectedUserIds] }, status: "ACTIVE", role: "USER", OR: [{ nickname: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] }, select: { id: true, nickname: true, email: true }, take: 10 });
+    const blocks = await this.db.userBlock.findMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] }, select: { blockerId: true, blockedId: true } });
+    const blockedUserIds = blocks.map((row) => row.blockerId === userId ? row.blockedId : row.blockerId);
+    return this.db.user.findMany({ where: { id: { notIn: [userId, ...connectedUserIds, ...blockedUserIds] }, status: "ACTIVE", role: "USER", OR: [{ nickname: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] }, select: { id: true, nickname: true, email: true }, take: 10 });
   }
 
   async profile(userId: string, friendUserId: string): Promise<unknown> {
@@ -101,6 +103,8 @@ export class FriendsService {
 
   async request(userId: string, addresseeId: string): Promise<unknown> {
     if (!addresseeId || addresseeId === userId) throw new BadRequestException("Invalid friend target.");
+    const blocked = await this.db.userBlock.findFirst({ where: { OR: [{ blockerId: userId, blockedId: addresseeId }, { blockerId: addresseeId, blockedId: userId }] } });
+    if (blocked) throw new BadRequestException("Friend request unavailable.");
     const reverse = await this.db.friendship.findUnique({ where: { requesterId_addresseeId: { requesterId: addresseeId, addresseeId: userId } } });
     if (reverse?.status === "PENDING") return this.db.friendship.update({ where: { id: reverse.id }, data: { status: "ACCEPTED" } });
     if (reverse?.status === "ACCEPTED") return reverse;
@@ -129,5 +133,21 @@ export class FriendsService {
     const result = await this.db.friendship.deleteMany({ where: { id, OR: [{ requesterId: userId }, { addresseeId: userId }] } });
     if (!result.count) throw new NotFoundException("Friendship not found.");
     return { deleted: true };
+  }
+
+  async block(userId: string, blockedId: string): Promise<{ blocked: boolean }> {
+    if (!blockedId || blockedId === userId) throw new BadRequestException("Invalid block target.");
+    await this.db.$transaction(async (transaction) => {
+      await transaction.friendship.deleteMany({ where: { OR: [{ requesterId: userId, addresseeId: blockedId }, { requesterId: blockedId, addresseeId: userId }] } });
+      await transaction.userBlock.upsert({ where: { blockerId_blockedId: { blockerId: userId, blockedId } }, create: { blockerId: userId, blockedId }, update: {} });
+    });
+    return { blocked: true };
+  }
+
+  async report(userId: string, reportedId: string, reason: string, detail?: string): Promise<{ reported: boolean }> {
+    const normalizedReason = reason.trim();
+    if (!reportedId || reportedId === userId || normalizedReason.length < 2 || normalizedReason.length > 40) throw new BadRequestException("Invalid report.");
+    await this.db.userReport.create({ data: { reporterId: userId, reportedId, reason: normalizedReason, detail: detail?.trim().slice(0, 500) || null } });
+    return { reported: true };
   }
 }

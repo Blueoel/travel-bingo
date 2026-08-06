@@ -61,4 +61,16 @@ export class UserAdminController {
       administratorId,
     );
   }
+
+  @Get("reports/list")
+  async reports(@Headers("cookie") cookie?: string, @Headers("x-user-id") developmentUserId?: string, @Query("status") status?: string): Promise<unknown> {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.users.listReports(status);
+  }
+
+  @Patch("reports/:id")
+  async resolveReport(@Headers("cookie") cookie: string | undefined, @Headers("x-user-id") developmentUserId: string | undefined, @Param("id") id: string, @Body() body: { status?: "RESOLVED" | "DISMISSED" }): Promise<unknown> {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.users.resolveReport(id, body.status ?? "RESOLVED");
+  }
 }

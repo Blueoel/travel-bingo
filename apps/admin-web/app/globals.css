@@ -995,7 +995,21 @@ textarea {
     grid-template-columns: 1fr 1fr;
   }
 }
+.reportAdmin { padding: 22px; border: 1px solid #dfe4df; border-radius: 16px; background: #fff; }
+.reportAdmin .catalogHead select { min-width: 140px; padding: 10px; border: 1px solid #d8ded8; border-radius: 9px; }
+.reportAdminList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.reportAdminList article { padding: 18px; border: 1px solid #e1e5e1; border-radius: 14px; background: #fcfdfc; }
+.reportAdminList article header { display: flex; justify-content: space-between; align-items: center; }
+.reportAdminList mark { padding: 4px 8px; border-radius: 999px; background: #fae5df; color: #8b493d; }
+.reportAdminList time { color: #909790; font-size: 11px; }
+.reportAdminList h3 { margin: 16px 0 8px; }
+.reportAdminList p { min-height: 42px; color: #555d56; }
+.reportAdminList dl { display: grid; gap: 7px; padding: 12px; background: #f3f6f3; }
+.reportAdminList dl div { display: grid; grid-template-columns: 70px 1fr; }
+.reportAdminList dt { color: #7a837b; }
+.reportAdminList footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 @media (max-width: 560px) {
+  .reportAdminList { grid-template-columns: 1fr; }
   .composerHead { align-items: flex-start; flex-direction: column; }
   .composerFilters { grid-template-columns: 1fr; }
   .regionBoardPreview { gap: 4px; }

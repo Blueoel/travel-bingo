@@ -90,6 +90,9 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /announcementFilter/);
   assert.match(pageSource, /제목 또는 내용 검색/);
   assert.match(pageSource, /예약/);
+  assert.match(pageSource, /사용자 신고/);
+  assert.match(pageSource, /admin\/users\/reports\/list/);
+  assert.match(pageSource, /처리 완료/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),

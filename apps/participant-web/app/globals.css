@@ -518,6 +518,13 @@ button {
 .friend-activity-list > div > span { color: #5f8656; font-weight: 900; }
 .friend-activity-list small { color: #9a9387; font-size: 9px; }
 .friend-profile-ranking { justify-content: center; background: #496f47; color: #fff; }
+.friend-safety-actions { display: flex; justify-content: center; gap: 16px; margin-top: 12px; }
+.friend-safety-actions button { border: 0; background: transparent; color: #9a6a62; font-size: 10px; text-decoration: underline; }
+.report-sheet > p { color: #66645e; font-size: 12px; }
+.report-sheet > label { display: grid; gap: 7px; margin-top: 14px; color: #405643; font-size: 11px; font-weight: 800; }
+.report-sheet select, .report-sheet textarea { width: 100%; padding: 11px; border: 1px solid #d8cfc0; border-radius: 10px; background: #fff; font: inherit; }
+.report-sheet > small { display: block; margin-top: 5px; color: #989084; text-align: right; }
+.report-submit { width: 100%; min-height: 44px; margin-top: 18px; border: 0; border-radius: 12px; background: #8a5048; color: #fff; font-weight: 800; }
 .exploration-screen {
   position: absolute;
   inset: 0 0 76px;
