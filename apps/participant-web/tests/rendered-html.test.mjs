@@ -694,3 +694,19 @@ test("searches the full region directory and separates ready regions", async () 
   assert.match(pageSource, /disabled=\{!bingo\}/);
   assert.match(pageSource, /void openCatalogBingo\(challenge\.bingo\)/);
 });
+
+test("exposes friend management and received request badges from My", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /친구 관리/);
+  assert.match(pageSource, /item\.direction === "RECEIVED"/);
+  assert.match(pageSource, /친구 \{friends\.filter/);
+  assert.match(stylesSource, /\.friend-request-badge/);
+});
