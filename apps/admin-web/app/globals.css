@@ -949,7 +949,24 @@ textarea {
 .announcementStatus.scheduled { background: #e6eefb; color: #315f97; }
 .announcementStatus.ended { color: #7a7f7a; }
 .announcementActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.badgeAdmin { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(480px, 1.2fr); gap: 18px; align-items: start; }
+.badgeForm, .badgeAdminList { padding: 22px; border: 1px solid #dfe4df; border-radius: 16px; background: #fff; }
+.badgeForm { position: sticky; top: 24px; }
+.badgeFormGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.badgeForm label { display: grid; gap: 7px; margin-top: 12px; font-weight: 700; }
+.badgeForm input, .badgeForm select, .badgeForm textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #d7ddd7; border-radius: 9px; background: #fff; }
+.badgeAdminList { display: grid; gap: 10px; }
+.badgeAdminList article { display: grid; grid-template-columns: 58px 1fr auto; gap: 13px; align-items: center; padding: 15px; border: 1px solid #e0e5df; border-radius: 13px; }
+.badgeAdminList article.inactive { opacity: .55; background: #f3f4f2; }
+.badgeAdminList article > span { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 50%; background: #edf4e7; font-size: 27px; overflow: hidden; }
+.badgeAdminList img { width: 100%; height: 100%; object-fit: cover; }
+.badgeAdminList small { color: #71836d; font-weight: 800; }
+.badgeAdminList h3 { margin: 4px 0; }
+.badgeAdminList p { margin: 0 0 5px; color: #70766f; }
+.badgeAdminList b { color: #355d3a; font-size: 12px; }
 @media (max-width: 900px) {
+  .badgeAdmin { grid-template-columns: 1fr; }
+  .badgeForm { position: static; }
   .announcementAdmin { grid-template-columns: 1fr; }
   .announcementForm { position: static; }
   .composerLayout { grid-template-columns: 1fr; }

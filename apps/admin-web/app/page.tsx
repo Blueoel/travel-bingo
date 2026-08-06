@@ -94,6 +94,7 @@ type Announcement = {
   createdAt: string;
   _count: { reads: number };
 };
+type BadgeDefinition = { id: string; code: string; title: string; description: string; icon: string; imageUrl: string | null; metric: "POINTS" | "COMPLETED_MISSIONS" | "COMPLETED_BINGOS" | "COMPLETED_REGIONS"; target: number; displayOrder: number; status: "ACTIVE" | "INACTIVE" };
 type AttractionRecommendation = {
   contentId: string;
   contentTypeId: string | null;
@@ -158,7 +159,7 @@ export default function AdminPage() {
     [similarityGroup, setSimilarityGroup] = useState(""),
     [dailyCandidate, setDailyCandidate] = useState("");
   const [view, setView] = useState<
-    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements" | "reports"
+    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements" | "reports" | "badges"
   >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
@@ -174,6 +175,8 @@ export default function AdminPage() {
   const [reports, setReports] = useState<UserReport[]>([]);
   const [reportStatus, setReportStatus] = useState<"OPEN" | "RESOLVED" | "DISMISSED">("OPEN");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [badges, setBadges] = useState<BadgeDefinition[]>([]);
+  const [editingBadge, setEditingBadge] = useState<BadgeDefinition | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [announcementQuery, setAnnouncementQuery] = useState("");
   const [announcementFilter, setAnnouncementFilter] = useState<"ALL" | "DRAFT" | "ACTIVE" | "SCHEDULED" | "ENDED">("ALL");
@@ -662,6 +665,20 @@ export default function AdminPage() {
     setAnnouncements(await result.json());
     setError("");
   }
+  async function loadBadges() {
+    const response = await fetch(`${API}/admin/badges`, { headers: { "x-user-id": ADMIN } });
+    if (!response.ok) return setError("배지 목록을 불러오지 못했습니다.");
+    setBadges(await response.json()); setError("");
+  }
+  useEffect(() => { if (view === "badges") void loadBadges(); }, [view]);
+  async function saveBadge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const body = { code: String(data.code), title: String(data.title), description: String(data.description), icon: String(data.icon), imageUrl: String(data.imageUrl || ""), metric: String(data.metric), target: Number(data.target), displayOrder: Number(data.displayOrder), status: String(data.status) };
+    const response = await fetch(`${API}/admin/badges${editingBadge ? `/${editingBadge.id}` : ""}`, { method: editingBadge ? "PATCH" : "POST", headers: { "x-user-id": ADMIN, "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (!response.ok) return setError("배지 설정을 저장하지 못했습니다.");
+    setEditingBadge(null); setNotice(editingBadge ? "배지 설정을 수정했습니다." : "새 배지를 등록했습니다."); await loadBadges(); event.currentTarget.reset();
+  }
   useEffect(() => {
     if (view === "announcements") void loadAnnouncements();
   }, [view]);
@@ -886,6 +903,7 @@ export default function AdminPage() {
             공지사항
           </button>
           <button className={view === "reports" ? "selected" : ""} onClick={() => setView("reports")}>사용자 신고</button>
+          <button className={view === "badges" ? "selected" : ""} onClick={() => setView("badges")}>배지 관리</button>
         </nav>
         <div className="user">
           선　<b>관리자</b>
@@ -906,6 +924,8 @@ export default function AdminPage() {
                     ? "사진 검수"
                   : view === "announcements"
                     ? "공지사항"
+                    : view === "badges"
+                      ? "배지 관리"
                     : view === "reports"
                       ? "사용자 신고"
                     : "사용자 관리"}
@@ -921,6 +941,8 @@ export default function AdminPage() {
                     ? "AI가 판단하기 어려운 사진 인증을 확인하고 승인하거나 거절합니다."
                   : view === "announcements"
                     ? "참가자 앱에 전달할 안내와 중요 소식을 관리합니다."
+                    : view === "badges"
+                      ? "배지 획득 조건과 참가자 앱 표시 순서를 관리합니다."
                     : view === "reports"
                       ? "참가자가 접수한 신고를 확인하고 처리합니다."
                     : "가입 계정과 이용 상태를 안전하게 관리합니다."}
@@ -1810,6 +1832,27 @@ export default function AdminPage() {
             ) : (
               <p className="empty">현재 검수 대기 사진이 없습니다.</p>
             )}
+          </section>
+        ) : view === "badges" ? (
+          <section className="badgeAdmin">
+            <form className="badgeForm" onSubmit={saveBadge} key={editingBadge?.id ?? "new-badge"}>
+              <div className="catalogHead"><div><h2>{editingBadge ? "배지 수정" : "새 배지 등록"}</h2><p>아이콘은 지금 이모지로 사용하고, 완성된 손그림 이미지 URL을 나중에 연결할 수 있습니다.</p></div></div>
+              <div className="badgeFormGrid">
+                <label>관리 코드<input name="code" required maxLength={50} defaultValue={editingBadge?.code} placeholder="예: PHOTO_COLLECTOR" /></label>
+                <label>배지 아이콘<input name="icon" required maxLength={20} defaultValue={editingBadge?.icon ?? "🏅"} /></label>
+                <label>배지명<input name="title" required maxLength={80} defaultValue={editingBadge?.title} /></label>
+                <label>획득 기준<select name="metric" defaultValue={editingBadge?.metric ?? "COMPLETED_MISSIONS"}><option value="POINTS">누적 포인트</option><option value="COMPLETED_MISSIONS">완료 미션 수</option><option value="COMPLETED_BINGOS">완료 빙고판 수</option><option value="COMPLETED_REGIONS">완료 지역 빙고 수</option></select></label>
+                <label>목표 수치<input name="target" required type="number" min="1" defaultValue={editingBadge?.target ?? 1} /></label>
+                <label>표시 순서<input name="displayOrder" type="number" defaultValue={editingBadge?.displayOrder ?? badges.length * 10 + 10} /></label>
+                <label>운영 상태<select name="status" defaultValue={editingBadge?.status ?? "ACTIVE"}><option value="ACTIVE">활성</option><option value="INACTIVE">비활성</option></select></label>
+                <label>손그림 이미지 URL<input name="imageUrl" type="url" defaultValue={editingBadge?.imageUrl ?? ""} placeholder="완성 후 입력" /></label>
+              </div>
+              <label>설명<textarea name="description" required maxLength={240} rows={3} defaultValue={editingBadge?.description} /></label>
+              <div className="actions">{editingBadge && <button type="button" className="secondary" onClick={() => setEditingBadge(null)}>수정 취소</button>}<button className="primary">{editingBadge ? "변경 저장" : "배지 등록"}</button></div>
+            </form>
+            <div className="badgeAdminList">
+              {badges.map((badge) => <article className={badge.status === "ACTIVE" ? "" : "inactive"} key={badge.id}><span>{badge.imageUrl ? <img src={badge.imageUrl} alt="" /> : badge.icon}</span><div><small>{badge.status === "ACTIVE" ? "활성" : "비활성"} · 순서 {badge.displayOrder}</small><h3>{badge.title}</h3><p>{badge.description}</p><b>{badge.metric === "POINTS" ? "누적 포인트" : badge.metric === "COMPLETED_MISSIONS" ? "완료 미션" : badge.metric === "COMPLETED_BINGOS" ? "완료 빙고판" : "완료 지역 빙고"} {badge.target}</b></div><button type="button" className="textButton" onClick={() => setEditingBadge(badge)}>수정</button></article>)}
+            </div>
           </section>
         ) : view === "announcements" ? (
           <section className="announcementAdmin">

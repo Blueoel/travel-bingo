@@ -158,7 +158,7 @@ type FriendProfile = {
 type BlockedUser = { id: string; createdAt: string; blocked: { id: string; nickname: string } };
 type BadgeSummary = {
   totals: { points: number; completedMissions: number; completedBingos: number; completedRegions: number };
-  badges: Array<{ id: string; title: string; description: string; icon: string; current: number; target: number; earned: boolean; progress: number }>;
+  badges: Array<{ id: string; title: string; description: string; icon: string; imageUrl?: string | null; current: number; target: number; earned: boolean; progress: number }>;
 };
 type RegionRecommendation = {
   id: string;
@@ -3310,7 +3310,7 @@ export default function Home() {
                   <div className="badge-grid">
                     {badgeSummary.badges.map((badge) => (
                       <article className={badge.earned ? "earned" : "locked"} key={badge.id}>
-                        <span aria-hidden="true">{badge.earned ? badge.icon : "?"}</span>
+                        <span aria-hidden="true">{badge.earned ? (badge.imageUrl ? <img src={badge.imageUrl} alt="" /> : badge.icon) : "?"}</span>
                         <div>
                           <small>{badge.earned ? "획득 완료" : `${badge.current} / ${badge.target}`}</small>
                           <h3>{badge.title}</h3>
