@@ -146,6 +146,15 @@ type Announcement = {
 };
 type FriendUser = { id: string; nickname: string; email: string | null };
 type Friendship = { id: string; status: "PENDING" | "ACCEPTED" | "REJECTED"; direction: "SENT" | "RECEIVED"; user: FriendUser };
+type FriendProfile = {
+  id: string;
+  nickname: string;
+  joinedAt: string;
+  totalPoints: number;
+  completedMissions: number;
+  completedBingos: number;
+  recentActivity: Array<{ title: string; completedAt: string | null }>;
+};
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -492,6 +501,8 @@ export default function Home() {
   const [friends, setFriends] = useState<Friendship[]>([]);
   const [friendQuery, setFriendQuery] = useState("");
   const [friendResults, setFriendResults] = useState<FriendUser[]>([]);
+  const [friendProfile, setFriendProfile] = useState<FriendProfile | null>(null);
+  const [friendProfileLoading, setFriendProfileLoading] = useState(false);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -767,6 +778,22 @@ export default function Home() {
     if (!window.confirm(action)) return;
     const response = await apiFetch(`/friends/${item.id}`, { method: "DELETE" });
     if (response.ok) await loadFriends();
+  };
+  const openFriendProfile = async (user: FriendUser) => {
+    setFriendsOpen(false);
+    setFriendProfileLoading(true);
+    try {
+      const response = await apiFetch(`/friends/${user.id}/profile`);
+      if (response.ok) setFriendProfile(await response.json());
+    } finally {
+      setFriendProfileLoading(false);
+    }
+  };
+  const openFriendRanking = () => {
+    setFriendsOpen(false);
+    setFriendProfile(null);
+    setRankingScope("FRIEND");
+    setActiveTab("ranking");
   };
 
   const enterHomeAfterLogin = async (
@@ -3294,17 +3321,32 @@ export default function Home() {
         <div className="announcement-backdrop" onClick={() => setFriendsOpen(false)}>
           <section className="friend-sheet" onClick={(event) => event.stopPropagation()}>
             <header><div><small>WALK TOGETHER</small><h2>친구 관리</h2></div><button type="button" onClick={() => setFriendsOpen(false)}>×</button></header>
+            <button type="button" className="friend-ranking-link" onClick={openFriendRanking}>친구 랭킹 보러가기 <b>›</b></button>
             <label className="friend-search"><input value={friendQuery} onChange={(event) => void searchFriends(event.target.value)} placeholder="닉네임 또는 이메일 검색" /></label>
             {friendResults.map((user) => <div className="friend-row" key={user.id}><span><b>{user.nickname}</b><small>{user.email}</small></span><button type="button" onClick={() => void requestFriend(user.id)}>친구 요청</button></div>)}
             <h3>받은 요청</h3>
             {friends.filter((item) => item.status === "PENDING" && item.direction === "RECEIVED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.user.email}</small></span><div><button type="button" onClick={() => void decideFriend(item.id, true)}>수락</button><button type="button" className="friend-secondary-action" onClick={() => void decideFriend(item.id, false)}>거절</button></div></div>)}
             {!friends.some((item) => item.status === "PENDING" && item.direction === "RECEIVED") && <p className="friend-empty">받은 친구 요청이 없어요.</p>}
             <h3>친구</h3>
-            {friends.filter((item) => item.status === "ACCEPTED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.user.email}</small></span><button type="button" className="friend-secondary-action" onClick={() => void removeFriend(item)}>친구 삭제</button></div>)}
+            {friends.filter((item) => item.status === "ACCEPTED").map((item) => <div className="friend-row" key={item.id}><button type="button" className="friend-profile-trigger" onClick={() => void openFriendProfile(item.user)}><b>{item.user.nickname}</b><small>활동 프로필 보기</small></button><button type="button" className="friend-secondary-action" onClick={() => void removeFriend(item)}>친구 삭제</button></div>)}
             {!friends.some((item) => item.status === "ACCEPTED") && <p className="friend-empty">아직 등록된 친구가 없어요.</p>}
             <h3>보낸 요청</h3>
             {friends.filter((item) => item.status === "PENDING" && item.direction === "SENT").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>수락을 기다리고 있어요.</small></span><button type="button" className="friend-secondary-action" onClick={() => void removeFriend(item)}>요청 취소</button></div>)}
             {!friends.some((item) => item.status === "PENDING" && item.direction === "SENT") && <p className="friend-empty">보낸 친구 요청이 없어요.</p>}
+          </section>
+        </div>
+      )}
+      {(friendProfile || friendProfileLoading) && (
+        <div className="announcement-backdrop" onClick={() => setFriendProfile(null)}>
+          <section className="friend-sheet friend-profile-sheet" onClick={(event) => event.stopPropagation()}>
+            <header><button type="button" className="friend-profile-back" onClick={() => { setFriendProfile(null); setFriendsOpen(true); }}>←</button><div><small>FRIEND PROFILE</small><h2>친구 프로필</h2></div><button type="button" onClick={() => setFriendProfile(null)}>×</button></header>
+            {friendProfileLoading ? <p className="friend-profile-loading">친구의 산책 기록을 불러오고 있어요.</p> : friendProfile && <>
+              <div className="friend-profile-identity"><span>{friendProfile.nickname.slice(0, 1)}</span><div><h3>{friendProfile.nickname}</h3><p>{new Date(friendProfile.joinedAt).getFullYear()}년부터 함께 걷는 중</p></div></div>
+              <div className="friend-profile-stats"><div><b>{friendProfile.totalPoints.toLocaleString()}</b><span>누적 Point</span></div><div><b>{friendProfile.completedMissions}</b><span>완료 미션</span></div><div><b>{friendProfile.completedBingos}</b><span>완료 빙고</span></div></div>
+              <h3>최근 활동</h3>
+              <div className="friend-activity-list">{friendProfile.recentActivity.length ? friendProfile.recentActivity.map((activity, index) => <div key={`${activity.title}-${index}`}><span>✓</span><b>{activity.title}</b><small>{activity.completedAt ? new Date(activity.completedAt).toLocaleDateString("ko-KR") : "최근"}</small></div>) : <p className="friend-empty">아직 공개할 활동 기록이 없어요.</p>}</div>
+              <button type="button" className="friend-profile-ranking" onClick={openFriendRanking}>친구 랭킹에서 함께 보기</button>
+            </>}
           </section>
         </div>
       )}

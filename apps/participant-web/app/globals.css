@@ -491,6 +491,27 @@ button {
 .friend-row > div { display: flex; gap: 6px; }
 .friend-row .friend-secondary-action { border-color: #d8cfc0; background: #fffdf8; color: #777064; }
 .friend-empty { margin: 0; padding: 12px 4px; border-bottom: 1px dashed #dfd5c3; color: #9a9387; font-size: 11px; }
+.friend-ranking-link, .friend-profile-ranking { width: 100%; min-height: 42px; display: flex; justify-content: space-between; align-items: center; padding: 0 14px; border: 1px solid #bfd0b4; border-radius: 12px; background: #edf4e5; color: #355b39; font-weight: 800; }
+.friend-profile-trigger { flex: 1; display: grid; gap: 3px; padding: 0 !important; border: 0 !important; background: transparent !important; text-align: left; }
+.friend-profile-trigger small { color: #8f887b; font-weight: 500; }
+.friend-profile-sheet header { display: grid; grid-template-columns: 32px 1fr 32px; gap: 8px; }
+.friend-profile-sheet header > div { text-align: center; }
+.friend-profile-back { font-size: 18px !important; }
+.friend-profile-loading { padding: 48px 0; color: #777064; text-align: center; }
+.friend-profile-identity { display: flex; align-items: center; gap: 13px; padding: 18px 4px; }
+.friend-profile-identity > span { width: 54px; height: 54px; display: grid; place-items: center; border: 2px solid #58764e; border-radius: 48% 52% 45% 55%; background: #e4ecd7; color: #355b39; font-size: 22px; font-weight: 900; }
+.friend-profile-identity h3, .friend-profile-identity p { margin: 0; }
+.friend-profile-identity p { margin-top: 4px; color: #8c8579; font-size: 11px; }
+.friend-profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); padding: 14px 4px; border: 1px solid #e1d9cb; border-radius: 15px; }
+.friend-profile-stats div { display: grid; gap: 4px; text-align: center; }
+.friend-profile-stats div + div { border-left: 1px solid #e7e0d4; }
+.friend-profile-stats b { color: #355b39; font-size: 17px; }
+.friend-profile-stats span { color: #8c8579; font-size: 9px; }
+.friend-activity-list { margin-bottom: 16px; }
+.friend-activity-list > div { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 7px; padding: 11px 4px; border-bottom: 1px dashed #dfd5c3; }
+.friend-activity-list > div > span { color: #5f8656; font-weight: 900; }
+.friend-activity-list small { color: #9a9387; font-size: 9px; }
+.friend-profile-ranking { justify-content: center; background: #496f47; color: #fff; }
 .exploration-screen {
   position: absolute;
   inset: 0 0 76px;

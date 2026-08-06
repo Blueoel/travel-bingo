@@ -31,6 +31,64 @@ export class FriendsService {
     return this.db.user.findMany({ where: { id: { notIn: [userId, ...connectedUserIds] }, status: "ACTIVE", role: "USER", OR: [{ nickname: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] }, select: { id: true, nickname: true, email: true }, take: 10 });
   }
 
+  async profile(userId: string, friendUserId: string): Promise<unknown> {
+    const friendship = await this.db.friendship.findFirst({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: userId, addresseeId: friendUserId },
+          { requesterId: friendUserId, addresseeId: userId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!friendship) throw new NotFoundException("Friend profile not found.");
+
+    const [friend, points, completedMissions, completedBingos, recentCells] =
+      await Promise.all([
+        this.db.user.findFirst({
+          where: { id: friendUserId, status: "ACTIVE" },
+          select: { id: true, nickname: true, createdAt: true },
+        }),
+        this.db.pointLedger.aggregate({
+          where: { userId: friendUserId },
+          _sum: { points: true },
+        }),
+        this.db.sessionCell.count({
+          where: { status: "VERIFIED", session: { userId: friendUserId } },
+        }),
+        this.db.bingoSession.count({
+          where: {
+            userId: friendUserId,
+            status: { in: ["CLEAR", "PERFECT_CLEAR"] },
+          },
+        }),
+        this.db.sessionCell.findMany({
+          where: { status: "VERIFIED", session: { userId: friendUserId } },
+          orderBy: { verifiedAt: "desc" },
+          take: 3,
+          select: { missionSnapshot: true, verifiedAt: true },
+        }),
+      ]);
+    if (!friend) throw new NotFoundException("Friend profile not found.");
+
+    return {
+      id: friend.id,
+      nickname: friend.nickname,
+      joinedAt: friend.createdAt.toISOString(),
+      totalPoints: points._sum.points ?? 0,
+      completedMissions,
+      completedBingos,
+      recentActivity: recentCells.map((cell) => {
+        const snapshot = cell.missionSnapshot as { title?: unknown };
+        return {
+          title: typeof snapshot.title === "string" ? snapshot.title : "미션 완료",
+          completedAt: cell.verifiedAt?.toISOString() ?? null,
+        };
+      }),
+    };
+  }
+
   async request(userId: string, addresseeId: string): Promise<unknown> {
     if (!addresseeId || addresseeId === userId) throw new BadRequestException("Invalid friend target.");
     const reverse = await this.db.friendship.findUnique({ where: { requesterId_addresseeId: { requesterId: addresseeId, addresseeId: userId } } });

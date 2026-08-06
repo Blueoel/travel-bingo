@@ -8,6 +8,7 @@ export class FriendsController {
   private user(cookie?: string, id?: string) { return this.auth.requireUserId(cookie, id); }
   @Get() async list(@Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<unknown> { return this.friends.list(await this.user(c, d)); }
   @Get("search") async search(@Query("q") q = "", @Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<unknown> { return this.friends.search(await this.user(c, d), q); }
+  @Get(":id/profile") async profile(@Param("id") id: string, @Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<unknown> { return this.friends.profile(await this.user(c, d), id); }
   @Post() async request(@Body() body: { userId?: string }, @Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<unknown> { return this.friends.request(await this.user(c, d), body.userId ?? ""); }
   @Patch(":id") async decide(@Param("id") id: string, @Body() body: { accept?: boolean }, @Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<unknown> { return this.friends.decide(await this.user(c, d), id, body.accept === true); }
   @Delete(":id") async remove(@Param("id") id: string, @Headers("cookie") c?: string, @Headers("x-user-id") d?: string): Promise<{ deleted: boolean }> { return this.friends.remove(await this.user(c, d), id); }
