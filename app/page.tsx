@@ -156,6 +156,10 @@ type FriendProfile = {
   recentActivity: Array<{ title: string; completedAt: string | null }>;
 };
 type BlockedUser = { id: string; createdAt: string; blocked: { id: string; nickname: string } };
+type BadgeSummary = {
+  totals: { points: number; completedMissions: number; completedBingos: number; completedRegions: number };
+  badges: Array<{ id: string; title: string; description: string; icon: string; current: number; target: number; earned: boolean; progress: number }>;
+};
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -508,6 +512,7 @@ export default function Home() {
   const [reportReason, setReportReason] = useState("부적절한 닉네임");
   const [reportDetail, setReportDetail] = useState("");
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -526,7 +531,7 @@ export default function Home() {
     | "ranking"
     | "my"
   >("home");
-  const [myView, setMyView] = useState<"main" | "travel-note" | "settings">("main");
+  const [myView, setMyView] = useState<"main" | "travel-note" | "badges" | "settings">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
@@ -829,6 +834,11 @@ export default function Home() {
     setMyView("settings");
     const response = await apiFetch("/friends/blocks");
     if (response.ok) setBlockedUsers(await response.json());
+  };
+  const openBadges = async () => {
+    setMyView("badges");
+    const response = await apiFetch("/friends/badges");
+    if (response.ok) setBadgeSummary(await response.json());
   };
   const unblockUser = async (block: BlockedUser) => {
     if (!window.confirm(`${block.blocked.nickname}님의 차단을 해제할까요?`)) return;
@@ -3158,7 +3168,7 @@ export default function Home() {
                 ←
               </button>
             )}
-            <h1>{myView === "travel-note" ? "여행 노트" : myView === "settings" ? "설정" : "마이"}</h1>
+            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "settings" ? "설정" : "마이"}</h1>
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -3225,6 +3235,38 @@ export default function Home() {
                     탐험 지도 보기
                   </button>
                 </div>
+              )}
+            </div>
+          ) : myView === "badges" ? (
+            <div className="badge-view">
+              <section className="badge-intro">
+                <small>MY WALKING BADGES</small>
+                <h2>걸으며 모은 작은 성취</h2>
+                <p>미션과 빙고를 완성할수록 새로운 배지가 열려요.</p>
+              </section>
+              {badgeSummary ? (
+                <>
+                  <div className="badge-summary">
+                    <div><b>{badgeSummary.badges.filter((badge) => badge.earned).length}</b><span>획득</span></div>
+                    <div><b>{badgeSummary.badges.length}</b><span>전체 배지</span></div>
+                    <div><b>{badgeSummary.totals.completedMissions}</b><span>누적 미션</span></div>
+                  </div>
+                  <div className="badge-grid">
+                    {badgeSummary.badges.map((badge) => (
+                      <article className={badge.earned ? "earned" : "locked"} key={badge.id}>
+                        <span aria-hidden="true">{badge.earned ? badge.icon : "?"}</span>
+                        <div>
+                          <small>{badge.earned ? "획득 완료" : `${badge.current} / ${badge.target}`}</small>
+                          <h3>{badge.title}</h3>
+                          <p>{badge.description}</p>
+                          <i><b style={{ width: `${badge.progress}%` }} /></i>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="badge-loading">배지 기록을 불러오고 있어요.</p>
               )}
             </div>
           ) : myView === "settings" ? (
@@ -3297,7 +3339,7 @@ export default function Home() {
               </span>
               <b>›</b>
             </button>
-            <button type="button">
+            <button type="button" onClick={() => void openBadges()}>
               <span>♧</span>
               획득 배지
               <b>›</b>
