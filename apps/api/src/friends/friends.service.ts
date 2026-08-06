@@ -18,13 +18,27 @@ export class FriendsService {
   async search(userId: string, q: string): Promise<unknown> {
     const query = q.trim();
     if (query.length < 2) return [];
-    return this.db.user.findMany({ where: { id: { not: userId }, status: "ACTIVE", role: "USER", OR: [{ nickname: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] }, select: { id: true, nickname: true, email: true }, take: 10 });
+    const connected = await this.db.friendship.findMany({
+      where: {
+        status: { in: ["PENDING", "ACCEPTED"] },
+        OR: [{ requesterId: userId }, { addresseeId: userId }],
+      },
+      select: { requesterId: true, addresseeId: true },
+    });
+    const connectedUserIds = connected.map((row) =>
+      row.requesterId === userId ? row.addresseeId : row.requesterId,
+    );
+    return this.db.user.findMany({ where: { id: { notIn: [userId, ...connectedUserIds] }, status: "ACTIVE", role: "USER", OR: [{ nickname: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }] }, select: { id: true, nickname: true, email: true }, take: 10 });
   }
 
   async request(userId: string, addresseeId: string): Promise<unknown> {
     if (!addresseeId || addresseeId === userId) throw new BadRequestException("Invalid friend target.");
     const reverse = await this.db.friendship.findUnique({ where: { requesterId_addresseeId: { requesterId: addresseeId, addresseeId: userId } } });
-    if (reverse) return this.db.friendship.update({ where: { id: reverse.id }, data: { status: "ACCEPTED" } });
+    if (reverse?.status === "PENDING") return this.db.friendship.update({ where: { id: reverse.id }, data: { status: "ACCEPTED" } });
+    if (reverse?.status === "ACCEPTED") return reverse;
+    if (reverse?.status === "REJECTED") await this.db.friendship.delete({ where: { id: reverse.id } });
+    const existing = await this.db.friendship.findUnique({ where: { requesterId_addresseeId: { requesterId: userId, addresseeId } } });
+    if (existing?.status === "ACCEPTED") return existing;
     return this.db.friendship.upsert({ where: { requesterId_addresseeId: { requesterId: userId, addresseeId } }, create: { requesterId: userId, addresseeId }, update: { status: "PENDING" } });
   }
 

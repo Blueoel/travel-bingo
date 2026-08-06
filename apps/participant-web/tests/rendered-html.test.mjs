@@ -708,5 +708,10 @@ test("exposes friend management and received request badges from My", async () =
   assert.match(pageSource, /친구 관리/);
   assert.match(pageSource, /item\.direction === "RECEIVED"/);
   assert.match(pageSource, /친구 \{friends\.filter/);
+  assert.match(pageSource, /보낸 요청/);
+  assert.match(pageSource, /요청 취소/);
+  assert.match(pageSource, /친구 삭제/);
+  assert.match(pageSource, /method: "DELETE"/);
   assert.match(stylesSource, /\.friend-request-badge/);
+  assert.match(stylesSource, /\.friend-empty/);
 });

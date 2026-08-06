@@ -488,6 +488,9 @@ button {
 .friend-row span { display: grid; gap: 2px; }
 .friend-row small { color: #8f887b; }
 .friend-row button { padding: 7px 10px; border: 1px solid #769273; border-radius: 9px; background: #f8fbf4; color: #365c3b; font-weight: 700; }
+.friend-row > div { display: flex; gap: 6px; }
+.friend-row .friend-secondary-action { border-color: #d8cfc0; background: #fffdf8; color: #777064; }
+.friend-empty { margin: 0; padding: 12px 4px; border-bottom: 1px dashed #dfd5c3; color: #9a9387; font-size: 11px; }
 .exploration-screen {
   position: absolute;
   inset: 0 0 76px;
