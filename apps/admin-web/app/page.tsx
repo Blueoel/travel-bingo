@@ -610,6 +610,13 @@ export default function AdminPage() {
     setNotice(status === "RESOLVED" ? "신고를 처리 완료했습니다." : "신고를 기각했습니다.");
     await loadReports();
   }
+  async function suspendReportedUser(report: UserReport) {
+    if (!window.confirm(`${report.reported.nickname} 계정의 이용을 정지하고 신고를 처리 완료할까요?`)) return;
+    const result = await fetch(`${API}/admin/users/${report.reported.id}/status`, { method: "PATCH", credentials: "include", headers: { "content-type": "application/json", "x-user-id": ADMIN }, body: JSON.stringify({ action: "SUSPEND" }) });
+    if (!result.ok) return setError("신고 대상 계정을 정지하지 못했습니다.");
+    await resolveReport(report.id, "RESOLVED");
+    setNotice("신고 대상 계정을 이용 정지하고 신고를 처리 완료했습니다.");
+  }
   async function manageUser(
     user: UserRecord,
     action: "SUSPEND" | "ACTIVATE" | "WITHDRAW",
@@ -1848,7 +1855,7 @@ export default function AdminPage() {
         ) : view === "reports" ? (
           <section className="reportAdmin">
             <div className="catalogHead"><div><h2>사용자 신고</h2><p>신고자와 대상, 접수 사유를 확인하고 처리 상태를 기록합니다.</p></div><select value={reportStatus} onChange={(event) => setReportStatus(event.target.value as typeof reportStatus)}><option value="OPEN">처리 대기</option><option value="RESOLVED">처리 완료</option><option value="DISMISSED">기각</option></select></div>
-            <div className="reportAdminList">{reports.length ? reports.map((report) => <article key={report.id}><header><mark>{report.reason}</mark><time>{new Date(report.createdAt).toLocaleString("ko-KR")}</time></header><h3>{report.reported.nickname} 신고</h3><p>{report.detail || "상세 내용 없음"}</p><dl><div><dt>신고자</dt><dd>{report.reporter.nickname} · {report.reporter.email}</dd></div><div><dt>신고 대상</dt><dd>{report.reported.nickname} · {report.reported.email}</dd></div></dl>{reportStatus === "OPEN" && <footer><button className="secondary" onClick={() => void resolveReport(report.id, "DISMISSED")}>기각</button><button className="primary" onClick={() => void resolveReport(report.id, "RESOLVED")}>처리 완료</button></footer>}</article>) : <p className="empty">해당 상태의 신고가 없습니다.</p>}</div>
+            <div className="reportAdminList">{reports.length ? reports.map((report) => <article key={report.id}><header><mark>{report.reason}</mark><time>{new Date(report.createdAt).toLocaleString("ko-KR")}</time></header><h3>{report.reported.nickname} 신고</h3><p>{report.detail || "상세 내용 없음"}</p><dl><div><dt>신고자</dt><dd>{report.reporter.nickname} · {report.reporter.email}</dd></div><div><dt>신고 대상</dt><dd>{report.reported.nickname} · {report.reported.email}</dd></div></dl>{reportStatus === "OPEN" && <footer><button className="secondary" onClick={() => void resolveReport(report.id, "DISMISSED")}>기각</button><button className="secondary" onClick={() => void resolveReport(report.id, "RESOLVED")}>처리 완료</button>{report.reported.status === "ACTIVE" && <button className="primary" onClick={() => void suspendReportedUser(report)}>이용 정지 후 완료</button>}</footer>}</article>) : <p className="empty">해당 상태의 신고가 없습니다.</p>}</div>
           </section>
         ) : (
           <>

@@ -25,6 +25,14 @@ export class FriendsService {
     }));
   }
 
+  async listBlocks(userId: string): Promise<unknown> {
+    return this.db.userBlock.findMany({
+      where: { blockerId: userId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true, blocked: { select: { id: true, nickname: true } } },
+    });
+  }
+
   async search(userId: string, q: string): Promise<unknown> {
     const query = q.trim();
     if (query.length < 2) return [];
@@ -149,5 +157,11 @@ export class FriendsService {
     if (!reportedId || reportedId === userId || normalizedReason.length < 2 || normalizedReason.length > 40) throw new BadRequestException("Invalid report.");
     await this.db.userReport.create({ data: { reporterId: userId, reportedId, reason: normalizedReason, detail: detail?.trim().slice(0, 500) || null } });
     return { reported: true };
+  }
+
+  async unblock(userId: string, id: string): Promise<{ unblocked: boolean }> {
+    const result = await this.db.userBlock.deleteMany({ where: { id, blockerId: userId } });
+    if (!result.count) throw new NotFoundException("Blocked user not found.");
+    return { unblocked: true };
   }
 }

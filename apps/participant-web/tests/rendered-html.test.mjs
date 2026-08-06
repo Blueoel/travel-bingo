@@ -722,9 +722,13 @@ test("exposes friend management and received request badges from My", async () =
   assert.match(pageSource, /사용자 신고/);
   assert.match(pageSource, /서로 친구 목록과 랭킹에서 제외/);
   assert.match(pageSource, /friends\/\$\{profile\.id\}\/block/);
+  assert.match(pageSource, /차단한 사용자/);
+  assert.match(pageSource, /차단 해제/);
+  assert.match(pageSource, /friends\/blocks\/\$\{block\.id\}/);
   assert.match(stylesSource, /\.friend-request-badge/);
   assert.match(stylesSource, /\.friend-notification/);
   assert.match(stylesSource, /\.friend-empty/);
   assert.match(stylesSource, /\.friend-profile-stats/);
   assert.match(stylesSource, /\.report-sheet/);
+  assert.match(stylesSource, /\.blocked-user-list/);
 });
