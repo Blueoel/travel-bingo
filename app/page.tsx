@@ -503,6 +503,9 @@ export default function Home() {
   const [friendResults, setFriendResults] = useState<FriendUser[]>([]);
   const [friendProfile, setFriendProfile] = useState<FriendProfile | null>(null);
   const [friendProfileLoading, setFriendProfileLoading] = useState(false);
+  const [reportTarget, setReportTarget] = useState<FriendProfile | null>(null);
+  const [reportReason, setReportReason] = useState("부적절한 닉네임");
+  const [reportDetail, setReportDetail] = useState("");
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -802,6 +805,23 @@ export default function Home() {
       await loadFriends();
     }
     await openFriendProfile(item.user);
+  };
+  const blockFriend = async (profile: FriendProfile) => {
+    if (!window.confirm(`${profile.nickname}님을 차단할까요? 서로 친구 목록과 랭킹에서 제외됩니다.`)) return;
+    const response = await apiFetch(`/friends/${profile.id}/block`, { method: "POST" });
+    if (response.ok) {
+      setFriendProfile(null);
+      await loadFriends();
+    }
+  };
+  const submitFriendReport = async () => {
+    if (!reportTarget) return;
+    const response = await apiFetch(`/friends/${reportTarget.id}/report`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ reason: reportReason, detail: reportDetail }) });
+    if (response.ok) {
+      setReportTarget(null);
+      setReportDetail("");
+      window.alert("신고가 접수되었습니다. 관리자가 확인할게요.");
+    }
   };
 
   const enterHomeAfterLogin = async (
@@ -3361,7 +3381,20 @@ export default function Home() {
               <h3>최근 활동</h3>
               <div className="friend-activity-list">{friendProfile.recentActivity.length ? friendProfile.recentActivity.map((activity, index) => <div key={`${activity.title}-${index}`}><span>✓</span><b>{activity.title}</b><small>{activity.completedAt ? new Date(activity.completedAt).toLocaleDateString("ko-KR") : "최근"}</small></div>) : <p className="friend-empty">아직 공개할 활동 기록이 없어요.</p>}</div>
               <button type="button" className="friend-profile-ranking" onClick={openFriendRanking}>친구 랭킹에서 함께 보기</button>
+              <div className="friend-safety-actions"><button type="button" onClick={() => setReportTarget(friendProfile)}>신고</button><button type="button" onClick={() => void blockFriend(friendProfile)}>차단</button></div>
             </>}
+          </section>
+        </div>
+      )}
+      {reportTarget && (
+        <div className="announcement-backdrop" onClick={() => setReportTarget(null)}>
+          <section className="friend-sheet report-sheet" onClick={(event) => event.stopPropagation()}>
+            <header><div><small>SAFETY REPORT</small><h2>사용자 신고</h2></div><button type="button" onClick={() => setReportTarget(null)}>×</button></header>
+            <p>{reportTarget.nickname}님을 신고하는 이유를 알려주세요.</p>
+            <label>신고 사유<select value={reportReason} onChange={(event) => setReportReason(event.target.value)}><option>부적절한 닉네임</option><option>괴롭힘 또는 불쾌한 행동</option><option>부정한 미션 인증</option><option>기타</option></select></label>
+            <label>상세 내용<textarea value={reportDetail} maxLength={500} rows={5} onChange={(event) => setReportDetail(event.target.value)} placeholder="관리자 확인에 도움이 되는 내용을 적어주세요." /></label>
+            <small>{reportDetail.length} / 500자</small>
+            <button type="button" className="report-submit" onClick={() => void submitFriendReport()}>신고 접수</button>
           </section>
         </div>
       )}
