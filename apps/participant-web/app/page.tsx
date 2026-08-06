@@ -513,6 +513,11 @@ export default function Home() {
   const [reportDetail, setReportDetail] = useState("");
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
+  const [profileNickname, setProfileNickname] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -832,19 +837,70 @@ export default function Home() {
   };
   const openSettings = async () => {
     setMyView("settings");
+    setProfileNickname(account?.nickname ?? nickname);
+    setSettingsStatus(null);
     const response = await apiFetch("/friends/blocks");
     if (response.ok) setBlockedUsers(await response.json());
   };
-  const openBadges = async () => {
-    setMyView("badges");
+  const loadAccountSummary = async () => {
     const response = await apiFetch("/friends/badges");
     if (response.ok) setBadgeSummary(await response.json());
+  };
+  const openBadges = async () => {
+    setMyView("badges");
+    await loadAccountSummary();
   };
   const unblockUser = async (block: BlockedUser) => {
     if (!window.confirm(`${block.blocked.nickname}님의 차단을 해제할까요?`)) return;
     const response = await apiFetch(`/friends/blocks/${block.id}`, { method: "DELETE" });
     if (response.ok) setBlockedUsers((current) => current.filter((item) => item.id !== block.id));
   };
+  const saveNickname = async () => {
+    setSettingsSaving(true);
+    setSettingsStatus(null);
+    try {
+      const response = await apiFetch("/auth/profile", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ nickname: profileNickname }) });
+      const payload = await response.json() as { user?: AccountUser; message?: string };
+      if (!response.ok || !payload.user) throw new Error(payload.message ?? "닉네임을 변경하지 못했어요.");
+      setAccount(payload.user);
+      setNickname(payload.user.nickname);
+      setProfileNickname(payload.user.nickname);
+      setSettingsStatus("닉네임을 변경했어요.");
+    } catch (error) {
+      setSettingsStatus(error instanceof Error ? error.message : "닉네임을 변경하지 못했어요.");
+    } finally { setSettingsSaving(false); }
+  };
+  const savePassword = async () => {
+    setSettingsSaving(true);
+    setSettingsStatus(null);
+    try {
+      const response = await apiFetch("/auth/password", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
+      const payload = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(payload.message ?? "비밀번호를 변경하지 못했어요.");
+      window.alert("비밀번호를 변경했어요. 새 비밀번호로 다시 로그인해주세요.");
+      logout();
+    } catch (error) {
+      setSettingsStatus(error instanceof Error ? error.message : "비밀번호를 변경하지 못했어요.");
+    } finally { setSettingsSaving(false); }
+  };
+  const withdrawAccount = async () => {
+    if (!currentPassword) return setSettingsStatus("탈퇴하려면 현재 비밀번호를 입력해주세요.");
+    if (!window.confirm("회원 탈퇴 후에는 계정과 로그인 정보를 복구할 수 없습니다. 정말 탈퇴할까요?")) return;
+    setSettingsSaving(true);
+    setSettingsStatus(null);
+    try {
+      const response = await apiFetch("/auth/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword }) });
+      const payload = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(payload.message ?? "회원 탈퇴를 처리하지 못했어요.");
+      setAccount(null); setSessionId(null); setSelected(null); setActiveTab("home"); setAuthStatus("unauthenticated");
+    } catch (error) {
+      setSettingsStatus(error instanceof Error ? error.message : "회원 탈퇴를 처리하지 못했어요.");
+    } finally { setSettingsSaving(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === "my" && authStatus === "authenticated") void loadAccountSummary();
+  }, [activeTab, authStatus]);
 
   const enterHomeAfterLogin = async (
     user: Omit<AccountUser, "role"> & { role?: AccountUser["role"] },
@@ -3271,11 +3327,23 @@ export default function Home() {
             </div>
           ) : myView === "settings" ? (
             <div className="settings-view">
-              <section><small>PRIVACY & SAFETY</small><h2>차단한 사용자</h2><p>차단한 사용자는 친구 검색과 랭킹에서 서로 표시되지 않아요.</p></section>
+              <section className="account-settings-card">
+                <small>ACCOUNT PROFILE</small><h2>계정 정보</h2><p>프로필과 로그인 정보를 안전하게 관리해요.</p>
+                <label>닉네임<input value={profileNickname} maxLength={40} onChange={(event) => setProfileNickname(event.target.value)} /></label>
+                <button type="button" disabled={settingsSaving || !profileNickname.trim()} onClick={() => void saveNickname()}>닉네임 변경</button>
+                {account?.email && <>
+                  <label>현재 비밀번호<input type="password" value={currentPassword} autoComplete="current-password" onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+                  <label>새 비밀번호<input type="password" value={newPassword} minLength={8} autoComplete="new-password" placeholder="8자 이상" onChange={(event) => setNewPassword(event.target.value)} /></label>
+                  <button type="button" disabled={settingsSaving || !currentPassword || newPassword.length < 8} onClick={() => void savePassword()}>비밀번호 변경</button>
+                </>}
+                {settingsStatus && <p className="settings-status" role="status">{settingsStatus}</p>}
+              </section>
+              <section className="safety-settings-card"><small>PRIVACY & SAFETY</small><h2>차단한 사용자</h2><p>차단한 사용자는 친구 검색과 랭킹에서 서로 표시되지 않아요.</p></section>
               <div className="blocked-user-list">
                 {blockedUsers.length ? blockedUsers.map((block) => <div key={block.id}><span>{block.blocked.nickname.slice(0, 1)}</span><div><b>{block.blocked.nickname}</b><small>{new Date(block.createdAt).toLocaleDateString("ko-KR")} 차단</small></div><button type="button" onClick={() => void unblockUser(block)}>차단 해제</button></div>) : <p className="friend-empty">차단한 사용자가 없어요.</p>}
               </div>
               <p className="settings-note">차단을 해제해도 이전 친구 관계는 자동으로 복구되지 않습니다.</p>
+              {account?.email && <section className="withdraw-card"><small>ACCOUNT WITHDRAWAL</small><h2>회원 탈퇴</h2><p>탈퇴하면 로그인할 수 없으며 계정 정보는 비활성화됩니다.</p><button type="button" disabled={settingsSaving} onClick={() => void withdrawAccount()}>회원 탈퇴</button></section>}
             </div>
           ) : (
             <>
@@ -3291,15 +3359,15 @@ export default function Home() {
           </div>
           <div className="my-stats">
             <div>
-              <b>{points.toLocaleString()}</b>
+              <b>{(badgeSummary?.totals.points ?? points).toLocaleString()}</b>
               <span>누적 Point</span>
             </div>
             <div>
-              <b>{completeCount}</b>
+              <b>{badgeSummary?.totals.completedMissions ?? completeCount}</b>
               <span>완료 미션</span>
             </div>
             <div>
-              <b>{lineKeys.length}</b>
+              <b>{badgeSummary?.totals.completedBingos ?? lineKeys.length}</b>
               <span>완성 빙고</span>
             </div>
           </div>

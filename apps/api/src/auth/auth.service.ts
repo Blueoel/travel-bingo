@@ -220,6 +220,77 @@ export class AuthService {
     });
   }
 
+  async updateNickname(userId: string, value?: string): Promise<{
+    readonly id: string;
+    readonly nickname: string;
+    readonly email: string | null;
+    readonly role: "USER" | "ADMIN";
+  }> {
+    const nickname = value?.trim();
+    if (!nickname || nickname.length > 40) {
+      throw new BadRequestException("닉네임은 1~40자로 입력해주세요.");
+    }
+    return this.database.user.update({
+      where: { id: userId },
+      data: { nickname },
+      select: { id: true, nickname: true, email: true, role: true },
+    });
+  }
+
+  async updatePassword(
+    userId: string,
+    currentPassword?: string,
+    newPassword?: string,
+  ): Promise<void> {
+    const account = await this.requirePasswordAccount(userId, currentPassword);
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException("새 비밀번호는 8자 이상이어야 합니다.");
+    }
+    if (await verifyPassword(newPassword, account.passwordHash)) {
+      throw new BadRequestException("현재 비밀번호와 다른 비밀번호를 사용해주세요.");
+    }
+    await this.database.$transaction([
+      this.database.user.update({
+        where: { id: userId },
+        data: { passwordHash: await hashPassword(newPassword) },
+      }),
+      this.database.authSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+  }
+
+  async deleteAccount(userId: string, currentPassword?: string): Promise<void> {
+    await this.requirePasswordAccount(userId, currentPassword);
+    await this.database.$transaction([
+      this.database.authSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      this.database.user.update({
+        where: { id: userId },
+        data: {
+          status: "DELETED",
+          email: null,
+          passwordHash: null,
+          nickname: "탈퇴한 여행자",
+        },
+      }),
+    ]);
+  }
+
+  private async requirePasswordAccount(userId: string, password?: string): Promise<{ passwordHash: string }> {
+    const account = await this.database.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    if (!account?.passwordHash || !password || !(await verifyPassword(password, account.passwordHash))) {
+      throw new UnauthorizedException("현재 비밀번호를 확인해주세요.");
+    }
+    return { passwordHash: account.passwordHash };
+  }
+
   private async createSession(user: {
     readonly id: string;
     readonly nickname: string;

@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
+  Patch,
   Post,
   Res,
   UnauthorizedException,
@@ -87,6 +89,37 @@ export class AuthController {
       throw new UnauthorizedException("A valid user session is required.");
     }
     return { user };
+  }
+
+  @Patch("profile")
+  async updateProfile(
+    @Body() body: { nickname?: string },
+    @Headers("cookie") cookieHeader: string | undefined,
+  ): Promise<{ readonly user: { readonly id: string; readonly nickname: string; readonly email: string | null; readonly role: "USER" | "ADMIN" } }> {
+    const userId = await this.authService.requireUserId(cookieHeader);
+    return { user: await this.authService.updateNickname(userId, body.nickname) };
+  }
+
+  @Patch("password")
+  async updatePassword(
+    @Body() body: { currentPassword?: string; newPassword?: string },
+    @Headers("cookie") cookieHeader: string | undefined,
+  ): Promise<{ readonly success: true }> {
+    const userId = await this.authService.requireUserId(cookieHeader);
+    await this.authService.updatePassword(userId, body.currentPassword, body.newPassword);
+    return { success: true };
+  }
+
+  @Delete("account")
+  async deleteAccount(
+    @Body() body: { currentPassword?: string },
+    @Headers("cookie") cookieHeader: string | undefined,
+    @Res({ passthrough: true }) response: CookieResponse,
+  ): Promise<{ readonly success: true }> {
+    const userId = await this.authService.requireUserId(cookieHeader);
+    await this.authService.deleteAccount(userId, body.currentPassword);
+    response.clearCookie(AUTH_COOKIE_NAME, cookieOptions());
+    return { success: true };
   }
 
   @Post("logout")

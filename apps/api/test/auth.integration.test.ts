@@ -77,4 +77,23 @@ describeWithDatabase("AuthService integration", () => {
       service.login({ email, password: "incorrect-password" }),
     ).rejects.toThrow("이메일 주소 또는 비밀번호를 확인해주세요.");
   });
+
+  it("updates profile credentials and soft-deletes an account", async () => {
+    const email = `profile-${crypto.randomUUID()}@example.com`;
+    const registered = await service.register({ name: "처음이름", email, password: "first-password" });
+    createdUserIds.push(registered.user.id);
+
+    const updated = await service.updateNickname(registered.user.id, "새로운이름");
+    expect(updated.nickname).toBe("새로운이름");
+
+    await service.updatePassword(registered.user.id, "first-password", "second-password");
+    await expect(service.login({ email, password: "first-password" })).rejects.toThrow();
+    expect((await service.login({ email, password: "second-password" })).user.id).toBe(registered.user.id);
+
+    await service.deleteAccount(registered.user.id, "second-password");
+    await expect(service.login({ email, password: "second-password" })).rejects.toThrow();
+    const deleted = await database.user.findUniqueOrThrow({ where: { id: registered.user.id } });
+    expect(deleted.status).toBe("DELETED");
+    expect(deleted.email).toBeNull();
+  });
 });
