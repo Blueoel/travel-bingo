@@ -1798,6 +1798,18 @@ button {
   color: #aaa397;
   font-size: 22px;
 }
+.settings-view > section { padding: 18px; border: 1px solid #ded6c7; border-radius: 18px; background: #fffefa; }
+.settings-view > section small { color: #6d855f; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.settings-view > section h2 { margin: 6px 0; color: #35563a; }
+.settings-view > section p, .settings-note { color: #817c72; font-size: 11px; line-height: 1.6; }
+.blocked-user-list { margin-top: 14px; overflow: hidden; border: 1px solid #ded6c7; border-radius: 16px; background: #fffefa; }
+.blocked-user-list > div { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; padding: 13px; border-bottom: 1px dashed #e3dbcd; }
+.blocked-user-list > div:last-child { border-bottom: 0; }
+.blocked-user-list > div > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: #e7eddd; color: #486443; font-weight: 900; }
+.blocked-user-list > div > div { display: grid; gap: 3px; }
+.blocked-user-list small { color: #989084; font-size: 9px; }
+.blocked-user-list button { padding: 7px 9px; border: 1px solid #d2c8b8; border-radius: 8px; background: #fff; color: #766e63; font-size: 10px; font-weight: 700; }
+.settings-note { padding: 8px 5px; text-align: center; }
 .admin-account-note {
   margin: 13px 4px;
   padding: 10px 12px;

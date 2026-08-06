@@ -155,6 +155,7 @@ type FriendProfile = {
   completedBingos: number;
   recentActivity: Array<{ title: string; completedAt: string | null }>;
 };
+type BlockedUser = { id: string; createdAt: string; blocked: { id: string; nickname: string } };
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -506,6 +507,7 @@ export default function Home() {
   const [reportTarget, setReportTarget] = useState<FriendProfile | null>(null);
   const [reportReason, setReportReason] = useState("부적절한 닉네임");
   const [reportDetail, setReportDetail] = useState("");
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -524,7 +526,7 @@ export default function Home() {
     | "ranking"
     | "my"
   >("home");
-  const [myView, setMyView] = useState<"main" | "travel-note">("main");
+  const [myView, setMyView] = useState<"main" | "travel-note" | "settings">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
@@ -822,6 +824,16 @@ export default function Home() {
       setReportDetail("");
       window.alert("신고가 접수되었습니다. 관리자가 확인할게요.");
     }
+  };
+  const openSettings = async () => {
+    setMyView("settings");
+    const response = await apiFetch("/friends/blocks");
+    if (response.ok) setBlockedUsers(await response.json());
+  };
+  const unblockUser = async (block: BlockedUser) => {
+    if (!window.confirm(`${block.blocked.nickname}님의 차단을 해제할까요?`)) return;
+    const response = await apiFetch(`/friends/blocks/${block.id}`, { method: "DELETE" });
+    if (response.ok) setBlockedUsers((current) => current.filter((item) => item.id !== block.id));
   };
 
   const enterHomeAfterLogin = async (
@@ -3136,7 +3148,7 @@ export default function Home() {
       {activeTab === "my" && (
         <section className="my-screen">
           <header className="my-header">
-            {myView === "travel-note" && (
+            {myView !== "main" && (
               <button
                 type="button"
                 className="my-back-button"
@@ -3146,7 +3158,7 @@ export default function Home() {
                 ←
               </button>
             )}
-            <h1>{myView === "travel-note" ? "여행 노트" : "마이"}</h1>
+            <h1>{myView === "travel-note" ? "여행 노트" : myView === "settings" ? "설정" : "마이"}</h1>
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -3215,6 +3227,14 @@ export default function Home() {
                 </div>
               )}
             </div>
+          ) : myView === "settings" ? (
+            <div className="settings-view">
+              <section><small>PRIVACY & SAFETY</small><h2>차단한 사용자</h2><p>차단한 사용자는 친구 검색과 랭킹에서 서로 표시되지 않아요.</p></section>
+              <div className="blocked-user-list">
+                {blockedUsers.length ? blockedUsers.map((block) => <div key={block.id}><span>{block.blocked.nickname.slice(0, 1)}</span><div><b>{block.blocked.nickname}</b><small>{new Date(block.createdAt).toLocaleDateString("ko-KR")} 차단</small></div><button type="button" onClick={() => void unblockUser(block)}>차단 해제</button></div>) : <p className="friend-empty">차단한 사용자가 없어요.</p>}
+              </div>
+              <p className="settings-note">차단을 해제해도 이전 친구 관계는 자동으로 복구되지 않습니다.</p>
+            </div>
           ) : (
             <>
           <div className="my-profile-card">
@@ -3282,7 +3302,7 @@ export default function Home() {
               획득 배지
               <b>›</b>
             </button>
-            <button type="button">
+            <button type="button" onClick={() => void openSettings()}>
               <span>⚙</span>
               설정
               <b>›</b>
