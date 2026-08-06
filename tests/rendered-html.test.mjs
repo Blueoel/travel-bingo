@@ -743,3 +743,11 @@ test("shows account-backed achievement badges from My", async () => {
   assert.match(stylesSource, /\.badge-grid/);
   assert.match(stylesSource, /\.badge-summary/);
 });
+
+test("manages the participant profile and shows cumulative account stats", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  const stylesSource = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");
+  assert.match(pageSource, /auth\/profile/); assert.match(pageSource, /auth\/password/); assert.match(pageSource, /auth\/account/);
+  assert.match(pageSource, /현재 비밀번호를 입력해주세요/); assert.match(pageSource, /badgeSummary\?\.totals\.completedMissions/); assert.match(pageSource, /badgeSummary\?\.totals\.completedBingos/);
+  assert.match(stylesSource, /\.account-settings-card/); assert.match(stylesSource, /\.withdraw-card/);
+});

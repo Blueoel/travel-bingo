@@ -1810,6 +1810,17 @@ button {
 .blocked-user-list small { color: #989084; font-size: 9px; }
 .blocked-user-list button { padding: 7px 9px; border: 1px solid #d2c8b8; border-radius: 8px; background: #fff; color: #766e63; font-size: 10px; font-weight: 700; }
 .settings-note { padding: 8px 5px; text-align: center; }
+.settings-view { padding-bottom: 90px; }
+.settings-view > section + section { margin-top: 14px; }
+.account-settings-card label { display: grid; gap: 6px; margin-top: 13px; color: #4b5d4c; font-size: 11px; font-weight: 800; }
+.account-settings-card input { width: 100%; box-sizing: border-box; padding: 12px 13px; border: 1px solid #d9d0bf; border-radius: 12px; background: #fff; color: #2b392d; font: inherit; font-weight: 500; outline: none; }
+.account-settings-card input:focus { border-color: #6a8f61; box-shadow: 0 0 0 3px rgb(106 143 97 / 12%); }
+.account-settings-card button { width: 100%; margin-top: 9px; padding: 11px; border: 0; border-radius: 11px; background: #496f48; color: #fff; font-weight: 800; }
+.account-settings-card button:disabled { opacity: .45; }
+.settings-status { margin: 12px 0 0 !important; padding: 9px 10px; border-radius: 10px; background: #f3efe3; color: #675d4e !important; font-weight: 700; text-align: center; }
+.withdraw-card { border-color: #ead0ca !important; background: #fff9f7 !important; }
+.withdraw-card small, .withdraw-card h2 { color: #a65243 !important; }
+.withdraw-card button { width: 100%; padding: 10px; border: 1px solid #d99a8d; border-radius: 11px; background: transparent; color: #a34f42; font-weight: 800; }
 .admin-account-note {
   margin: 13px 4px;
   padding: 10px 12px;
