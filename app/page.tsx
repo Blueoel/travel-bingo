@@ -145,7 +145,7 @@ type Announcement = {
   isRead: boolean;
 };
 type FriendUser = { id: string; nickname: string; email: string | null };
-type Friendship = { id: string; status: "PENDING" | "ACCEPTED" | "REJECTED"; direction: "SENT" | "RECEIVED"; user: FriendUser };
+type Friendship = { id: string; status: "PENDING" | "ACCEPTED" | "REJECTED"; direction: "SENT" | "RECEIVED"; isUnread?: boolean; updatedAt?: string; user: FriendUser };
 type FriendProfile = {
   id: string;
   nickname: string;
@@ -794,6 +794,14 @@ export default function Home() {
     setFriendProfile(null);
     setRankingScope("FRIEND");
     setActiveTab("ranking");
+  };
+  const openAcceptedFriendNotification = async (item: Friendship) => {
+    setAnnouncementsOpen(false);
+    if (item.isUnread) {
+      await apiFetch(`/friends/${item.id}/read`, { method: "PATCH" });
+      await loadFriends();
+    }
+    await openFriendProfile(item.user);
   };
 
   const enterHomeAfterLogin = async (
@@ -2192,7 +2200,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{announcements.some((item) => !item.isRead) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length)}</i>}
+              ♧{(announcements.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3292,15 +3300,22 @@ export default function Home() {
       {announcementsOpen && (
         <div className="announcement-backdrop" onClick={() => setAnnouncementsOpen(false)}>
           <section className="announcement-sheet" onClick={(event) => event.stopPropagation()}>
-            <header><div><small>TRAVEL BINGO NEWS</small><h2>공지사항</h2></div><button type="button" aria-label="공지사항 닫기" onClick={() => setAnnouncementsOpen(false)}>×</button></header>
+            <header><div><small>TRAVEL BINGO NEWS</small><h2>알림</h2></div><button type="button" aria-label="알림 닫기" onClick={() => setAnnouncementsOpen(false)}>×</button></header>
             <div className="announcement-sheet-list">
+              {friends.filter((item) => item.status === "PENDING" && item.direction === "RECEIVED").map((item) => (
+                <div className="friend-notification" key={`request-${item.id}`}><span>친구 요청</span><div><b>{item.user.nickname}님이 친구 요청을 보냈어요.</b><small>함께 랭킹에 도전해보세요.</small></div><aside><button type="button" onClick={() => void decideFriend(item.id, true)}>수락</button><button type="button" onClick={() => void decideFriend(item.id, false)}>거절</button></aside></div>
+              ))}
+              {friends.filter((item) => item.status === "ACCEPTED" && item.direction === "SENT" && item.isUnread).map((item) => (
+                <button type="button" key={`accepted-${item.id}`} onClick={() => void openAcceptedFriendNotification(item)}><span>친구</span><div><b>{item.user.nickname}님과 친구가 되었어요!</b><small>프로필과 활동 기록 보기</small></div><i>NEW</i></button>
+              ))}
               {announcements.length ? announcements.map((item) => (
                 <button type="button" key={item.id} onClick={() => { setAnnouncementsOpen(false); openAnnouncement(item); }}>
                   <span>{item.isImportant ? "중요" : "안내"}</span>
                   <div><b>{item.title}</b><small>{new Date(item.createdAt).toLocaleDateString("ko-KR")}</small></div>
                   {!item.isRead && <i>NEW</i>}
                 </button>
-              )) : <p>등록된 공지사항이 없어요.</p>}
+              )) : null}
+              {!announcements.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
             </div>
           </section>
         </div>

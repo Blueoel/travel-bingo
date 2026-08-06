@@ -716,7 +716,11 @@ test("exposes friend management and received request badges from My", async () =
   assert.match(pageSource, /활동 프로필 보기/);
   assert.match(pageSource, /친구 랭킹 보러가기/);
   assert.match(pageSource, /setRankingScope\("FRIEND"\)/);
+  assert.match(pageSource, /친구 요청을 보냈어요/);
+  assert.match(pageSource, /친구가 되었어요/);
+  assert.match(pageSource, /friends\/\$\{item\.id\}\/read/);
   assert.match(stylesSource, /\.friend-request-badge/);
+  assert.match(stylesSource, /\.friend-notification/);
   assert.match(stylesSource, /\.friend-empty/);
   assert.match(stylesSource, /\.friend-profile-stats/);
 });
