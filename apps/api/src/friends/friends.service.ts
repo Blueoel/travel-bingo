@@ -33,6 +33,52 @@ export class FriendsService {
     });
   }
 
+  async badges(userId: string): Promise<unknown> {
+    const [points, completedMissions, completedBingos, completedRegions] =
+      await Promise.all([
+        this.db.pointLedger.aggregate({ where: { userId }, _sum: { points: true } }),
+        this.db.sessionCell.count({
+          where: { status: "VERIFIED", session: { userId } },
+        }),
+        this.db.bingoSession.count({
+          where: { userId, status: { in: ["CLEAR", "PERFECT_CLEAR"] } },
+        }),
+        this.db.bingoSession.count({
+          where: {
+            userId,
+            status: { in: ["CLEAR", "PERFECT_CLEAR"] },
+            template: { type: "REGION" },
+          },
+        }),
+      ]);
+    const totals = {
+      points: points._sum.points ?? 0,
+      completedMissions,
+      completedBingos,
+      completedRegions,
+    };
+    const definitions = [
+      { id: "FIRST_STEP", title: "첫 발자국", description: "첫 번째 미션을 완료했어요.", icon: "👣", metric: "completedMissions", target: 1 },
+      { id: "WALK_COLLECTOR", title: "산책 수집가", description: "미션 10개를 완료했어요.", icon: "🌿", metric: "completedMissions", target: 10 },
+      { id: "BINGO_START", title: "빙고의 시작", description: "첫 빙고판을 완성했어요.", icon: "⭐", metric: "completedBingos", target: 1 },
+      { id: "REGION_EXPLORER", title: "지역 탐험가", description: "지역 빙고판을 완성했어요.", icon: "🗺️", metric: "completedRegions", target: 1 },
+      { id: "POINT_KEEPER", title: "발견의 기록", description: "누적 500 Point를 모았어요.", icon: "🏅", metric: "points", target: 500 },
+      { id: "BINGO_MASTER", title: "빙고 마스터", description: "빙고판 5개를 완성했어요.", icon: "🏆", metric: "completedBingos", target: 5 },
+    ] as const;
+    return {
+      totals,
+      badges: definitions.map((badge) => {
+        const current = totals[badge.metric];
+        return {
+          ...badge,
+          current,
+          earned: current >= badge.target,
+          progress: Math.min(100, Math.round((current / badge.target) * 100)),
+        };
+      }),
+    };
+  }
+
   async search(userId: string, q: string): Promise<unknown> {
     const query = q.trim();
     if (query.length < 2) return [];

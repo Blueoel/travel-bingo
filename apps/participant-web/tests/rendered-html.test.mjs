@@ -732,3 +732,21 @@ test("exposes friend management and received request badges from My", async () =
   assert.match(stylesSource, /\.report-sheet/);
   assert.match(stylesSource, /\.blocked-user-list/);
 });
+
+test("shows account-backed achievement badges from My", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const stylesSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /openBadges/);
+  assert.match(pageSource, /friends\/badges/);
+  assert.match(pageSource, /걸으며 모은 작은 성취/);
+  assert.match(pageSource, /badge\.progress/);
+  assert.match(stylesSource, /\.badge-grid/);
+  assert.match(stylesSource, /\.badge-summary/);
+});
