@@ -470,6 +470,12 @@ button {
 .announcement-sheet-list div { display: grid; gap: 3px; }
 .announcement-sheet-list small { color: #918a7c; }
 .announcement-sheet-list i { color: #e1644e; font-size: 9px; font-style: normal; font-weight: 900; }
+.friend-notification { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 14px 12px; border: 1px solid #d8e2cf; border-radius: 10px; background: #fbfdf8; }
+.friend-notification > span { color: #4f744c; font-size: 10px; font-weight: 800; }
+.friend-notification > div { display: grid; gap: 3px; }
+.friend-notification aside { grid-column: 2; display: flex; gap: 6px; }
+.friend-notification aside button { padding: 6px 11px; border: 1px solid #73916d; border-radius: 8px; background: #edf4e5; color: #355b39; font-size: 10px; font-weight: 800; }
+.friend-notification aside button:last-child { border-color: #d8cfc0; background: #fff; color: #777064; }
 .announcement-detail { position: relative; align-self: center; margin: 18px; border-radius: 22px; padding: 30px 26px 24px; }
 .announcement-close { position: absolute; top: 14px; right: 14px; }
 .announcement-detail h2 { margin: 8px 32px 6px 0; color: #244b34; font-size: 23px; }

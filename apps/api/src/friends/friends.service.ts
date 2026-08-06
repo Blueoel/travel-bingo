@@ -12,7 +12,17 @@ export class FriendsService {
       include: { requester: { select: { id: true, nickname: true, email: true } }, addressee: { select: { id: true, nickname: true, email: true } } },
       orderBy: { updatedAt: "desc" },
     });
-    return rows.map((row) => ({ id: row.id, status: row.status, direction: row.requesterId === userId ? "SENT" : "RECEIVED", user: row.requesterId === userId ? row.addressee : row.requester }));
+    return rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      direction: row.requesterId === userId ? "SENT" : "RECEIVED",
+      isUnread:
+        row.requesterId === userId &&
+        row.status === "ACCEPTED" &&
+        row.requesterSeenAcceptedAt === null,
+      updatedAt: row.updatedAt.toISOString(),
+      user: row.requesterId === userId ? row.addressee : row.requester,
+    }));
   }
 
   async search(userId: string, q: string): Promise<unknown> {
@@ -104,6 +114,15 @@ export class FriendsService {
     const row = await this.db.friendship.findFirst({ where: { id, addresseeId: userId, status: "PENDING" } });
     if (!row) throw new NotFoundException("Friend request not found.");
     return this.db.friendship.update({ where: { id }, data: { status: accept ? "ACCEPTED" : "REJECTED" } });
+  }
+
+  async markAcceptedRead(userId: string, id: string): Promise<{ read: boolean }> {
+    const result = await this.db.friendship.updateMany({
+      where: { id, requesterId: userId, status: "ACCEPTED" },
+      data: { requesterSeenAcceptedAt: new Date() },
+    });
+    if (!result.count) throw new NotFoundException("Friend notification not found.");
+    return { read: true };
   }
 
   async remove(userId: string, id: string): Promise<{ deleted: boolean }> {
