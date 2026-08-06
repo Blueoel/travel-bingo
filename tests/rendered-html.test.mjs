@@ -93,6 +93,8 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /사용자 신고/);
   assert.match(pageSource, /admin\/users\/reports\/list/);
   assert.match(pageSource, /처리 완료/);
+  assert.match(pageSource, /이용 정지 후 완료/);
+  assert.match(pageSource, /suspendReportedUser/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),
