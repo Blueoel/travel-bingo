@@ -1730,6 +1730,33 @@ button {
   color: #58764e;
   font-size: 20px;
 }
+.my-menu button > .my-menu-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #262d27;
+  font-size: 13px;
+  font-weight: 700;
+}
+.my-menu-title small {
+  margin-left: auto;
+  color: #8a887f;
+  font-size: 10px;
+  font-weight: 600;
+}
+.friend-request-badge {
+  min-width: 19px;
+  height: 19px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e96f58;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+}
 .my-menu button > b {
   color: #aaa397;
   font-size: 22px;

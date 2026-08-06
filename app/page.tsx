@@ -745,6 +745,9 @@ export default function Home() {
     const response = await apiFetch("/friends");
     if (response.ok) setFriends(await response.json());
   };
+  useEffect(() => {
+    if (authStatus === "authenticated") void loadFriends();
+  }, [authStatus]);
   const searchFriends = async (query: string) => {
     setFriendQuery(query);
     if (query.trim().length < 2) return setFriendResults([]);
@@ -3181,6 +3184,36 @@ export default function Home() {
             <button type="button" onClick={() => setMyView("travel-note")}>
               <span>▤</span>
               여행 기록
+              <b>›</b>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFriendsOpen(true);
+                void loadFriends();
+              }}
+            >
+              <span>♧</span>
+              <span className="my-menu-title">
+                친구 관리
+                {friends.some(
+                  (item) =>
+                    item.status === "PENDING" && item.direction === "RECEIVED",
+                ) && (
+                  <i className="friend-request-badge">
+                    {
+                      friends.filter(
+                        (item) =>
+                          item.status === "PENDING" &&
+                          item.direction === "RECEIVED",
+                      ).length
+                    }
+                  </i>
+                )}
+                <small>
+                  친구 {friends.filter((item) => item.status === "ACCEPTED").length}명
+                </small>
+              </span>
               <b>›</b>
             </button>
             <button type="button">
