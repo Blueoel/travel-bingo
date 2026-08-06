@@ -158,8 +158,11 @@ type FriendProfile = {
 type BlockedUser = { id: string; createdAt: string; blocked: { id: string; nickname: string } };
 type BadgeSummary = {
   totals: { points: number; completedMissions: number; completedBingos: number; completedRegions: number };
-  badges: Array<{ id: string; title: string; description: string; icon: string; imageUrl?: string | null; current: number; target: number; earned: boolean; progress: number }>;
+  badges: Badge[];
+  newlyEarned?: Badge[];
 };
+type Badge = { id: string; title: string; description: string; icon: string; imageUrl?: string | null; current: number; target: number; earned: boolean; earnedAt?: string | null; progress: number };
+type BadgeNotification = Pick<Badge, "id" | "title" | "description" | "icon" | "imageUrl"> & { earnedAt: string; isRead: boolean };
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -513,6 +516,9 @@ export default function Home() {
   const [reportDetail, setReportDetail] = useState("");
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
+  const [badgeNotifications, setBadgeNotifications] = useState<BadgeNotification[]>([]);
+  const [badgeQueue, setBadgeQueue] = useState<Badge[]>([]);
+  const [badgeCelebration, setBadgeCelebration] = useState<Badge | null>(null);
   const [profileNickname, setProfileNickname] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -846,10 +852,57 @@ export default function Home() {
     const response = await apiFetch("/friends/badges");
     if (response.ok) setBadgeSummary(await response.json());
   };
+  const loadBadgeNotifications = async () => {
+    const response = await apiFetch("/friends/badge-notifications");
+    if (response.ok) setBadgeNotifications(await response.json());
+  };
+  const syncEarnedBadges = async () => {
+    try {
+      const response = await apiFetch("/friends/badges/sync", { method: "POST" });
+      if (!response.ok) return;
+      const summary = (await response.json()) as BadgeSummary;
+      setBadgeSummary(summary);
+      if (summary.newlyEarned?.length) {
+        setBadgeQueue((current) => [...current, ...summary.newlyEarned!]);
+        await loadBadgeNotifications();
+      }
+    } catch {
+      // 배지 동기화 실패가 완료된 미션의 결과를 되돌리지는 않습니다.
+    }
+  };
   const openBadges = async () => {
     setMyView("badges");
     await loadAccountSummary();
   };
+  const openBadgeNotification = async (item: BadgeNotification) => {
+    setAnnouncementsOpen(false);
+    if (!item.isRead) {
+      await apiFetch(`/friends/badge-notifications/${item.id}/read`, { method: "PATCH" });
+      setBadgeNotifications((current) => current.map((value) => value.id === item.id ? { ...value, isRead: true } : value));
+    }
+    setActiveTab("my");
+    await openBadges();
+  };
+  const viewCelebratedBadge = async () => {
+    const badge = badgeCelebration;
+    setBadgeCelebration(null);
+    if (badge) {
+      await apiFetch(`/friends/badge-notifications/${badge.id}/read`, { method: "PATCH" });
+      setBadgeNotifications((current) => current.map((item) => item.id === badge.id ? { ...item, isRead: true } : item));
+    }
+    setActiveTab("my");
+    await openBadges();
+  };
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    void loadAccountSummary();
+    void loadBadgeNotifications();
+  }, [authStatus]);
+  useEffect(() => {
+    if (bingoFlash || badgeCelebration || !badgeQueue.length) return;
+    setBadgeCelebration(badgeQueue[0]);
+    setBadgeQueue((current) => current.slice(1));
+  }, [bingoFlash, badgeCelebration, badgeQueue]);
   const unblockUser = async (block: BlockedUser) => {
     if (!window.confirm(`${block.blocked.nickname}님의 차단을 해제할까요?`)) return;
     const response = await apiFetch(`/friends/blocks/${block.id}`, { method: "DELETE" });
@@ -1765,6 +1818,7 @@ export default function Home() {
       setSelected(null);
       setTextRecord("");
       await reloadCurrentBingo();
+      await syncEarnedBadges();
     } catch {
       setMessage("기록을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
@@ -1903,6 +1957,7 @@ export default function Home() {
       setSelected(null);
       resetTracking();
       await reloadCurrentBingo();
+      await syncEarnedBadges();
     } catch {
       setMessage("GPS 기록을 서버에 전송하지 못했어요. 다시 시도해주세요.");
     } finally {
@@ -1989,6 +2044,7 @@ export default function Home() {
         return;
       }
       approvePhotoMission(result);
+      void syncEarnedBadges();
     } catch {
       setPhotoStage("DETAIL");
       setMessage(
@@ -2082,6 +2138,7 @@ export default function Home() {
       setSelected(null);
       setAnswer("");
       await reloadCurrentBingo();
+      await syncEarnedBadges();
     } catch (error) {
       setMessage(
         typeof error === "object" && error !== null && "code" in error
@@ -2298,7 +2355,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{(announcements.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
+              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3458,6 +3515,13 @@ export default function Home() {
               {friends.filter((item) => item.status === "ACCEPTED" && item.direction === "SENT" && item.isUnread).map((item) => (
                 <button type="button" key={`accepted-${item.id}`} onClick={() => void openAcceptedFriendNotification(item)}><span>친구</span><div><b>{item.user.nickname}님과 친구가 되었어요!</b><small>프로필과 활동 기록 보기</small></div><i>NEW</i></button>
               ))}
+              {badgeNotifications.map((item) => (
+                <button type="button" key={`badge-${item.id}`} onClick={() => void openBadgeNotification(item)}>
+                  <span className="badge-notification-icon">{item.imageUrl ? <img src={item.imageUrl} alt="" /> : item.icon}</span>
+                  <div><b>새 배지를 획득했어요 · {item.title}</b><small>{new Date(item.earnedAt).toLocaleDateString("ko-KR")}</small></div>
+                  {!item.isRead && <i>NEW</i>}
+                </button>
+              ))}
               {announcements.length ? announcements.map((item) => (
                 <button type="button" key={item.id} onClick={() => { setAnnouncementsOpen(false); openAnnouncement(item); }}>
                   <span>{item.isImportant ? "중요" : "안내"}</span>
@@ -3465,7 +3529,7 @@ export default function Home() {
                   {!item.isRead && <i>NEW</i>}
                 </button>
               )) : null}
-              {!announcements.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
+              {!announcements.length && !badgeNotifications.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
             </div>
           </section>
         </div>
@@ -3926,6 +3990,21 @@ export default function Home() {
             {bingoFlash.count > 1 && <b>+{bingoFlash.count} LINES</b>}
             <small>+100 Point</small>
           </div>
+        </div>
+      )}
+      {badgeCelebration && (
+        <div className="badge-celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="new-badge-title">
+          <article className="badge-celebration-card">
+            <button type="button" className="badge-celebration-close" aria-label="배지 축하 창 닫기" onClick={() => setBadgeCelebration(null)}>×</button>
+            <small>NEW BADGE</small>
+            <div className="badge-celebration-icon" aria-hidden="true">
+              {badgeCelebration.imageUrl ? <img src={badgeCelebration.imageUrl} alt="" /> : badgeCelebration.icon}
+            </div>
+            <h2 id="new-badge-title">새 배지를 획득했어요!</h2>
+            <h3>{badgeCelebration.title}</h3>
+            <p>{badgeCelebration.description}</p>
+            <button type="button" className="badge-celebration-view" onClick={() => void viewCelebratedBadge()}>획득 배지 보기</button>
+          </article>
         </div>
       )}
     </main>

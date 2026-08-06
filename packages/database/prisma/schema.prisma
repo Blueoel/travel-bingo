@@ -121,6 +121,7 @@ model User {
   blocksReceived      UserBlock[]  @relation("UserBlockTarget")
   reportsCreated      UserReport[] @relation("UserReportCreator")
   reportsReceived     UserReport[] @relation("UserReportTarget")
+  badges              UserBadge[]
 
   @@index([status, createdAt])
 }
@@ -209,8 +210,21 @@ model BadgeDefinition {
   status      ContentStatus @default(ACTIVE)
   createdAt   DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+  earnedBy    UserBadge[]
 
   @@index([status, displayOrder])
+}
+
+model UserBadge {
+  userId   String          @db.Uuid
+  badgeId  String          @db.Uuid
+  earnedAt DateTime        @default(now()) @db.Timestamptz(3)
+  seenAt   DateTime?       @db.Timestamptz(3)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    BadgeDefinition @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, badgeId])
+  @@index([userId, seenAt, earnedAt])
 }
 
 model AuthSession {

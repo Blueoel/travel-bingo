@@ -33,7 +33,7 @@ export class FriendsService {
     });
   }
 
-  async badges(userId: string): Promise<unknown> {
+  private async badgeState(userId: string) {
     const [points, completedMissions, completedBingos, completedRegions] =
       await Promise.all([
         this.db.pointLedger.aggregate({ where: { userId }, _sum: { points: true } }),
@@ -67,23 +67,98 @@ export class FriendsService {
       COMPLETED_BINGOS: totals.completedBingos,
       COMPLETED_REGIONS: totals.completedRegions,
     };
+    return { totals, definitions, metricValues };
+  }
+
+  private async synchronizeBadges(userId: string, announce: boolean) {
+    const { totals, definitions, metricValues } = await this.badgeState(userId);
+    const earnedRows = await this.db.userBadge.findMany({
+      where: { userId },
+      select: { badgeId: true, earnedAt: true, seenAt: true },
+    });
+    const earnedById = new Map(earnedRows.map((row) => [row.badgeId, row]));
+    const newlyEligible = definitions.filter(
+      (badge) =>
+        !earnedById.has(badge.id) &&
+        (metricValues[badge.metric] ?? 0) >= badge.target,
+    );
+    const now = new Date();
+    if (newlyEligible.length) {
+      await this.db.userBadge.createMany({
+        data: newlyEligible.map((badge) => ({
+          userId,
+          badgeId: badge.id,
+          earnedAt: now,
+          seenAt: announce ? null : now,
+        })),
+        skipDuplicates: true,
+      });
+      for (const badge of newlyEligible) {
+        earnedById.set(badge.id, {
+          badgeId: badge.id,
+          earnedAt: now,
+          seenAt: announce ? null : now,
+        });
+      }
+    }
+    const serialize = (badge: (typeof definitions)[number]) => {
+      const current = metricValues[badge.metric] ?? 0;
+      const earned = earnedById.get(badge.id);
+      return {
+        id: badge.code,
+        title: badge.title,
+        description: badge.description,
+        icon: badge.icon,
+        imageUrl: badge.imageUrl,
+        current,
+        earned: Boolean(earned),
+        earnedAt: earned?.earnedAt.toISOString() ?? null,
+        progress: Math.min(100, Math.round((current / badge.target) * 100)),
+        target: badge.target,
+      };
+    };
     return {
       totals,
-      badges: definitions.map((badge) => {
-        const current = metricValues[badge.metric] ?? 0;
-        return {
-          id: badge.code,
-          title: badge.title,
-          description: badge.description,
-          icon: badge.icon,
-          imageUrl: badge.imageUrl,
-          current,
-          earned: current >= badge.target,
-          progress: Math.min(100, Math.round((current / badge.target) * 100)),
-          target: badge.target,
-        };
-      }),
+      badges: definitions.map(serialize),
+      newlyEarned: announce ? newlyEligible.map(serialize) : [],
     };
+  }
+
+  async badges(userId: string): Promise<unknown> {
+    return this.synchronizeBadges(userId, false);
+  }
+
+  async syncBadges(userId: string): Promise<unknown> {
+    return this.synchronizeBadges(userId, true);
+  }
+
+  async badgeNotifications(userId: string): Promise<unknown> {
+    const rows = await this.db.userBadge.findMany({
+      where: { userId },
+      include: { badge: true },
+      orderBy: { earnedAt: "desc" },
+      take: 30,
+    });
+    return rows.map((row) => ({
+      id: row.badge.code,
+      title: row.badge.title,
+      description: row.badge.description,
+      icon: row.badge.icon,
+      imageUrl: row.badge.imageUrl,
+      earnedAt: row.earnedAt.toISOString(),
+      isRead: row.seenAt !== null,
+    }));
+  }
+
+  async markBadgeNotificationRead(userId: string, code: string): Promise<{ read: boolean }> {
+    const badge = await this.db.badgeDefinition.findUnique({ where: { code }, select: { id: true } });
+    if (!badge) throw new NotFoundException("Badge notification not found.");
+    const result = await this.db.userBadge.updateMany({
+      where: { userId, badgeId: badge.id },
+      data: { seenAt: new Date() },
+    });
+    if (!result.count) throw new NotFoundException("Badge notification not found.");
+    return { read: true };
   }
 
   async search(userId: string, q: string): Promise<unknown> {

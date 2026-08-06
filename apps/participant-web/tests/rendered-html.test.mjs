@@ -751,6 +751,18 @@ test("shows account-backed achievement badges from My", async () => {
   assert.match(stylesSource, /\.badge-summary/);
 });
 
+test("queues newly earned badge celebrations after bingo and records notifications", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  const stylesSource = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");
+  assert.match(pageSource, /friends\/badges\/sync/);
+  assert.match(pageSource, /friends\/badge-notifications/);
+  assert.match(pageSource, /if \(bingoFlash \|\| badgeCelebration \|\| !badgeQueue\.length\) return/);
+  assert.match(pageSource, /새 배지를 획득했어요!/);
+  assert.match(pageSource, /획득 배지 보기/);
+  assert.match(pageSource, /aria-label="배지 축하 창 닫기"/);
+  assert.match(stylesSource, /\.badge-celebration-backdrop/);
+});
+
 test("manages the participant profile and shows cumulative account stats", async () => {
   const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
   const stylesSource = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");

@@ -3289,6 +3289,20 @@ nav .active {
 .badge-grid i { display: block; height: 5px; border-radius: 999px; background: #e8e7e0; overflow: hidden; }
 .badge-grid i b { display: block; height: 100%; border-radius: inherit; background: #6a9a56; }
 .badge-loading { padding: 50px 0; color: #817b70; text-align: center; }
+.badge-notification-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: #edf4e5; font-size: 19px !important; }
+.badge-notification-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.badge-celebration-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; background: rgb(24 39 29 / 62%); backdrop-filter: blur(3px); }
+.badge-celebration-card { position: relative; width: min(100%, 390px); padding: 30px 24px 24px; border: 1px solid #dacba8; border-radius: 28px; background: #fffaf0; box-shadow: 0 24px 70px rgb(20 45 29 / 30%); text-align: center; animation: badge-pop .42s cubic-bezier(.18,.89,.32,1.28); }
+.badge-celebration-card::before { content: "✦  ·  ✧  ·  ✦"; display: block; margin-bottom: 5px; color: #f0a23a; letter-spacing: .35em; }
+.badge-celebration-close { position: absolute; top: 13px; right: 15px; width: 34px; height: 34px; border: 0; background: transparent; color: #294a35; font-size: 27px; line-height: 1; }
+.badge-celebration-card > small { color: #6a8a57; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
+.badge-celebration-icon { display: grid; width: 94px; height: 94px; place-items: center; margin: 16px auto 14px; border: 3px solid #f4bf59; border-radius: 50%; background: #fff0bd; box-shadow: 0 8px 22px rgb(212 151 38 / 23%); font-size: 51px; }
+.badge-celebration-icon img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.badge-celebration-card h2 { margin: 0; color: #244b35; font-size: 22px; }
+.badge-celebration-card h3 { margin: 9px 0 5px; color: #161f19; font-size: 19px; }
+.badge-celebration-card p { margin: 0 auto 22px; color: #746e62; font-size: 13px; line-height: 1.6; }
+.badge-celebration-view { width: 100%; min-height: 52px; border: 0; border-radius: 15px; background: #467149; color: #fff; font-size: 15px; font-weight: 800; }
+@keyframes badge-pop { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   .bingo-celebration,
@@ -3297,6 +3311,7 @@ nav .active {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
   }
+  .badge-celebration-card { animation-duration: 0.01ms !important; }
   .bingo-pop {
     transform: scale(1);
     opacity: 1;
