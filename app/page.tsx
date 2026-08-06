@@ -762,6 +762,12 @@ export default function Home() {
     await apiFetch(`/friends/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ accept }) });
     await loadFriends();
   };
+  const removeFriend = async (item: Friendship) => {
+    const action = item.status === "ACCEPTED" ? "친구를 삭제할까요?" : "보낸 요청을 취소할까요?";
+    if (!window.confirm(action)) return;
+    const response = await apiFetch(`/friends/${item.id}`, { method: "DELETE" });
+    if (response.ok) await loadFriends();
+  };
 
   const enterHomeAfterLogin = async (
     user: Omit<AccountUser, "role"> & { role?: AccountUser["role"] },
@@ -3290,8 +3296,15 @@ export default function Home() {
             <header><div><small>WALK TOGETHER</small><h2>친구 관리</h2></div><button type="button" onClick={() => setFriendsOpen(false)}>×</button></header>
             <label className="friend-search"><input value={friendQuery} onChange={(event) => void searchFriends(event.target.value)} placeholder="닉네임 또는 이메일 검색" /></label>
             {friendResults.map((user) => <div className="friend-row" key={user.id}><span><b>{user.nickname}</b><small>{user.email}</small></span><button type="button" onClick={() => void requestFriend(user.id)}>친구 요청</button></div>)}
-            <h3>친구와 요청</h3>
-            {friends.filter((item) => item.status !== "REJECTED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.status === "ACCEPTED" ? "친구" : item.direction === "RECEIVED" ? "받은 요청" : "요청 보냄"}</small></span>{item.status === "PENDING" && item.direction === "RECEIVED" && <div><button type="button" onClick={() => void decideFriend(item.id, true)}>수락</button><button type="button" onClick={() => void decideFriend(item.id, false)}>거절</button></div>}</div>)}
+            <h3>받은 요청</h3>
+            {friends.filter((item) => item.status === "PENDING" && item.direction === "RECEIVED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.user.email}</small></span><div><button type="button" onClick={() => void decideFriend(item.id, true)}>수락</button><button type="button" className="friend-secondary-action" onClick={() => void decideFriend(item.id, false)}>거절</button></div></div>)}
+            {!friends.some((item) => item.status === "PENDING" && item.direction === "RECEIVED") && <p className="friend-empty">받은 친구 요청이 없어요.</p>}
+            <h3>친구</h3>
+            {friends.filter((item) => item.status === "ACCEPTED").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>{item.user.email}</small></span><button type="button" className="friend-secondary-action" onClick={() => void removeFriend(item)}>친구 삭제</button></div>)}
+            {!friends.some((item) => item.status === "ACCEPTED") && <p className="friend-empty">아직 등록된 친구가 없어요.</p>}
+            <h3>보낸 요청</h3>
+            {friends.filter((item) => item.status === "PENDING" && item.direction === "SENT").map((item) => <div className="friend-row" key={item.id}><span><b>{item.user.nickname}</b><small>수락을 기다리고 있어요.</small></span><button type="button" className="friend-secondary-action" onClick={() => void removeFriend(item)}>요청 취소</button></div>)}
+            {!friends.some((item) => item.status === "PENDING" && item.direction === "SENT") && <p className="friend-empty">보낸 친구 요청이 없어요.</p>}
           </section>
         </div>
       )}
