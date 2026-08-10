@@ -136,8 +136,8 @@ export class UserAdminService {
           where: { id: userId },
           data: {
             status: "DELETED",
-            nickname: "탈퇴 회원",
-            email: `deleted+${userId}@invalid.local`,
+            nickname: "탈퇴한 여행자",
+            email: null,
             passwordHash: null,
           },
           select: {

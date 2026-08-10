@@ -406,7 +406,7 @@ test("proxies API sessions through the participant origin", async () => {
   }
 });
 
-test("provides an account dashboard and logout flow", async () => {
+test("provides an account dashboard and confirmed logout flow", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
@@ -422,11 +422,12 @@ test("provides an account dashboard and logout flow", async () => {
     pageSource.indexOf("const logout ="),
     pageSource.indexOf("const celebrate ="),
   );
+  assert.match(logoutSource, /await apiFetch\("\/auth\/logout"/);
   assert.ok(
-    logoutSource.indexOf('setAuthStatus("unauthenticated")') <
-      logoutSource.indexOf('apiFetch("/auth/logout"'),
+    logoutSource.indexOf('await apiFetch("/auth/logout"') <
+      logoutSource.indexOf("clearAuthenticatedState()"),
   );
-  assert.doesNotMatch(logoutSource, /await apiFetch/);
+  assert.match(logoutSource, /response\.status !== 401/);
 });
 
 test("celebrates newly completed bingo lines in API and demo modes", async () => {
@@ -781,6 +782,9 @@ test("manages the participant profile and shows cumulative account stats", async
   assert.match(pageSource, /auth\/password/);
   assert.match(pageSource, /auth\/account/);
   assert.match(pageSource, /현재 비밀번호를 입력해주세요/);
+  assert.match(pageSource, /새 비밀번호 확인/);
+  assert.match(pageSource, /withdrawPassword/);
+  assert.match(pageSource, /로그아웃 중/);
   assert.match(pageSource, /badgeSummary\?\.totals\.completedMissions/);
   assert.match(pageSource, /badgeSummary\?\.totals\.completedBingos/);
   assert.match(stylesSource, /\.account-settings-card/);

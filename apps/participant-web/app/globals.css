@@ -1839,7 +1839,11 @@ button {
 .settings-status { margin: 12px 0 0 !important; padding: 9px 10px; border-radius: 10px; background: #f3efe3; color: #675d4e !important; font-weight: 700; text-align: center; }
 .withdraw-card { border-color: #ead0ca !important; background: #fff9f7 !important; }
 .withdraw-card small, .withdraw-card h2 { color: #a65243 !important; }
+.withdraw-card label { display: grid; gap: 6px; margin: 13px 0 9px; color: #7c4b43; font-size: 11px; font-weight: 800; }
+.withdraw-card input { width: 100%; box-sizing: border-box; padding: 12px 13px; border: 1px solid #e3c3bc; border-radius: 12px; background: #fff; color: #2b392d; font: inherit; outline: none; }
+.withdraw-card input:focus { border-color: #c77969; box-shadow: 0 0 0 3px rgb(199 121 105 / 12%); }
 .withdraw-card button { width: 100%; padding: 10px; border: 1px solid #d99a8d; border-radius: 11px; background: transparent; color: #a34f42; font-weight: 800; }
+.withdraw-card button:disabled { opacity: .45; }
 .admin-account-note {
   margin: 13px 4px;
   padding: 10px 12px;
@@ -1861,6 +1865,7 @@ button {
   font-weight: 750;
   cursor: pointer;
 }
+.logout-button:disabled { cursor: wait; opacity: .55; }
 .my-doodle {
   display: flex;
   justify-content: center;

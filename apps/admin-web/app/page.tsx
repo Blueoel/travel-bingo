@@ -668,7 +668,7 @@ export default function AdminPage() {
     }
     setNotice(
       action === "WITHDRAW"
-        ? "계정을 탈퇴 처리하고 개인정보를 익명화했습니다."
+        ? "계정을 탈퇴 처리하고 이메일·비밀번호를 삭제했습니다."
         : action === "SUSPEND"
           ? "계정 이용을 정지하고 로그인 세션을 종료했습니다."
           : "계정을 다시 활성화했습니다.",

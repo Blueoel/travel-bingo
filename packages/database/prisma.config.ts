@@ -8,13 +8,11 @@ loadEnvironment({
   quiet: true,
 });
 
-const seedPath = resolve(import.meta.dirname, "prisma/seed.ts");
-
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: process.platform === "win32" ? `tsx "${seedPath}"` : `tsx ${seedPath}`,
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     url: env("DATABASE_URL"),

@@ -532,8 +532,11 @@ export default function Home() {
   const [profileNickname, setProfileNickname] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [withdrawPassword, setWithdrawPassword] = useState("");
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [bingoFlash, setBingoFlash] = useState<{
     id: number;
     count: number;
@@ -854,6 +857,10 @@ export default function Home() {
   const openSettings = async () => {
     setMyView("settings");
     setProfileNickname(account?.nickname ?? nickname);
+    setCurrentPassword("");
+    setNewPassword("");
+    setNewPasswordConfirm("");
+    setWithdrawPassword("");
     setSettingsStatus(null);
     const response = await apiFetch("/friends/blocks");
     if (response.ok) setBlockedUsers(await response.json());
@@ -948,6 +955,10 @@ export default function Home() {
     } finally { setSettingsSaving(false); }
   };
   const savePassword = async () => {
+    if (newPassword !== newPasswordConfirm) {
+      setSettingsStatus("새 비밀번호가 서로 일치하지 않아요.");
+      return;
+    }
     setSettingsSaving(true);
     setSettingsStatus(null);
     try {
@@ -955,21 +966,21 @@ export default function Home() {
       const payload = await response.json().catch(() => ({})) as { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "비밀번호를 변경하지 못했어요.");
       window.alert("비밀번호를 변경했어요. 새 비밀번호로 다시 로그인해주세요.");
-      logout();
+      clearAuthenticatedState();
     } catch (error) {
       setSettingsStatus(error instanceof Error ? error.message : "비밀번호를 변경하지 못했어요.");
     } finally { setSettingsSaving(false); }
   };
   const withdrawAccount = async () => {
-    if (!currentPassword) return setSettingsStatus("탈퇴하려면 현재 비밀번호를 입력해주세요.");
+    if (!withdrawPassword) return setSettingsStatus("탈퇴하려면 현재 비밀번호를 입력해주세요.");
     if (!window.confirm("회원 탈퇴 후에는 계정과 로그인 정보를 복구할 수 없습니다. 정말 탈퇴할까요?")) return;
     setSettingsSaving(true);
     setSettingsStatus(null);
     try {
-      const response = await apiFetch("/auth/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword }) });
+      const response = await apiFetch("/auth/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ currentPassword: withdrawPassword }) });
       const payload = await response.json().catch(() => ({})) as { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "회원 탈퇴를 처리하지 못했어요.");
-      setAccount(null); setSessionId(null); setSelected(null); setActiveTab("home"); setAuthStatus("unauthenticated");
+      clearAuthenticatedState();
     } catch (error) {
       setSettingsStatus(error instanceof Error ? error.message : "회원 탈퇴를 처리하지 못했어요.");
     } finally { setSettingsSaving(false); }
@@ -1641,7 +1652,7 @@ export default function Home() {
     setInstallPrompt(null);
   };
 
-  const logout = () => {
+  const clearAuthenticatedState = () => {
     setMessage(null);
     resetTracking();
     setAccount(null);
@@ -1649,11 +1660,32 @@ export default function Home() {
     setSelected(null);
     setActiveTab("home");
     setAuthStatus("unauthenticated");
+    setProfileNickname("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setNewPasswordConfirm("");
+    setWithdrawPassword("");
+    setSettingsStatus(null);
+  };
 
-    void apiFetch("/auth/logout", { method: "POST" }).catch(() => {
-      // The local session is already cleared. A failed server request will be
-      // reconciled by /auth/me on the next page load.
-    });
+  const logout = async () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+    try {
+      const response = await apiFetch("/auth/logout", { method: "POST" });
+      if (!response.ok && response.status !== 401) {
+        throw new Error("로그아웃을 완료하지 못했어요.");
+      }
+      clearAuthenticatedState();
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? `${error.message} 네트워크 연결을 확인하고 다시 시도해주세요.`
+          : "로그아웃을 완료하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
+    } finally {
+      setLogoutPending(false);
+    }
   };
 
   const celebrate = (count: number) => {
@@ -3439,9 +3471,10 @@ export default function Home() {
                 <label>닉네임<input value={profileNickname} maxLength={40} onChange={(event) => setProfileNickname(event.target.value)} /></label>
                 <button type="button" disabled={settingsSaving || !profileNickname.trim()} onClick={() => void saveNickname()}>닉네임 변경</button>
                 {account?.email && <>
-                  <label>현재 비밀번호<input type="password" value={currentPassword} autoComplete="current-password" onChange={(event) => setCurrentPassword(event.target.value)} /></label>
-                  <label>새 비밀번호<input type="password" value={newPassword} minLength={8} autoComplete="new-password" placeholder="8자 이상" onChange={(event) => setNewPassword(event.target.value)} /></label>
-                  <button type="button" disabled={settingsSaving || !currentPassword || newPassword.length < 8} onClick={() => void savePassword()}>비밀번호 변경</button>
+                  <label>현재 비밀번호<input type="password" value={currentPassword} maxLength={128} autoComplete="current-password" onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+                  <label>새 비밀번호<input type="password" value={newPassword} minLength={8} maxLength={128} autoComplete="new-password" placeholder="8자 이상" onChange={(event) => setNewPassword(event.target.value)} /></label>
+                  <label>새 비밀번호 확인<input type="password" value={newPasswordConfirm} minLength={8} maxLength={128} autoComplete="new-password" placeholder="한 번 더 입력해주세요" onChange={(event) => setNewPasswordConfirm(event.target.value)} /></label>
+                  <button type="button" disabled={settingsSaving || !currentPassword || newPassword.length < 8 || newPasswordConfirm.length < 8} onClick={() => void savePassword()}>비밀번호 변경</button>
                 </>}
                 {settingsStatus && <p className="settings-status" role="status">{settingsStatus}</p>}
               </section>
@@ -3450,7 +3483,7 @@ export default function Home() {
                 {blockedUsers.length ? blockedUsers.map((block) => <div key={block.id}><span>{block.blocked.nickname.slice(0, 1)}</span><div><b>{block.blocked.nickname}</b><small>{new Date(block.createdAt).toLocaleDateString("ko-KR")} 차단</small></div><button type="button" onClick={() => void unblockUser(block)}>차단 해제</button></div>) : <p className="friend-empty">차단한 사용자가 없어요.</p>}
               </div>
               <p className="settings-note">차단을 해제해도 이전 친구 관계는 자동으로 복구되지 않습니다.</p>
-              {account?.email && <section className="withdraw-card"><small>ACCOUNT WITHDRAWAL</small><h2>회원 탈퇴</h2><p>탈퇴하면 로그인할 수 없으며 계정 정보는 비활성화됩니다.</p><button type="button" disabled={settingsSaving} onClick={() => void withdrawAccount()}>회원 탈퇴</button></section>}
+              {account?.email && <section className="withdraw-card"><small>ACCOUNT WITHDRAWAL</small><h2>회원 탈퇴</h2><p>탈퇴하면 모든 기기에서 로그아웃되고 개인정보가 익명화됩니다.</p><label>탈퇴 확인 비밀번호<input type="password" value={withdrawPassword} maxLength={128} autoComplete="current-password" placeholder="현재 비밀번호" onChange={(event) => setWithdrawPassword(event.target.value)} /></label><button type="button" disabled={settingsSaving || !withdrawPassword} onClick={() => void withdrawAccount()}>회원 탈퇴</button></section>}
             </div>
           ) : (
             <>
@@ -3535,8 +3568,8 @@ export default function Home() {
               관리자 계정입니다 · 관리자 화면은 별도 콘솔을 이용해주세요.
             </p>
           )}
-          <button className="logout-button" type="button" onClick={logout}>
-            로그아웃
+          <button className="logout-button" type="button" disabled={logoutPending} onClick={() => void logout()}>
+            {logoutPending ? "로그아웃 중…" : "로그아웃"}
           </button>
           <div className="my-doodle" aria-hidden="true">
             <span>⌁</span>

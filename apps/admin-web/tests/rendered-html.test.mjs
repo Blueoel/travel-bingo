@@ -51,7 +51,7 @@ test("renders mission editing and Daily composition controls", async () => {
   );
   assert.match(pageSource, /manageUser/);
   assert.match(pageSource, /탈퇴 처리/);
-  assert.match(pageSource, /개인정보를 익명화/);
+  assert.match(pageSource, /이메일·비밀번호를 삭제/);
   assert.match(pageSource, /모든 난이도/);
   assert.match(pageSource, /모든 인증 방식/);
   assert.match(pageSource, /유사 그룹 검색/);

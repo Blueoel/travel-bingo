@@ -86,14 +86,21 @@ describeWithDatabase("AuthService integration", () => {
     const updated = await service.updateNickname(registered.user.id, "새로운이름");
     expect(updated.nickname).toBe("새로운이름");
 
+    const secondarySession = await service.login({ email, password: "first-password" });
     await service.updatePassword(registered.user.id, "first-password", "second-password");
+    expect(await service.getUser(`${AUTH_COOKIE_NAME}=${registered.token}`)).toBeNull();
+    expect(await service.getUser(`${AUTH_COOKIE_NAME}=${secondarySession.token}`)).toBeNull();
     await expect(service.login({ email, password: "first-password" })).rejects.toThrow();
-    expect((await service.login({ email, password: "second-password" })).user.id).toBe(registered.user.id);
+    const signedIn = await service.login({ email, password: "second-password" });
+    expect(signedIn.user.id).toBe(registered.user.id);
 
     await service.deleteAccount(registered.user.id, "second-password");
+    expect(await service.getUser(`${AUTH_COOKIE_NAME}=${signedIn.token}`)).toBeNull();
     await expect(service.login({ email, password: "second-password" })).rejects.toThrow();
     const deleted = await database.user.findUniqueOrThrow({ where: { id: registered.user.id } });
     expect(deleted.status).toBe("DELETED");
     expect(deleted.email).toBeNull();
+    expect(deleted.passwordHash).toBeNull();
+    expect(deleted.nickname).toBe("탈퇴한 여행자");
   });
 });

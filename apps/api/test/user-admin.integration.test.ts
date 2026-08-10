@@ -89,9 +89,9 @@ describeWithDatabase("UserAdminService integration", () => {
     );
     expect(withdrawn).toMatchObject({
       status: "DELETED",
-      nickname: "탈퇴 회원",
+      nickname: "탈퇴한 여행자",
+      email: null,
     });
-    expect(withdrawn.email).not.toBe(memberEmail);
     const stored = await database.user.findUniqueOrThrow({
       where: { id: memberId },
       select: { passwordHash: true },
