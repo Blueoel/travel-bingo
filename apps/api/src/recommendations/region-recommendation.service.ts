@@ -205,7 +205,7 @@ export class RegionRecommendationService {
     center: Coordinates,
     limit: number,
   ): Promise<KtoItem[]> {
-    const serviceKey = process.env.KTO_API_KEY?.trim();
+    const serviceKey = normalizeKtoServiceKey(process.env.KTO_API_KEY);
     if (!serviceKey) return [];
     const parameters = new URLSearchParams({
       serviceKey,
@@ -234,6 +234,17 @@ export class RegionRecommendationService {
     } catch {
       return [];
     }
+  }
+}
+
+export function normalizeKtoServiceKey(value: string | undefined): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return "";
+
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
   }
 }
 

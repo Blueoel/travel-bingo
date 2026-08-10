@@ -2,8 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import {
   distanceKm,
+  normalizeKtoServiceKey,
   RegionRecommendationService,
 } from "../src/recommendations/region-recommendation.service.js";
+
+describe("KTO service key normalization", () => {
+  it("keeps a decoding key unchanged", () => {
+    expect(normalizeKtoServiceKey("abc+/=123")).toBe("abc+/=123");
+  });
+
+  it("decodes an encoding key before URLSearchParams encodes it once", () => {
+    expect(normalizeKtoServiceKey("abc%2B%2F%3D123")).toBe("abc+/=123");
+  });
+
+  it("trims whitespace and handles a missing key", () => {
+    expect(normalizeKtoServiceKey("  abc123  ")).toBe("abc123");
+    expect(normalizeKtoServiceKey(undefined)).toBe("");
+  });
+});
 
 describe("region recommendation distance", () => {
   it("calculates zero for identical coordinates", () => {
