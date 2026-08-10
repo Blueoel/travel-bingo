@@ -949,6 +949,11 @@ textarea {
 .announcementStatus.scheduled { background: #e6eefb; color: #315f97; }
 .announcementStatus.ended { color: #7a7f7a; }
 .announcementActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.badgeAdminSection { display: grid; gap: 18px; }
+.badgeTestPanel { position: relative; display: grid; gap: 16px; padding: 22px; border: 1px solid #bfd3be; border-radius: 16px; background: linear-gradient(135deg, #f4faef, #fffdf7); }
+.badgeTestPanel > div:first-child small { color: #4f7951; font-size: 10px; font-weight: 900; letter-spacing: .14em; }.badgeTestPanel h2 { margin: 5px 0; }.badgeTestPanel p { margin: 0; color: #687068; }
+.badgeTestControls { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 12px; align-items: end; }.badgeTestControls label { display: grid; gap: 7px; font-weight: 700; }.badgeTestControls input { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #bdcbbd; border-radius: 9px; background: #fff; }
+.badgeTestReady { display: grid; grid-template-columns: 54px 1fr auto; gap: 14px; align-items: center; padding: 15px; border: 1px dashed #79a178; border-radius: 13px; background: #fff; }.badgeTestReady > span { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 50%; background: #edf4e7; font-size: 26px; }.badgeTestReady p { margin: 4px 0; color: #355d3a; font-weight: 700; }.badgeTestReady small { color: #777f77; }.badgeTestCleanup { justify-self: end; border: 0; background: transparent; color: #a14f45; font-size: 12px; text-decoration: underline; }
 .badgeAdmin { display: grid; grid-template-columns: minmax(320px, .8fr) minmax(480px, 1.2fr); gap: 18px; align-items: start; }
 .badgeForm, .badgeAdminList { padding: 22px; border: 1px solid #dfe4df; border-radius: 16px; background: #fff; }
 .badgeForm { position: sticky; top: 24px; }
@@ -962,7 +967,7 @@ textarea {
 .badgeAdminList img { width: 100%; height: 100%; object-fit: cover; }
 .badgeAdminList small { color: #71836d; font-weight: 800; }.badgeAdminList h3 { margin: 4px 0; }.badgeAdminList p { margin: 0 0 5px; color: #70766f; }.badgeAdminList b { color: #355d3a; font-size: 12px; }
 @media (max-width: 900px) {
-  .badgeAdmin { grid-template-columns: 1fr; }.badgeForm { position: static; }
+  .badgeAdmin { grid-template-columns: 1fr; }.badgeForm { position: static; }.badgeTestControls, .badgeTestReady { grid-template-columns: 1fr; }
   .announcementAdmin { grid-template-columns: 1fr; }
   .announcementForm { position: static; }
   .composerLayout { grid-template-columns: 1fr; }
