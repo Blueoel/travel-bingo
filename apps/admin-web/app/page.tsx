@@ -95,6 +95,7 @@ type Announcement = {
   _count: { reads: number };
 };
 type BadgeDefinition = { id: string; code: string; title: string; description: string; icon: string; imageUrl: string | null; metric: "POINTS" | "COMPLETED_MISSIONS" | "COMPLETED_BINGOS" | "COMPLETED_REGIONS"; target: number; displayOrder: number; status: "ACTIVE" | "INACTIVE" };
+type BadgeTestState = { user: { id: string; nickname: string; email: string | null }; badge: BadgeDefinition; current: number; target: number };
 type AttractionRecommendation = {
   contentId: string;
   contentTypeId: string | null;
@@ -177,6 +178,9 @@ export default function AdminPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [badges, setBadges] = useState<BadgeDefinition[]>([]);
   const [editingBadge, setEditingBadge] = useState<BadgeDefinition | null>(null);
+  const [badgeTestEmail, setBadgeTestEmail] = useState("");
+  const [badgeTest, setBadgeTest] = useState<BadgeTestState | null>(null);
+  const [badgeTestLoading, setBadgeTestLoading] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [announcementQuery, setAnnouncementQuery] = useState("");
   const [announcementFilter, setAnnouncementFilter] = useState<"ALL" | "DRAFT" | "ACTIVE" | "SCHEDULED" | "ENDED">("ALL");
@@ -678,6 +682,39 @@ export default function AdminPage() {
     const response = await fetch(`${API}/admin/badges${editingBadge ? `/${editingBadge.id}` : ""}`, { method: editingBadge ? "PATCH" : "POST", headers: { "x-user-id": ADMIN, "content-type": "application/json" }, body: JSON.stringify(body) });
     if (!response.ok) return setError("배지 설정을 저장하지 못했습니다.");
     setEditingBadge(null); setNotice(editingBadge ? "배지 설정을 수정했습니다." : "새 배지를 등록했습니다."); await loadBadges(); event.currentTarget.reset();
+  }
+  async function prepareBadgeTest() {
+    if (!badgeTestEmail.trim()) return setError("테스트할 참가자의 이메일을 입력해주세요.");
+    setBadgeTestLoading(true); setError("");
+    try {
+      const response = await fetch(`${API}/admin/badges/test/prepare`, { method: "POST", credentials: "include", headers: { "x-user-id": ADMIN, "content-type": "application/json" }, body: JSON.stringify({ email: badgeTestEmail }) });
+      const payload = await response.json().catch(() => null) as BadgeTestState | { message?: string } | null;
+      if (!response.ok || !payload || !("badge" in payload)) throw new Error(payload && "message" in payload ? payload.message : "테스트 배지를 준비하지 못했습니다.");
+      setBadgeTest(payload); setNotice(`${payload.user.nickname}님의 다음 미션 인증에서 테스트 배지가 지급됩니다.`); await loadBadges();
+    } catch (error) { setError(error instanceof Error ? error.message : "테스트 배지를 준비하지 못했습니다."); }
+    finally { setBadgeTestLoading(false); }
+  }
+  async function resetBadgeTest() {
+    if (!badgeTest) return;
+    setBadgeTestLoading(true); setError("");
+    try {
+      const response = await fetch(`${API}/admin/badges/test/reset`, { method: "POST", credentials: "include", headers: { "x-user-id": ADMIN, "content-type": "application/json" }, body: JSON.stringify({ email: badgeTestEmail, code: badgeTest.badge.code }) });
+      const payload = await response.json().catch(() => null) as BadgeTestState | { message?: string } | null;
+      if (!response.ok || !payload || !("badge" in payload)) throw new Error(payload && "message" in payload ? payload.message : "테스트 상태를 초기화하지 못했습니다.");
+      setBadgeTest(payload); setNotice("획득 기록을 초기화했습니다. 다음 미션 인증으로 다시 시험할 수 있습니다."); await loadBadges();
+    } catch (error) { setError(error instanceof Error ? error.message : "테스트 상태를 초기화하지 못했습니다."); }
+    finally { setBadgeTestLoading(false); }
+  }
+  async function cleanupBadgeTests() {
+    if (!window.confirm("모든 임시 테스트 배지와 관련 획득 기록을 삭제할까요?")) return;
+    setBadgeTestLoading(true); setError("");
+    try {
+      const response = await fetch(`${API}/admin/badges/test`, { method: "DELETE", credentials: "include", headers: { "x-user-id": ADMIN } });
+      const payload = await response.json().catch(() => null) as { deleted?: number; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message ?? "테스트 배지를 정리하지 못했습니다.");
+      setBadgeTest(null); setNotice(`테스트 배지 ${payload?.deleted ?? 0}개를 정리했습니다.`); await loadBadges();
+    } catch (error) { setError(error instanceof Error ? error.message : "테스트 배지를 정리하지 못했습니다."); }
+    finally { setBadgeTestLoading(false); }
   }
   useEffect(() => {
     if (view === "announcements") void loadAnnouncements();
@@ -1834,7 +1871,17 @@ export default function AdminPage() {
             )}
           </section>
         ) : view === "badges" ? (
-          <section className="badgeAdmin">
+          <section className="badgeAdminSection">
+            <div className="badgeTestPanel">
+              <div><small>LIVE FLOW TEST</small><h2>배지 획득 실전 테스트</h2><p>참가자 이메일을 입력하면 현재 완료 미션 수보다 1 높은 임시 배지를 만듭니다. 참가자 앱에서 다음 미션 하나를 완료해 팝업과 알림을 확인하세요.</p></div>
+              <div className="badgeTestControls">
+                <label>테스트 참가자 이메일<input type="email" value={badgeTestEmail} onChange={(event) => setBadgeTestEmail(event.target.value)} placeholder="participant@example.com" /></label>
+                <button type="button" className="primary" disabled={badgeTestLoading} onClick={() => void prepareBadgeTest()}>{badgeTestLoading ? "처리 중…" : "테스트 배지 준비"}</button>
+              </div>
+              {badgeTest && <div className="badgeTestReady"><span>{badgeTest.badge.icon}</span><div><b>{badgeTest.user.nickname} · {badgeTest.badge.title}</b><p>현재 완료 {badgeTest.current}개 → 다음 미션 완료 시 목표 {badgeTest.target}개 달성</p><small>확인 순서: 미션 인증 → 빙고 애니메이션(해당 시) → 배지 팝업 → 알림 목록 → 새로고침 후 미표시</small></div><button type="button" className="secondary" disabled={badgeTestLoading} onClick={() => void resetBadgeTest()}>같은 참가자로 다시 테스트</button></div>}
+              <button type="button" className="badgeTestCleanup" disabled={badgeTestLoading} onClick={() => void cleanupBadgeTests()}>임시 테스트 배지 모두 정리</button>
+            </div>
+            <div className="badgeAdmin">
             <form className="badgeForm" onSubmit={saveBadge} key={editingBadge?.id ?? "new-badge"}>
               <div className="catalogHead"><div><h2>{editingBadge ? "배지 수정" : "새 배지 등록"}</h2><p>아이콘은 지금 이모지로 사용하고, 완성된 손그림 이미지 URL을 나중에 연결할 수 있습니다.</p></div></div>
               <div className="badgeFormGrid">
@@ -1852,6 +1899,7 @@ export default function AdminPage() {
             </form>
             <div className="badgeAdminList">
               {badges.map((badge) => <article className={badge.status === "ACTIVE" ? "" : "inactive"} key={badge.id}><span>{badge.imageUrl ? <img src={badge.imageUrl} alt="" /> : badge.icon}</span><div><small>{badge.status === "ACTIVE" ? "활성" : "비활성"} · 순서 {badge.displayOrder}</small><h3>{badge.title}</h3><p>{badge.description}</p><b>{badge.metric === "POINTS" ? "누적 포인트" : badge.metric === "COMPLETED_MISSIONS" ? "완료 미션" : badge.metric === "COMPLETED_BINGOS" ? "완료 빙고판" : "완료 지역 빙고"} {badge.target}</b></div><button type="button" className="textButton" onClick={() => setEditingBadge(badge)}>수정</button></article>)}
+            </div>
             </div>
           </section>
         ) : view === "announcements" ? (

@@ -31,6 +31,10 @@ test("renders mission editing and Daily composition controls", async () => {
     new URL("../app/page.tsx", import.meta.url),
     "utf8",
   );
+  const stylesSource = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
   assert.match(pageSource, /검수 대기 목록/);
   assert.match(pageSource, /<b>Travel Bingo<\/b>/);
   assert.match(pageSource, /decideReview/);
@@ -96,6 +100,11 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /이용 정지 후 완료/);
   assert.match(pageSource, /suspendReportedUser/);
   assert.match(pageSource, /배지 관리/);
+  assert.match(pageSource, /배지 획득 실전 테스트/);
+  assert.match(pageSource, /admin\/badges\/test\/prepare/);
+  assert.match(pageSource, /admin\/badges\/test\/reset/);
+  assert.match(pageSource, /임시 테스트 배지 모두 정리/);
+  assert.match(stylesSource, /\.badgeTestPanel/);
   assert.match(pageSource, /admin\/badges/);
   assert.match(pageSource, /손그림 이미지 URL/);
   assert.match(pageSource, /COMPLETED_REGIONS/);
