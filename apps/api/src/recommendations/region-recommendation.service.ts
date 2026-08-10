@@ -230,7 +230,6 @@ export class RegionRecommendationService {
     return Promise.all(
       selected.map((recommendation, index) =>
         recommendation.source === "KTO" &&
-        !recommendation.imageUrl &&
         index < 6
           ? this.enrichWithTourismPhoto(recommendation)
           : recommendation,
@@ -323,9 +322,15 @@ export class RegionRecommendationService {
 
     const normalizedKeyword = normalizeAttractionName(keyword);
     return (
-      items.find(
-        (item) => normalizeAttractionName(item.galTitle) === normalizedKeyword,
-      ) ?? items[0] ?? null
+      items.find((item) => {
+        const normalizedTitle = normalizeAttractionName(item.galTitle);
+        return (
+          Boolean(normalizedTitle) &&
+          (normalizedTitle === normalizedKeyword ||
+            normalizedTitle.includes(normalizedKeyword) ||
+            normalizedKeyword.includes(normalizedTitle))
+        );
+      }) ?? null
     );
   }
 
