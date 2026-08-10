@@ -433,5 +433,27 @@ describeWithDatabase("DailySessionService integration", () => {
     ]);
     expect(approvedCell?.status).toBe("VERIFIED");
     expect(approvedSession?.totalPoints).toBe(requested.totalPoints + 20);
+
+    const notifications = await completionService.listPhotoReviewNotifications(
+      userId,
+    );
+    const notification = notifications.find(
+      (item) => item.id === storedVerification!.id,
+    );
+    expect(notification).toMatchObject({
+      missionTitle: "오래된 흔적",
+      decision: "APPROVED",
+      isRead: false,
+    });
+    await completionService.markPhotoReviewNotificationRead(
+      userId,
+      storedVerification!.id,
+    );
+    const readNotifications =
+      await completionService.listPhotoReviewNotifications(userId);
+    expect(
+      readNotifications.find((item) => item.id === storedVerification!.id)
+        ?.isRead,
+    ).toBe(true);
   });
 });

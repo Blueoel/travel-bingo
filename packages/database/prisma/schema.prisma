@@ -486,12 +486,14 @@ model Verification {
   reasonDetail   String?
   submittedAt    DateTime           @default(now()) @db.Timestamptz(3)
   decidedAt      DateTime?          @db.Timestamptz(3)
+  seenAt         DateTime?          @db.Timestamptz(3)
   sessionCell    SessionCell        @relation(fields: [sessionCellId], references: [id], onDelete: Restrict)
   user           User               @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, idempotencyKey])
   @@index([sessionCellId, status, submittedAt])
   @@index([status, submittedAt])
+  @@index([userId, seenAt, decidedAt])
 }
 
 model BingoLineReward {

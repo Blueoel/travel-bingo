@@ -642,6 +642,17 @@ mark {
 .reviewCard footer select {
   grid-column: 1/-1;
 }
+.reviewCustomReason {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 82px;
+  padding: 10px 12px;
+  border: 1px solid #c9d0cb;
+  border-radius: 9px;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.5;
+}
 .reviewCard img {
   cursor: zoom-in;
 }

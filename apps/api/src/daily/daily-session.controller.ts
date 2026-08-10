@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  Patch,
   Post,
 } from "@nestjs/common";
 
@@ -114,6 +115,28 @@ export class DailySessionController {
       sessionId,
       cellId,
     });
+  }
+
+  @Get("photo-review-notifications")
+  async photoReviewNotifications(
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ) {
+    return this.missionCompletionService.listPhotoReviewNotifications(
+      await this.authService.requireUserId(cookieHeader, userId),
+    );
+  }
+
+  @Patch("photo-review-notifications/:id/read")
+  async markPhotoReviewNotificationRead(
+    @Param("id") id: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ): Promise<{ read: boolean }> {
+    return this.missionCompletionService.markPhotoReviewNotificationRead(
+      await this.authService.requireUserId(cookieHeader, userId),
+      id,
+    );
   }
 }
 

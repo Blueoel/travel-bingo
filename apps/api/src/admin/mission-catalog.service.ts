@@ -520,6 +520,13 @@ export class MissionCatalogService {
     decision: "APPROVED" | "REJECTED",
     reason: string | undefined,
   ) {
+    const normalizedReason = reason?.trim() || null;
+    if (decision === "REJECTED" && !normalizedReason) {
+      throw new BadRequestException("사진을 반려하려면 사유를 입력해주세요.");
+    }
+    if (normalizedReason && normalizedReason.length > 500) {
+      throw new BadRequestException("반려 사유는 500자 이하로 입력해주세요.");
+    }
     return this.database.$transaction(async (transaction) => {
       const verification = await transaction.verification.findUnique({
         where: { id },
@@ -531,13 +538,15 @@ export class MissionCatalogService {
       const mission = asRecord(verification.sessionCell.missionSnapshot);
       const points = Math.max(0, Number(mission?.points ?? 0));
       const approved = decision === "APPROVED";
+      const decidedAt = new Date();
       await transaction.verification.update({
         where: { id },
         data: {
           status: decision,
           reasonCode: approved ? "PHOTO_ADMIN_APPROVED" : "PHOTO_ADMIN_REJECTED",
-          reasonDetail: reason?.trim() || null,
-          decidedAt: new Date(),
+          reasonDetail: normalizedReason,
+          decidedAt,
+          seenAt: null,
         },
       });
       await transaction.sessionCell.update({
@@ -562,6 +571,20 @@ export class MissionCatalogService {
           data: { totalPoints: { increment: points } },
         });
       }
+      await transaction.outboxEvent.create({
+        data: {
+          topic: "mission.review_decided",
+          aggregateId: verification.id,
+          payload: {
+            userId: verification.userId,
+            sessionId: verification.sessionCell.sessionId,
+            cellId: verification.sessionCellId,
+            decision,
+            reason: normalizedReason,
+            decidedAt: decidedAt.toISOString(),
+          },
+        },
+      });
       return { id, decision };
     });
   }

@@ -192,6 +192,50 @@ export class MissionCompletionService {
     );
   }
 
+  async listPhotoReviewNotifications(userId: string) {
+    const rows = await this.database.verification.findMany({
+      where: {
+        userId,
+        type: "PHOTO",
+        reasonCode: { in: ["PHOTO_ADMIN_APPROVED", "PHOTO_ADMIN_REJECTED"] },
+        decidedAt: { not: null },
+      },
+      include: { sessionCell: { select: { missionSnapshot: true } } },
+      orderBy: { decidedAt: "desc" },
+      take: 30,
+    });
+    return rows.map((row) => {
+      const mission = asRecord(row.sessionCell.missionSnapshot);
+      return {
+        id: row.id,
+        missionTitle: String(mission?.title ?? "사진 미션"),
+        decision: row.status === "APPROVED" ? "APPROVED" : "REJECTED",
+        reason: row.reasonDetail,
+        decidedAt: row.decidedAt!.toISOString(),
+        isRead: row.seenAt !== null,
+      };
+    });
+  }
+
+  async markPhotoReviewNotificationRead(
+    userId: string,
+    id: string,
+  ): Promise<{ read: boolean }> {
+    const result = await this.database.verification.updateMany({
+      where: {
+        id,
+        userId,
+        type: "PHOTO",
+        reasonCode: { in: ["PHOTO_ADMIN_APPROVED", "PHOTO_ADMIN_REJECTED"] },
+      },
+      data: { seenAt: new Date() },
+    });
+    if (!result.count) {
+      throw new NotFoundException("The photo review notification was not found.");
+    }
+    return { read: true };
+  }
+
   async verify(
     command: CompleteMissionCommand,
     evidence: MissionEvidence,

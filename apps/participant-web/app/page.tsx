@@ -165,6 +165,14 @@ type BadgeSummary = {
 };
 type Badge = { id: string; title: string; description: string; icon: string; imageUrl?: string | null; current: number; target: number; earned: boolean; earnedAt?: string | null; progress: number };
 type BadgeNotification = Pick<Badge, "id" | "title" | "description" | "icon" | "imageUrl"> & { earnedAt: string; isRead: boolean };
+type PhotoReviewNotification = {
+  id: string;
+  missionTitle: string;
+  decision: "APPROVED" | "REJECTED";
+  reason: string | null;
+  decidedAt: string;
+  isRead: boolean;
+};
 type RankingRewardNotice = {
   id: string;
   period: "DAILY" | "WEEKLY" | "MONTHLY";
@@ -528,6 +536,9 @@ export default function Home() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
   const [badgeNotifications, setBadgeNotifications] = useState<BadgeNotification[]>([]);
+  const [photoReviewNotifications, setPhotoReviewNotifications] = useState<
+    PhotoReviewNotification[]
+  >([]);
   const [rankingRewards, setRankingRewards] = useState<RankingRewardNotice[]>([]);
   const [badgeQueue, setBadgeQueue] = useState<Badge[]>([]);
   const [badgeCelebration, setBadgeCelebration] = useState<Badge | null>(null);
@@ -885,6 +896,15 @@ export default function Home() {
     const response = await apiFetch("/rankings/rewards");
     if (response.ok) setRankingRewards(await response.json());
   };
+  const loadPhotoReviewNotifications = async () => {
+    const response = await apiFetch(
+      "/daily-sessions/photo-review-notifications",
+    );
+    if (!response.ok) return [];
+    const loaded = (await response.json()) as PhotoReviewNotification[];
+    setPhotoReviewNotifications(loaded);
+    return loaded;
+  };
   const syncEarnedBadges = async () => {
     try {
       const response = await apiFetch("/friends/badges/sync", { method: "POST" });
@@ -921,6 +941,30 @@ export default function Home() {
     setActiveTab("my");
     setMyView("rewards");
   };
+  const openPhotoReviewNotification = async (
+    item: PhotoReviewNotification,
+  ) => {
+    setAnnouncementsOpen(false);
+    if (!item.isRead) {
+      await apiFetch(
+        `/daily-sessions/photo-review-notifications/${item.id}/read`,
+        { method: "PATCH" },
+      );
+      setPhotoReviewNotifications((current) =>
+        current.map((value) =>
+          value.id === item.id ? { ...value, isRead: true } : value,
+        ),
+      );
+    }
+    await reloadCurrentBingo();
+    if (item.decision === "APPROVED") await syncEarnedBadges();
+    setMessage(
+      item.decision === "APPROVED"
+        ? `${item.missionTitle} 사진 인증이 승인됐어요. 포인트와 빙고 진행도에 반영했습니다.`
+        : `${item.missionTitle} 사진 인증이 반려됐어요. ${item.reason ?? "사진을 다시 확인해주세요."}`,
+    );
+    setActiveTab("bingo");
+  };
   const viewCelebratedBadge = async () => {
     const badge = badgeCelebration;
     setBadgeCelebration(null);
@@ -936,6 +980,7 @@ export default function Home() {
     void loadAccountSummary();
     void loadBadgeNotifications();
     void loadRankingRewards();
+    void loadPhotoReviewNotifications();
   }, [authStatus]);
   useEffect(() => {
     if (bingoFlash || badgeCelebration || !badgeQueue.length) return;
@@ -1046,6 +1091,27 @@ export default function Home() {
     if (!response.ok) throw new Error("Bingo session unavailable");
     applySession((await response.json()) as DailySession);
   };
+
+  useEffect(() => {
+    if (authStatus !== "authenticated") return;
+    const refreshReviewResults = async () => {
+      const notifications = await loadPhotoReviewNotifications();
+      if (notifications.some((item) => !item.isRead)) {
+        await reloadCurrentBingo();
+        await syncEarnedBadges();
+      }
+    };
+    const handleFocus = () => void refreshReviewResults();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void refreshReviewResults();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [authStatus, currentBingo.type, sessionId]);
 
   useEffect(() => {
     void loadDaily(false);
@@ -2497,7 +2563,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
+              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || photoReviewNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + photoReviewNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3689,6 +3755,27 @@ export default function Home() {
               {friends.filter((item) => item.status === "ACCEPTED" && item.direction === "SENT" && item.isUnread).map((item) => (
                 <button type="button" key={`accepted-${item.id}`} onClick={() => void openAcceptedFriendNotification(item)}><span>친구</span><div><b>{item.user.nickname}님과 친구가 되었어요!</b><small>프로필과 활동 기록 보기</small></div><i>NEW</i></button>
               ))}
+              {photoReviewNotifications.map((item) => (
+                <button
+                  type="button"
+                  key={`photo-review-${item.id}`}
+                  onClick={() => void openPhotoReviewNotification(item)}
+                >
+                  <span>{item.decision === "APPROVED" ? "승인" : "반려"}</span>
+                  <div>
+                    <b>
+                      {item.missionTitle} 사진 인증이
+                      {item.decision === "APPROVED" ? " 승인됐어요." : " 반려됐어요."}
+                    </b>
+                    <small>
+                      {item.decision === "REJECTED" && item.reason
+                        ? item.reason
+                        : new Date(item.decidedAt).toLocaleDateString("ko-KR")}
+                    </small>
+                  </div>
+                  {!item.isRead && <i>NEW</i>}
+                </button>
+              ))}
               {badgeNotifications.map((item) => (
                 <button type="button" key={`badge-${item.id}`} onClick={() => void openBadgeNotification(item)}>
                   <span className="badge-notification-icon">{item.imageUrl ? <img src={item.imageUrl} alt="" /> : item.icon}</span>
@@ -3710,7 +3797,7 @@ export default function Home() {
                   {!item.isRead && <i>NEW</i>}
                 </button>
               )) : null}
-              {!announcements.length && !badgeNotifications.length && !rankingRewards.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
+              {!announcements.length && !badgeNotifications.length && !photoReviewNotifications.length && !rankingRewards.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
             </div>
           </section>
         </div>

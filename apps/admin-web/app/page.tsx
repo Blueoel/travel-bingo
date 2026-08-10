@@ -188,6 +188,9 @@ export default function AdminPage() {
   const [reviewReasons, setReviewReasons] = useState<Record<string, string>>(
     {},
   );
+  const [customReviewReasons, setCustomReviewReasons] = useState<
+    Record<string, string>
+  >({});
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [reports, setReports] = useState<UserReport[]>([]);
@@ -569,9 +572,17 @@ export default function AdminPage() {
     }
   }
   async function decideReview(id: string, decision: "APPROVED" | "REJECTED") {
-    const reason = reviewReasons[id]?.trim();
+    const selectedReason = reviewReasons[id]?.trim();
+    const reason =
+      selectedReason === "기타"
+        ? customReviewReasons[id]?.trim()
+        : selectedReason;
     if (decision === "REJECTED" && !reason) {
-      return setError("거절 사유를 먼저 선택해주세요.");
+      return setError(
+        selectedReason === "기타"
+          ? "기타 반려 사유를 직접 입력해주세요."
+          : "반려 사유를 먼저 선택해주세요.",
+      );
     }
     const review = reviews.find((item) => item.id === id);
     const endpoint = review?.source === "BACKEND"
@@ -1893,7 +1904,24 @@ export default function AdminPage() {
                           <option value="개인정보가 노출됨">
                             개인정보가 노출됨
                           </option>
+                          <option value="기타">기타 · 직접 입력</option>
                         </select>
+                        {reviewReasons[review.id] === "기타" && (
+                          <textarea
+                            className="reviewCustomReason"
+                            aria-label="기타 반려 사유"
+                            value={customReviewReasons[review.id] ?? ""}
+                            maxLength={500}
+                            rows={3}
+                            placeholder="참가자가 이해할 수 있도록 반려 사유를 작성해주세요."
+                            onChange={(event) =>
+                              setCustomReviewReasons((current) => ({
+                                ...current,
+                                [review.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        )}
                         <button
                           className="secondary"
                           onClick={() => decideReview(review.id, "REJECTED")}
