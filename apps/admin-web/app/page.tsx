@@ -137,6 +137,10 @@ const API = "/api/backend";
 const PHOTO_API =
   process.env.NEXT_PUBLIC_PHOTO_REVIEW_API_URL ??
   "https://travel-bingo-walk.blueo03.chatgpt.site";
+const photoReviewImageUrl = (review: PhotoReview) =>
+  review.imageUrl.startsWith("data:")
+    ? review.imageUrl
+    : `${PHOTO_API}${review.imageUrl}`;
 const ADMIN = "10000000-0000-4000-8000-000000000002";
 const scopeName = { COMMON: "공통", REGION: "지역", EVENT: "이벤트" };
 const difficultyName = ["", "쉬움", "보통", "어려움", "특별"];
@@ -1811,11 +1815,9 @@ export default function AdminPage() {
                 {reviews.map((review) => (
                   <article className="reviewCard" key={review.id}>
                     <img
-                      src={`${PHOTO_API}${review.imageUrl}`}
+                      src={photoReviewImageUrl(review)}
                       alt={`${review.missionTitle} 인증 사진`}
-                      onClick={() =>
-                        setZoomedPhoto(`${PHOTO_API}${review.imageUrl}`)
-                      }
+                      onClick={() => setZoomedPhoto(photoReviewImageUrl(review))}
                     />
                     <div>
                       <h2>{review.missionTitle}</h2>

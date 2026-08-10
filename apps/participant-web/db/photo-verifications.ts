@@ -67,7 +67,11 @@ export async function recordPhotoVerdict(input: {
   points: number;
   photoKey?: string | null;
   verdict: StoredPhotoVerdict;
-}): Promise<{ awardGranted: boolean; awardedPoints: number }> {
+}): Promise<{
+  verificationId: string;
+  awardGranted: boolean;
+  awardedPoints: number;
+}> {
   const db = await getDb();
   const verificationId = crypto.randomUUID();
   const now = new Date();
@@ -94,7 +98,7 @@ export async function recordPhotoVerdict(input: {
   });
 
   if (input.verdict.decision !== "APPROVED") {
-    return { awardGranted: false, awardedPoints: 0 };
+    return { verificationId, awardGranted: false, awardedPoints: 0 };
   }
 
   const awarded = await db
@@ -112,9 +116,46 @@ export async function recordPhotoVerdict(input: {
     .returning({ id: photoMissionAwards.id });
 
   return {
+    verificationId,
     awardGranted: awarded.length === 1,
     awardedPoints: awarded.length === 1 ? input.points : 0,
   };
+}
+
+export async function requestGuestPhotoReview(input: {
+  guestId: string;
+  verificationId: string;
+}): Promise<boolean> {
+  const db = await getDb();
+  const attempt = await db
+    .select({
+      id: photoVerificationAttempts.id,
+      decision: photoVerificationAttempts.decision,
+      photoKey: photoVerificationAttempts.photoKey,
+      reviewDecision: photoVerificationAttempts.reviewDecision,
+    })
+    .from(photoVerificationAttempts)
+    .where(
+      and(
+        eq(photoVerificationAttempts.id, input.verificationId),
+        eq(photoVerificationAttempts.guestId, input.guestId),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (!attempt?.photoKey || attempt.reviewDecision) return false;
+  if (attempt.decision === "NEEDS_REVIEW") return true;
+  if (attempt.decision !== "REJECTED") return false;
+
+  await db
+    .update(photoVerificationAttempts)
+    .set({
+      decision: "NEEDS_REVIEW",
+      retryGuide: "참가자가 관리자 검수를 요청했습니다.",
+    })
+    .where(eq(photoVerificationAttempts.id, attempt.id));
+  return true;
 }
 
 export async function listPhotoReviews(processed = false) {

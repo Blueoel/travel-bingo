@@ -27,6 +27,13 @@ export interface CompleteMissionCommand {
   readonly now?: Date;
 }
 
+export interface RequestPhotoReviewCommand {
+  readonly userId: string;
+  readonly sessionId: string;
+  readonly cellId: string;
+  readonly now?: Date;
+}
+
 export type MissionEvidence =
   | { readonly type: "CHECK_IN" }
   | { readonly type: "TEXT"; readonly text: string }
@@ -106,6 +113,83 @@ export class MissionCompletionService {
     command: CompleteMissionCommand,
   ): Promise<MissionCompletionResult> {
     return this.verify(command, { type: "CHECK_IN" });
+  }
+
+  async requestPhotoReview(
+    command: RequestPhotoReviewCommand,
+  ): Promise<MissionCompletionResult> {
+    const outcome = await this.database.$transaction(async (transaction) => {
+      const cell = await transaction.sessionCell.findFirst({
+        where: {
+          id: command.cellId,
+          sessionId: command.sessionId,
+          session: { userId: command.userId },
+        },
+      });
+      if (!cell) {
+        throw new NotFoundException("The photo mission cell was not found.");
+      }
+
+      const verification = await transaction.verification.findFirst({
+        where: {
+          sessionCellId: cell.id,
+          userId: command.userId,
+          type: "PHOTO",
+        },
+        orderBy: { submittedAt: "desc" },
+      });
+      if (!verification) {
+        throw new NotFoundException("A submitted photo could not be found.");
+      }
+      if (verification.status === "NEEDS_REVIEW") {
+        return { reasonCode: verification.reasonCode ?? "PHOTO_NEEDS_REVIEW" };
+      }
+      if (
+        verification.status !== "REJECTED" ||
+        verification.reasonCode !== "PHOTO_AI_REJECTED"
+      ) {
+        throw new ConflictException(
+          "Only an AI-rejected photo can be sent for administrator review.",
+        );
+      }
+
+      const requestedAt = command.now ?? new Date();
+      await transaction.verification.update({
+        where: { id: verification.id },
+        data: {
+          status: "NEEDS_REVIEW",
+          reasonCode: "PHOTO_USER_REVIEW_REQUESTED",
+          reasonDetail: "참가자가 관리자 검수를 요청했습니다.",
+          decidedAt: null,
+        },
+      });
+      await transaction.sessionCell.update({
+        where: { id: cell.id },
+        data: { status: "SUBMITTED" },
+      });
+      await transaction.outboxEvent.create({
+        data: {
+          topic: "mission.review_requested",
+          aggregateId: verification.id,
+          payload: {
+            userId: command.userId,
+            sessionId: command.sessionId,
+            cellId: cell.id,
+            requestedAt: requestedAt.toISOString(),
+            reasonCode: "PHOTO_USER_REVIEW_REQUESTED",
+          },
+        },
+      });
+      return { reasonCode: "PHOTO_USER_REVIEW_REQUESTED" };
+    });
+
+    return this.buildResult(
+      command.sessionId,
+      command.cellId,
+      0,
+      "NEEDS_REVIEW",
+      outcome.reasonCode,
+    );
   }
 
   async verify(

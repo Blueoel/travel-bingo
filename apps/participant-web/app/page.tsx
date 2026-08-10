@@ -25,6 +25,7 @@ type Mission = {
   kind: MissionKind;
   points: number;
   done: boolean;
+  reviewPending?: boolean;
   difficulty?: "쉬움" | "보통" | "어려움" | "특별";
   estimatedTime?: string;
   verificationLabel?: string;
@@ -77,7 +78,7 @@ type DailySession = {
 };
 type SessionCell = DailySession["cells"][number];
 type VerificationResult = {
-  verificationStatus?: "APPROVED" | "REJECTED";
+  verificationStatus?: "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
   reasonCode?: string;
   completedLineKeys: string[];
 };
@@ -90,6 +91,7 @@ function toMission(cell: SessionCell): Mission {
     kind: cell.mission.kind,
     points: cell.mission.points,
     done: cell.status === "VERIFIED",
+    reviewPending: cell.status === "SUBMITTED",
     difficulty: difficultyLabel(cell.mission.difficulty),
     estimatedTime: estimatedTimeLabel(
       cell.mission.estimatedMinutesMin,
@@ -625,6 +627,12 @@ export default function Home() {
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoReviewState, setPhotoReviewState] = useState<
+    "NONE" | "AVAILABLE" | "REQUESTING" | "PENDING"
+  >("NONE");
+  const [photoVerificationId, setPhotoVerificationId] = useState<string | null>(
+    null,
+  );
   const [gpsCheck, setGpsCheck] = useState<{
     status: "idle" | "checking" | "ready" | "error";
     accuracyM: number | null;
@@ -1783,6 +1791,8 @@ export default function Home() {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoStage("DETAIL");
+    setPhotoReviewState("NONE");
+    setPhotoVerificationId(null);
     setTextRecord("");
     setSelected(null);
   };
@@ -2024,6 +2034,8 @@ export default function Home() {
   const verifyPhoto = async (file?: File) => {
     if (!selected || !file) return;
     setMessage(null);
+    setPhotoReviewState("NONE");
+    setPhotoVerificationId(null);
     const preview = URL.createObjectURL(file);
     setPhotoPreview(preview);
     setPhotoStage("REVIEWING");
@@ -2049,17 +2061,24 @@ export default function Home() {
           awardGranted?: boolean;
           awardedPoints?: number;
           alreadyCompleted?: boolean;
+          verificationId?: string;
         };
         if (!response.ok || verdict.decision !== "APPROVED") {
           setPhotoStage("DETAIL");
+          setPhotoVerificationId(verdict.verificationId ?? null);
+          setPhotoReviewState(
+            verdict.decision === "NEEDS_REVIEW"
+              ? "PENDING"
+              : verdict.decision === "REJECTED" && verdict.verificationId
+                ? "AVAILABLE"
+                : "NONE",
+          );
           setMessage(
-            verdict.retryGuide ||
-              verdict.message ||
-              friendlyError(
-                verdict.decision === "NEEDS_REVIEW"
-                  ? "PHOTO_NEEDS_REVIEW"
-                  : (verdict.code ?? "PHOTO_AI_REJECTED"),
-              ),
+            verdict.decision === "NEEDS_REVIEW"
+              ? "사진이 관리자 검수 대기 목록에 접수됐어요. 결과는 검수 후 반영됩니다."
+              : verdict.retryGuide ||
+                  verdict.message ||
+                  friendlyError(verdict.code ?? "PHOTO_AI_REJECTED"),
           );
           return;
         }
@@ -2096,7 +2115,19 @@ export default function Home() {
         result.verificationStatus === "NEEDS_REVIEW"
       ) {
         setPhotoStage("DETAIL");
-        setMessage(friendlyError(result.reasonCode ?? result.code));
+        const pending = result.verificationStatus === "NEEDS_REVIEW";
+        setPhotoReviewState(
+          pending
+            ? "PENDING"
+            : result.reasonCode === "PHOTO_AI_REJECTED"
+              ? "AVAILABLE"
+              : "NONE",
+        );
+        setMessage(
+          pending
+            ? "사진이 관리자 검수 대기 목록에 접수됐어요. 결과는 검수 후 반영됩니다."
+            : friendlyError(result.reasonCode ?? result.code),
+        );
         return;
       }
       approvePhotoMission(result);
@@ -2105,6 +2136,48 @@ export default function Home() {
       setPhotoStage("DETAIL");
       setMessage(
         "사진 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
+    }
+  };
+
+  const requestPhotoReview = async () => {
+    if (!selected || photoReviewState !== "AVAILABLE") return;
+    setPhotoReviewState("REQUESTING");
+    setMessage(null);
+    try {
+      const response =
+        demoMode || !sessionId
+          ? await fetch("/api/photo-review-request", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ verificationId: photoVerificationId }),
+            })
+          : await apiFetch(
+              `/daily-sessions/${sessionId}/cells/${selected.id}/photo-review-request`,
+              { method: "POST" },
+            );
+      const result = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setPhotoReviewState("AVAILABLE");
+        setMessage(result.message ?? "관리자 검수 요청을 접수하지 못했어요.");
+        return;
+      }
+      setPhotoReviewState("PENDING");
+      setItems((current) =>
+        current.map((item) =>
+          item.id === selected.id ? { ...item, reviewPending: true } : item,
+        ),
+      );
+      setSelected((current) =>
+        current ? { ...current, reviewPending: true } : current,
+      );
+      setMessage(
+        "관리자 검수 요청이 접수됐어요. 승인되면 포인트와 빙고 진행도에 반영됩니다.",
+      );
+    } catch {
+      setPhotoReviewState("AVAILABLE");
+      setMessage(
+        "관리자 검수 요청을 접수하지 못했어요. 잠시 후 다시 시도해주세요.",
       );
     }
   };
@@ -2364,7 +2437,7 @@ export default function Home() {
           {items.map((item) => (
             <button
               key={item.id}
-              className={`${item.done ? "done" : ""} ${item.title === "Lucky!" || item.title === "FREE" ? "free" : ""}`}
+              className={`${item.done ? "done" : ""} ${item.reviewPending ? "review-pending" : ""} ${item.title === "Lucky!" || item.title === "FREE" ? "free" : ""}`}
               title={item.title}
               onClick={() => {
                 setSelected(item);
@@ -2377,13 +2450,26 @@ export default function Home() {
                 setAnswer("");
                 setPhotoStage("DETAIL");
                 setPhotoPreview(null);
+                setPhotoReviewState(item.reviewPending ? "PENDING" : "NONE");
+                setPhotoVerificationId(null);
+                if (item.reviewPending) {
+                  setMessage(
+                    "관리자가 사진을 확인하고 있어요. 결과는 검수 후 반영됩니다.",
+                  );
+                }
               }}
             >
               <span className={`mission-icon ${item.kind.toLowerCase()}`}>
-                {item.done ? "✓" : icon[item.kind]}
+                {item.done ? "✓" : item.reviewPending ? "…" : icon[item.kind]}
               </span>
               <b>{item.title}</b>
-              <small>{item.points ? `+${item.points}P` : "BONUS"}</small>
+              <small>
+                {item.reviewPending
+                  ? "검수 중"
+                  : item.points
+                    ? `+${item.points}P`
+                    : "BONUS"}
+              </small>
             </button>
           ))}
         </section>
@@ -3897,6 +3983,23 @@ export default function Home() {
                 {message && <p className="error-message">{message}</p>}
                 {selected.kind === "PHOTO" ? (
                   <div className="photo-actions">
+                    {photoReviewState === "AVAILABLE" && (
+                      <button
+                        type="button"
+                        className="review-request-button"
+                        onClick={() => void requestPhotoReview()}
+                      >
+                        관리자 검수 요청
+                      </button>
+                    )}
+                    {photoReviewState === "PENDING" && (
+                      <div className="review-pending-panel" role="status">
+                        <b>관리자 검수 대기 중</b>
+                        <span>
+                          제출 시각을 기준으로 판정하며, 승인되면 보상이 자동 반영돼요.
+                        </span>
+                      </div>
+                    )}
                     <input
                       ref={cameraInput}
                       type="file"
@@ -3915,14 +4018,24 @@ export default function Home() {
                     <button
                       className="primary"
                       onClick={() => cameraInput.current?.click()}
-                      disabled={photoStage === "REVIEWING" || selected.done}
+                      disabled={
+                        photoStage === "REVIEWING" ||
+                        photoReviewState === "REQUESTING" ||
+                        photoReviewState === "PENDING" ||
+                        selected.done
+                      }
                     >
                       사진 촬영하기
                     </button>
                     <button
                       className="secondary"
                       onClick={() => albumInput.current?.click()}
-                      disabled={photoStage === "REVIEWING" || selected.done}
+                      disabled={
+                        photoStage === "REVIEWING" ||
+                        photoReviewState === "REQUESTING" ||
+                        photoReviewState === "PENDING" ||
+                        selected.done
+                      }
                     >
                       앨범에서 선택
                     </button>

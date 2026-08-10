@@ -2093,6 +2093,17 @@ h1 {
   background: #e3f1e8;
   border-color: #8fc2a4;
 }
+.board button.review-pending {
+  border-color: #d9b46c;
+  background: #fff8e8;
+}
+.board button.review-pending .mission-icon {
+  background: #f6d997;
+  color: #805d19;
+}
+.board button.review-pending small {
+  color: #8a681f;
+}
 .board button.free {
   background: var(--lime);
   border-color: #bed347;
@@ -2360,6 +2371,33 @@ nav .active {
 .photo-actions {
   display: grid;
   gap: 9px;
+}
+.review-request-button {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #c79542;
+  border-radius: 14px;
+  background: #fff5dc;
+  color: #624514;
+  font-weight: 900;
+  cursor: pointer;
+}
+.review-pending-panel {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px dashed #c9a45c;
+  border-radius: 14px;
+  background: #fff8e8;
+  color: #684c1d;
+  text-align: left;
+}
+.review-pending-panel b {
+  font-size: 13px;
+}
+.review-pending-panel span {
+  font-size: 11px;
+  line-height: 1.5;
 }
 .secondary {
   width: 100%;

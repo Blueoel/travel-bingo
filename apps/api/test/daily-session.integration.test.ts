@@ -8,6 +8,7 @@ import {
 import { config as loadEnvironment } from "dotenv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { MissionCatalogService } from "../src/admin/mission-catalog.service.js";
 import { DailySessionService } from "../src/daily/daily-session.service.js";
 import { MissionCompletionService } from "../src/daily/mission-completion.service.js";
 
@@ -23,6 +24,7 @@ describeWithDatabase("DailySessionService integration", () => {
   let database: DatabaseClient;
   let service: DailySessionService;
   let completionService: MissionCompletionService;
+  let adminMissionService: MissionCatalogService;
   let userId: string;
   let templateId: string;
   let collectionId: string;
@@ -34,6 +36,7 @@ describeWithDatabase("DailySessionService integration", () => {
     database = createDatabaseClient({ connectionString: databaseUrl! });
     service = new DailySessionService(database);
     completionService = new MissionCompletionService(database);
+    adminMissionService = new MissionCatalogService(database);
 
     const suffix = crypto.randomUUID().slice(0, 8);
     const fixture = await database.$transaction(async (transaction) => {
@@ -201,7 +204,9 @@ describeWithDatabase("DailySessionService integration", () => {
       });
     }
 
-    expect(lastResult?.completedCellCount).toBe(5);
+    expect(lastResult?.completedCellCount).toBe(
+      session.completedCellCount + cellsToComplete.length,
+    );
     expect(lastResult?.completedLineKeys).toContain("ROW_0");
     const expectedMissionPoints = cellsToComplete.length * 10;
     expect(lastResult?.pointsEarned).toBe(110);
@@ -344,5 +349,89 @@ describeWithDatabase("DailySessionService integration", () => {
     expect(insideGps.verificationStatus).toBe("APPROVED");
     expect(insideGps.pointsEarned).toBe(30);
     expect(insideGps.totalPoints).toBe(session.totalPoints + 50);
+  });
+
+  it("lets a participant send an AI-rejected photo to administrator review once", async () => {
+    const now = new Date("2026-07-27T04:00:00.000Z");
+    const session = await service.getToday({ userId, now });
+    const photoCell = session.cells[10]!;
+    await database.sessionCell.update({
+      where: { id: photoCell.id },
+      data: {
+        status: "AVAILABLE",
+        verifiedAt: null,
+        missionSnapshot: {
+          kind: "PHOTO",
+          title: "오래된 흔적",
+          description: "오래된 건물이나 시간을 느낄 수 있는 것을 찾아보세요.",
+          points: 20,
+          verificationPolicy: { type: "PHOTO" },
+        },
+      },
+    });
+
+    const rejected = await completionService.verify(
+      {
+        userId,
+        sessionId: session.id,
+        cellId: photoCell.id,
+        idempotencyKey: `photo-rejected-${photoCell.id}`,
+        now,
+      },
+      {
+        type: "PHOTO",
+        imageDataUrl: "data:image/jpeg;base64,dGVzdA==",
+        analysis: {
+          decision: "REJECTED",
+          targetVisible: false,
+          confidence: 0.41,
+          evidence: ["오래된 장독이 보임"],
+          failureReasons: ["오래된 흔적인지 확신하기 어려움"],
+          retryGuide: "대상을 더 크게 촬영해주세요.",
+          model: "test-model",
+        },
+      },
+    );
+    expect(rejected.verificationStatus).toBe("REJECTED");
+    expect(rejected.reasonCode).toBe("PHOTO_AI_REJECTED");
+
+    const requested = await completionService.requestPhotoReview({
+      userId,
+      sessionId: session.id,
+      cellId: photoCell.id,
+      now: new Date(now.getTime() + 1_000),
+    });
+    expect(requested.verificationStatus).toBe("NEEDS_REVIEW");
+    expect(requested.reasonCode).toBe("PHOTO_USER_REVIEW_REQUESTED");
+
+    const [storedCell, storedVerification] = await Promise.all([
+      database.sessionCell.findUnique({ where: { id: photoCell.id } }),
+      database.verification.findFirst({
+        where: { sessionCellId: photoCell.id, type: "PHOTO" },
+        orderBy: { submittedAt: "desc" },
+      }),
+    ]);
+    expect(storedCell?.status).toBe("SUBMITTED");
+    expect(storedVerification?.status).toBe("NEEDS_REVIEW");
+
+    const repeated = await completionService.requestPhotoReview({
+      userId,
+      sessionId: session.id,
+      cellId: photoCell.id,
+      now: new Date(now.getTime() + 2_000),
+    });
+    expect(repeated.verificationStatus).toBe("NEEDS_REVIEW");
+
+    await adminMissionService.reviewPhoto(
+      storedVerification!.id,
+      "APPROVED",
+      "사진에서 오래된 흔적을 확인했습니다.",
+    );
+    const [approvedCell, approvedSession] = await Promise.all([
+      database.sessionCell.findUnique({ where: { id: photoCell.id } }),
+      database.bingoSession.findUnique({ where: { id: session.id } }),
+    ]);
+    expect(approvedCell?.status).toBe("VERIFIED");
+    expect(approvedSession?.totalPoints).toBe(requested.totalPoints + 20);
   });
 });

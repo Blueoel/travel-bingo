@@ -101,6 +101,20 @@ export class DailySessionController {
     }
     return this.missionCompletionService.verify(command, parseEvidence(body));
   }
+
+  @Post(":sessionId/cells/:cellId/photo-review-request")
+  async requestPhotoReview(
+    @Param("sessionId") sessionId: string,
+    @Param("cellId") cellId: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ): Promise<MissionCompletionResult> {
+    return this.missionCompletionService.requestPhotoReview({
+      userId: await this.authService.requireUserId(cookieHeader, userId),
+      sessionId,
+      cellId,
+    });
+  }
 }
 
 function requireIdempotencyKey(value: string | undefined): string {

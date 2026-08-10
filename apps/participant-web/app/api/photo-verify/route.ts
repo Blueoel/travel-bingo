@@ -177,14 +177,11 @@ export async function POST(request: Request) {
     const part = asRecord(asArray(content?.parts)[0]);
     const verdict = enforceApprovalPolicy(parseVerdict(part?.text));
     const guest = resolveGuest(request);
-    const photoKey =
-      verdict.decision === "APPROVED" || verdict.decision === "NEEDS_REVIEW"
-        ? await storeReviewPhoto({
-            missionId,
-            mimeType: match[1],
-            base64: match[2],
-          })
-        : null;
+    const photoKey = await storeReviewPhoto({
+      missionId,
+      mimeType: match[1],
+      base64: match[2],
+    });
     const award = await recordPhotoVerdict({
       guestId: guest.guestId,
       missionId,
