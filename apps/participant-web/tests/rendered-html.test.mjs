@@ -87,6 +87,17 @@ test("shows published announcements and records important notice reads", async (
   assert.match(pageSource, /Math\.min\(99, announcements\.filter/);
 });
 
+test("shows ranking reward notifications and reward history", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  const styles = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");
+  assert.match(pageSource, /apiFetch\("\/rankings\/rewards"\)/);
+  assert.match(pageSource, /rankings\/rewards\/\$\{item\.id\}\/read/);
+  assert.match(pageSource, /랭킹 보상 이력/);
+  assert.match(pageSource, /전체 랭킹 상위 3위/);
+  assert.match(pageSource, /rankingRewards\.filter\(\(item\) => !item\.isRead\)/);
+  assert.match(styles, /\.ranking-reward-list/);
+});
+
 test("manages friends and opens the real friend ranking", async () => {
   const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
   assert.match(pageSource, /apiFetch\("\/friends"\)/);

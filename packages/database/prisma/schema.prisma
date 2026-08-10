@@ -122,6 +122,7 @@ model User {
   reportsCreated      UserReport[] @relation("UserReportCreator")
   reportsReceived     UserReport[] @relation("UserReportTarget")
   badges              UserBadge[]
+  rankingRewards      RankingReward[]
 
   @@index([status, createdAt])
 }
@@ -560,4 +561,39 @@ model DailyRankingSnapshot {
   @@unique([cycleDate, userId])
   @@index([cycleDate, rank])
   @@index([userId, cycleDate])
+}
+
+model RankingSettlement {
+  id                String          @id @default(uuid()) @db.Uuid
+  period            String          @db.VarChar(20)
+  periodStart       DateTime        @db.Timestamptz(3)
+  periodEnd         DateTime        @db.Timestamptz(3)
+  status            String          @default("PROCESSING") @db.VarChar(20)
+  participantCount  Int             @default(0)
+  rewardCount       Int             @default(0)
+  rewardPointTotal  Int             @default(0)
+  startedAt         DateTime        @default(now()) @db.Timestamptz(3)
+  completedAt       DateTime?       @db.Timestamptz(3)
+  lastError         String?
+  rewards           RankingReward[]
+
+  @@unique([period, periodStart])
+  @@index([status, periodEnd])
+}
+
+model RankingReward {
+  id           String            @id @default(uuid()) @db.Uuid
+  settlementId String            @db.Uuid
+  userId       String            @db.Uuid
+  rank         Int
+  score        Int
+  points       Int
+  awardedAt    DateTime          @default(now()) @db.Timestamptz(3)
+  readAt       DateTime?         @db.Timestamptz(3)
+  settlement   RankingSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementId, userId])
+  @@index([userId, readAt, awardedAt])
+  @@index([settlementId, rank])
 }

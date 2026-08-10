@@ -96,6 +96,19 @@ type Announcement = {
 };
 type BadgeDefinition = { id: string; code: string; title: string; description: string; icon: string; imageUrl: string | null; metric: "POINTS" | "COMPLETED_MISSIONS" | "COMPLETED_BINGOS" | "COMPLETED_REGIONS"; target: number; displayOrder: number; status: "ACTIVE" | "INACTIVE" };
 type BadgeTestState = { user: { id: string; nickname: string; email: string | null }; badge: BadgeDefinition; current: number; target: number };
+type RankingSettlement = {
+  id: string;
+  period: "DAILY" | "WEEKLY" | "MONTHLY";
+  periodStart: string;
+  periodEnd: string;
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
+  participantCount: number;
+  rewardCount: number;
+  rewardPointTotal: number;
+  completedAt: string | null;
+  lastError: string | null;
+  rewards: Array<{ id: string; rank: number; score: number; points: number; user: { nickname: string; email: string | null } }>;
+};
 type AttractionRecommendation = {
   contentId: string;
   contentTypeId: string | null;
@@ -160,7 +173,7 @@ export default function AdminPage() {
     [similarityGroup, setSimilarityGroup] = useState(""),
     [dailyCandidate, setDailyCandidate] = useState("");
   const [view, setView] = useState<
-    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements" | "reports" | "badges"
+    "catalog" | "daily" | "regions" | "reviews" | "users" | "announcements" | "reports" | "badges" | "settlements"
   >("catalog"),
     [editing, setEditing] = useState<Mission | null>(null),
     [open, setOpen] = useState(false);
@@ -181,6 +194,8 @@ export default function AdminPage() {
   const [badgeTestEmail, setBadgeTestEmail] = useState("");
   const [badgeTest, setBadgeTest] = useState<BadgeTestState | null>(null);
   const [badgeTestLoading, setBadgeTestLoading] = useState(false);
+  const [rankingSettlements, setRankingSettlements] = useState<RankingSettlement[]>([]);
+  const [rankingSettlementsLoading, setRankingSettlementsLoading] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [announcementQuery, setAnnouncementQuery] = useState("");
   const [announcementFilter, setAnnouncementFilter] = useState<"ALL" | "DRAFT" | "ACTIVE" | "SCHEDULED" | "ENDED">("ALL");
@@ -675,6 +690,29 @@ export default function AdminPage() {
     setBadges(await response.json()); setError("");
   }
   useEffect(() => { if (view === "badges") void loadBadges(); }, [view]);
+  async function loadRankingSettlements() {
+    setRankingSettlementsLoading(true);
+    try {
+      const response = await fetch(`${API}/admin/ranking-settlements`, { credentials: "include", headers: { "x-user-id": ADMIN } });
+      if (!response.ok) return setError("랭킹 정산 기록을 불러오지 못했습니다.");
+      setRankingSettlements(await response.json());
+      setError("");
+    } finally {
+      setRankingSettlementsLoading(false);
+    }
+  }
+  async function runRankingSettlements() {
+    setRankingSettlementsLoading(true); setError("");
+    try {
+      const response = await fetch(`${API}/admin/ranking-settlements/run`, { method: "POST", credentials: "include", headers: { "x-user-id": ADMIN } });
+      if (!response.ok) return setError("누락 정산 확인을 실행하지 못했습니다.");
+      setNotice("일간 경계 기준으로 누락된 주간·월간 정산을 확인했습니다.");
+      await loadRankingSettlements();
+    } finally {
+      setRankingSettlementsLoading(false);
+    }
+  }
+  useEffect(() => { if (view === "settlements") void loadRankingSettlements(); }, [view]);
   async function saveBadge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -941,6 +979,7 @@ export default function AdminPage() {
           </button>
           <button className={view === "reports" ? "selected" : ""} onClick={() => setView("reports")}>사용자 신고</button>
           <button className={view === "badges" ? "selected" : ""} onClick={() => setView("badges")}>배지 관리</button>
+          <button className={view === "settlements" ? "selected" : ""} onClick={() => setView("settlements")}>랭킹 정산</button>
         </nav>
         <div className="user">
           선　<b>관리자</b>
@@ -965,6 +1004,8 @@ export default function AdminPage() {
                       ? "배지 관리"
                     : view === "reports"
                       ? "사용자 신고"
+                    : view === "settlements"
+                      ? "랭킹 정산"
                     : "사용자 관리"}
             </h1>
             <p>
@@ -982,6 +1023,8 @@ export default function AdminPage() {
                       ? "배지 획득 조건과 참가자 앱 표시 순서를 관리합니다."
                     : view === "reports"
                       ? "참가자가 접수한 신고를 확인하고 처리합니다."
+                    : view === "settlements"
+                      ? "일간·주간·월간 전체 랭킹의 보상 지급 결과와 오류를 확인합니다."
                     : "가입 계정과 이용 상태를 안전하게 관리합니다."}
             </p>
           </div>
@@ -1941,6 +1984,36 @@ export default function AdminPage() {
                   <div className="announcementActions"><button className="textButton" onClick={() => setEditingAnnouncement(item)}>수정</button><button className="withdrawButton" onClick={() => void deleteAnnouncement(item)}>삭제</button></div>
                 </article>
               )) : <p className="empty">조건에 맞는 공지사항이 없습니다.</p>}
+            </div>
+          </section>
+        ) : view === "settlements" ? (
+          <section className="rankingSettlementAdmin">
+            <div className="settlementPolicy">
+              <div><small>DAILY · 매일 00:30</small><h2>50 · 30 · 20P</h2><p>직전 일간 전체 랭킹 1~3위</p></div>
+              <div><small>WEEKLY · 월요일 00:30</small><h2>300 · 200 · 100P</h2><p>직전 주간 전체 랭킹 1~3위</p></div>
+              <div><small>MONTHLY · 매월 1일 00:30</small><h2>1,000 · 700 · 500P</h2><p>직전 월간 전체 랭킹 1~3위</p></div>
+            </div>
+            <div className="settlementHead">
+              <div><h2>최근 정산 결과</h2><p>동점자는 같은 순위와 같은 포인트를 받으며, 공통·지역·친구 랭킹은 조회용으로만 제공됩니다.</p></div>
+              <button type="button" className="secondary" disabled={rankingSettlementsLoading} onClick={() => void runRankingSettlements()}>{rankingSettlementsLoading ? "확인 중" : "누락 정산 확인"}</button>
+            </div>
+            <div className={`settlementList ${rankingSettlementsLoading ? "loading" : ""}`}>
+              {rankingSettlements.length ? rankingSettlements.map((settlement) => (
+                <article key={settlement.id} className={settlement.status.toLowerCase()}>
+                  <header>
+                    <span>{settlement.period === "DAILY" ? "일간" : settlement.period === "WEEKLY" ? "주간" : "월간"}</span>
+                    <b>{settlement.status === "COMPLETED" ? "정산 완료" : settlement.status === "FAILED" ? "실패" : "처리 중"}</b>
+                    <time>{new Date(settlement.periodStart).toLocaleDateString("ko-KR")} ~ {new Date(settlement.periodEnd).toLocaleDateString("ko-KR")}</time>
+                  </header>
+                  <div className="settlementStats">
+                    <span><small>참가자</small><b>{settlement.participantCount}명</b></span>
+                    <span><small>보상 인원</small><b>{settlement.rewardCount}명</b></span>
+                    <span><small>지급 포인트</small><b>{settlement.rewardPointTotal.toLocaleString()}P</b></span>
+                  </div>
+                  {settlement.rewards.length > 0 && <div className="settlementWinners">{settlement.rewards.map((reward) => <span key={reward.id}><b>{reward.rank}위</b> {reward.user.nickname}<strong>+{reward.points.toLocaleString()}P</strong></span>)}</div>}
+                  {settlement.lastError && <p className="settlementError">{settlement.lastError}</p>}
+                </article>
+              )) : <p className="empty">아직 기록된 랭킹 정산이 없습니다.</p>}
             </div>
           </section>
         ) : view === "reports" ? (

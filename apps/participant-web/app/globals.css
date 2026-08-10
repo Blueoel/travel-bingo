@@ -1798,6 +1798,25 @@ button {
   color: #aaa397;
   font-size: 22px;
 }
+
+.ranking-reward-view { display: grid; gap: 16px; padding: 0 16px 28px; }
+.ranking-reward-intro { padding: 22px; border: 1px solid #d9cbb2; border-radius: 20px; background: linear-gradient(145deg, #fffdf7, #f4eddd); }
+.ranking-reward-intro small { color: #779166; font-size: 10px; font-weight: 900; letter-spacing: .16em; }
+.ranking-reward-intro h2 { margin: 7px 0; color: #294b35; font-size: 22px; }
+.ranking-reward-intro p { margin: 0; color: #716b60; font-size: 13px; line-height: 1.55; }
+.ranking-reward-policy { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #ddd0ba; border-radius: 14px; background: #fff; overflow: hidden; }
+.ranking-reward-policy span { display: grid; gap: 3px; padding: 12px 5px; color: #8a8172; font-size: 10px; text-align: center; }
+.ranking-reward-policy span + span { border-left: 1px dashed #ddd0ba; }
+.ranking-reward-policy b { color: #34583e; font-size: 12px; }
+.ranking-reward-list { display: grid; gap: 10px; }
+.ranking-reward-list article { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 15px 14px; border: 1px solid #ddd3c1; border-radius: 14px; background: #fff; }
+.ranking-reward-list article.unread { border-color: #80a077; background: #f5faef; box-shadow: inset 4px 0 #6a8c5c; }
+.ranking-reward-list article > span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #faf3dc; font-size: 24px; }
+.ranking-reward-list small { color: #779166; font-size: 10px; font-weight: 800; }
+.ranking-reward-list h3 { margin: 3px 0; color: #263b2d; font-size: 15px; }
+.ranking-reward-list p { margin: 0; color: #928a7c; font-size: 10px; }
+.ranking-reward-list strong { color: #34583e; font-size: 16px; }
+.ranking-reward-empty { padding: 45px 15px; border: 1px dashed #d8ccb7; border-radius: 16px; color: #928a7c; line-height: 1.7; text-align: center; }
 .settings-view > section { padding: 18px; border: 1px solid #ded6c7; border-radius: 18px; background: #fffefa; }
 .settings-view > section small { color: #6d855f; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
 .settings-view > section h2 { margin: 6px 0; color: #35563a; }

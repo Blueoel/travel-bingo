@@ -163,6 +163,15 @@ type BadgeSummary = {
 };
 type Badge = { id: string; title: string; description: string; icon: string; imageUrl?: string | null; current: number; target: number; earned: boolean; earnedAt?: string | null; progress: number };
 type BadgeNotification = Pick<Badge, "id" | "title" | "description" | "icon" | "imageUrl"> & { earnedAt: string; isRead: boolean };
+type RankingRewardNotice = {
+  id: string;
+  period: "DAILY" | "WEEKLY" | "MONTHLY";
+  rank: number;
+  score: number;
+  points: number;
+  awardedAt: string;
+  isRead: boolean;
+};
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -517,6 +526,7 @@ export default function Home() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
   const [badgeNotifications, setBadgeNotifications] = useState<BadgeNotification[]>([]);
+  const [rankingRewards, setRankingRewards] = useState<RankingRewardNotice[]>([]);
   const [badgeQueue, setBadgeQueue] = useState<Badge[]>([]);
   const [badgeCelebration, setBadgeCelebration] = useState<Badge | null>(null);
   const [profileNickname, setProfileNickname] = useState("");
@@ -542,7 +552,7 @@ export default function Home() {
     | "ranking"
     | "my"
   >("home");
-  const [myView, setMyView] = useState<"main" | "travel-note" | "badges" | "settings">("main");
+  const [myView, setMyView] = useState<"main" | "travel-note" | "badges" | "rewards" | "settings">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
@@ -856,6 +866,10 @@ export default function Home() {
     const response = await apiFetch("/friends/badge-notifications");
     if (response.ok) setBadgeNotifications(await response.json());
   };
+  const loadRankingRewards = async () => {
+    const response = await apiFetch("/rankings/rewards");
+    if (response.ok) setRankingRewards(await response.json());
+  };
   const syncEarnedBadges = async () => {
     try {
       const response = await apiFetch("/friends/badges/sync", { method: "POST" });
@@ -883,6 +897,15 @@ export default function Home() {
     setActiveTab("my");
     await openBadges();
   };
+  const openRankingReward = async (item: RankingRewardNotice) => {
+    setAnnouncementsOpen(false);
+    if (!item.isRead) {
+      await apiFetch(`/rankings/rewards/${item.id}/read`, { method: "PATCH" });
+      setRankingRewards((current) => current.map((value) => value.id === item.id ? { ...value, isRead: true } : value));
+    }
+    setActiveTab("my");
+    setMyView("rewards");
+  };
   const viewCelebratedBadge = async () => {
     const badge = badgeCelebration;
     setBadgeCelebration(null);
@@ -897,6 +920,7 @@ export default function Home() {
     if (authStatus !== "authenticated") return;
     void loadAccountSummary();
     void loadBadgeNotifications();
+    void loadRankingRewards();
   }, [authStatus]);
   useEffect(() => {
     if (bingoFlash || badgeCelebration || !badgeQueue.length) return;
@@ -2355,7 +2379,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
+              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3281,7 +3305,7 @@ export default function Home() {
                 ←
               </button>
             )}
-            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "settings" ? "설정" : "마이"}</h1>
+            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "settings" ? "설정" : "마이"}</h1>
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -3382,6 +3406,32 @@ export default function Home() {
                 <p className="badge-loading">배지 기록을 불러오고 있어요.</p>
               )}
             </div>
+          ) : myView === "rewards" ? (
+            <div className="ranking-reward-view">
+              <section className="ranking-reward-intro">
+                <small>RANKING REWARDS</small>
+                <h2>걷고 도전해서 받은 보상</h2>
+                <p>전체 랭킹 상위 3위에게 지급된 포인트를 모아볼 수 있어요.</p>
+              </section>
+              <div className="ranking-reward-policy">
+                <span><b>일간</b> 50 · 30 · 20P</span>
+                <span><b>주간</b> 300 · 200 · 100P</span>
+                <span><b>월간</b> 1,000 · 700 · 500P</span>
+              </div>
+              <div className="ranking-reward-list">
+                {rankingRewards.length ? rankingRewards.map((reward) => (
+                  <article key={reward.id} className={reward.isRead ? "" : "unread"}>
+                    <span aria-hidden="true">{reward.rank === 1 ? "🥇" : reward.rank === 2 ? "🥈" : "🥉"}</span>
+                    <div>
+                      <small>{reward.period === "DAILY" ? "일간" : reward.period === "WEEKLY" ? "주간" : "월간"} 전체 랭킹</small>
+                      <h3>{reward.rank}위 보상</h3>
+                      <p>{new Date(reward.awardedAt).toLocaleString("ko-KR")}</p>
+                    </div>
+                    <strong>+{reward.points.toLocaleString()}P</strong>
+                  </article>
+                )) : <p className="ranking-reward-empty">아직 받은 랭킹 보상이 없어요.<br />매일 새로운 빙고에 도전해보세요.</p>}
+              </div>
+            </div>
           ) : myView === "settings" ? (
             <div className="settings-view">
               <section className="account-settings-card">
@@ -3469,6 +3519,11 @@ export default function Home() {
               획득 배지
               <b>›</b>
             </button>
+            <button type="button" onClick={() => setMyView("rewards")}>
+              <span>♕</span>
+              랭킹 보상 이력
+              <b>›</b>
+            </button>
             <button type="button" onClick={() => void openSettings()}>
               <span>⚙</span>
               설정
@@ -3522,6 +3577,13 @@ export default function Home() {
                   {!item.isRead && <i>NEW</i>}
                 </button>
               ))}
+              {rankingRewards.map((item) => (
+                <button type="button" key={`ranking-${item.id}`} onClick={() => void openRankingReward(item)}>
+                  <span>{item.rank === 1 ? "1위" : item.rank === 2 ? "2위" : "3위"}</span>
+                  <div><b>{item.period === "DAILY" ? "일간" : item.period === "WEEKLY" ? "주간" : "월간"} 랭킹 {item.rank}위 보상 {item.points.toLocaleString()}P</b><small>{new Date(item.awardedAt).toLocaleDateString("ko-KR")}</small></div>
+                  {!item.isRead && <i>NEW</i>}
+                </button>
+              ))}
               {announcements.length ? announcements.map((item) => (
                 <button type="button" key={item.id} onClick={() => { setAnnouncementsOpen(false); openAnnouncement(item); }}>
                   <span>{item.isImportant ? "중요" : "안내"}</span>
@@ -3529,7 +3591,7 @@ export default function Home() {
                   {!item.isRead && <i>NEW</i>}
                 </button>
               )) : null}
-              {!announcements.length && !badgeNotifications.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
+              {!announcements.length && !badgeNotifications.length && !rankingRewards.length && !friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread) && <p>새로운 알림이 없어요.</p>}
             </div>
           </section>
         </div>

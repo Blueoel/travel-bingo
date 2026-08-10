@@ -30,7 +30,7 @@ export class RankingService {
       by: ["userId"],
       where: {
         ...(friendUserIds ? { userId: { in: friendUserIds } } : {}),
-        reason: { notIn: ["DAILY_RANK_REWARD", "DAILY_LUCKY"] },
+        reason: { notIn: ["DAILY_RANK_REWARD", "WEEKLY_RANK_REWARD", "MONTHLY_RANK_REWARD", "DAILY_LUCKY"] },
         ...(window.startsAt
           ? { createdAt: { gte: window.startsAt, lt: window.endsAt } }
           : {}),

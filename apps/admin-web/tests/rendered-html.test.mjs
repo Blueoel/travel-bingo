@@ -109,6 +109,11 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /손그림 이미지 URL/);
   assert.match(pageSource, /COMPLETED_REGIONS/);
   assert.match(pageSource, /displayOrder/);
+  assert.match(pageSource, /랭킹 정산/);
+  assert.match(pageSource, /admin\/ranking-settlements/);
+  assert.match(pageSource, /누락 정산 확인/);
+  assert.match(pageSource, /동점자는 같은 순위/);
+  assert.match(stylesSource, /\.rankingSettlementAdmin/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),

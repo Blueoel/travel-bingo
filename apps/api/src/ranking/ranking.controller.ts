@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Headers, Query } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Headers, Param, Patch, Query } from "@nestjs/common";
 
 import { AuthService } from "../auth/auth.service.js";
 import {
@@ -6,13 +6,25 @@ import {
   type RankingPeriod,
   type RankingScope,
 } from "./ranking.service.js";
+import { RankingSettlementService } from "./ranking-settlement.service.js";
 
 @Controller("api/v1/rankings")
 export class RankingController {
   constructor(
     private readonly rankings: RankingService,
+    private readonly settlements: RankingSettlementService,
     private readonly auth: AuthService,
   ) {}
+
+  @Get("rewards")
+  async rewards(@Headers("cookie") cookie?: string, @Headers("x-user-id") developmentUserId?: string) {
+    return this.settlements.rewards(await this.auth.requireUserId(cookie, developmentUserId));
+  }
+
+  @Patch("rewards/:id/read")
+  async markRewardRead(@Param("id") id: string, @Headers("cookie") cookie?: string, @Headers("x-user-id") developmentUserId?: string) {
+    return this.settlements.markRead(await this.auth.requireUserId(cookie, developmentUserId), id);
+  }
 
   @Get()
   async get(

@@ -8,9 +8,9 @@ import { getDailyCycle, toDatabaseDate } from "./daily-date.js";
 
 const DAILY_LOCK_ID = 20_260_728_003;
 const REWARD_BY_RANK: Readonly<Record<number, number>> = {
-  1: 100,
-  2: 70,
-  3: 50,
+  1: 50,
+  2: 30,
+  3: 20,
 };
 
 @Injectable()
@@ -108,8 +108,14 @@ export class DailyOperationService {
           return {
             ...entry,
             rank,
-            rewardPoints: REWARD_BY_RANK[rank] ?? (rank <= 10 ? 30 : 10),
+            rewardPoints: REWARD_BY_RANK[rank] ?? 0,
           };
+        });
+        const rewardedRankings = rankings.filter((entry) => entry.rewardPoints > 0);
+        const settlement = await transaction.rankingSettlement.upsert({
+          where: { period_periodStart: { period: "DAILY", periodStart: previousStartsAt } },
+          create: { period: "DAILY", periodStart: previousStartsAt, periodEnd: cycle.startsAt, status: "PROCESSING", startedAt: now },
+          update: { status: "PROCESSING", startedAt: now, lastError: null },
         });
         if (rankings.length > 0) {
           await transaction.dailyRankingSnapshot.createMany({
@@ -121,11 +127,17 @@ export class DailyOperationService {
             })),
             skipDuplicates: true,
           });
+        }
+        if (rewardedRankings.length > 0) {
+          await transaction.rankingReward.createMany({
+            data: rewardedRankings.map((entry) => ({ settlementId: settlement.id, userId: entry.userId, rank: entry.rank, score: entry.score, points: entry.rewardPoints })),
+            skipDuplicates: true,
+          });
           await transaction.pointLedger.createMany({
-            data: rankings.map((entry) => ({
+            data: rewardedRankings.map((entry) => ({
               userId: entry.userId,
               referenceType: "DAILY_RANKING",
-              referenceId: `${cycle.date}:${entry.userId}`,
+              referenceId: `${settlement.id}:${entry.userId}`,
               reason: "DAILY_RANK_REWARD",
               points: entry.rewardPoints,
             })),
@@ -193,6 +205,10 @@ export class DailyOperationService {
           (total, entry) => total + entry.rewardPoints,
           0,
         );
+        await transaction.rankingSettlement.update({
+          where: { id: settlement.id },
+          data: { status: "COMPLETED", participantCount: rankings.length, rewardCount: rewardedRankings.length, rewardPointTotal, completedAt: now },
+        });
         await transaction.dailyOperation.update({
           where: { cycleDate },
           data: {
@@ -210,12 +226,19 @@ export class DailyOperationService {
       });
       return { date: cycle.date, skipped: false, ...result };
     } catch (error) {
+      const lastError = error instanceof Error ? error.message : String(error);
+      const previousStartsAt = new Date(cycle.startsAt.getTime() - 24 * 60 * 60 * 1000);
       await this.database.dailyOperation.update({
         where: { cycleDate },
         data: {
           status: "FAILED",
-          lastError: error instanceof Error ? error.message : String(error),
+          lastError,
         },
+      });
+      await this.database.rankingSettlement.upsert({
+        where: { period_periodStart: { period: "DAILY", periodStart: previousStartsAt } },
+        create: { period: "DAILY", periodStart: previousStartsAt, periodEnd: cycle.startsAt, status: "FAILED", startedAt: now, lastError },
+        update: { status: "FAILED", lastError },
       });
       throw error;
     }
