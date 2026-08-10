@@ -1,10 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   distanceKm,
+  normalizeAttractionName,
   normalizeKtoServiceKey,
+  readRelatedAttractionName,
   RegionRecommendationService,
 } from "../src/recommendations/region-recommendation.service.js";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("KTO service key normalization", () => {
   it("keeps a decoding key unchanged", () => {
@@ -119,5 +126,121 @@ describe("region recommendation distance", () => {
         source: "DATABASE",
       }),
     ]);
+  });
+});
+
+describe("admin tourism data enrichment", () => {
+  const database = {
+    region: {
+      findUnique: async () => ({
+        id: "region-anseong",
+        name: "경기도 안성시",
+        centerLatitude: 37.008,
+        centerLongitude: 127.2797,
+        places: [],
+      }),
+    },
+  };
+
+  it("fills a missing attraction image with Photo Korea attribution", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    vi.stubEnv("KTO_PHOTO_API_KEY", "photo-key");
+    vi.stubEnv("KTO_RELATED_API_KEY", "related-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        const item = url.includes("locationBasedList2")
+          ? {
+              title: "안성성당",
+              addr1: "경기도 안성시",
+              mapx: "127.271",
+              mapy: "37.005",
+              contentid: "1",
+            }
+          : url.includes("gallerySearchList1")
+            ? {
+                galTitle: "안성성당",
+                galWebImageUrl: "https://example.com/anseong.jpg",
+                galPhotographer: "홍길동",
+                galPhotographyLocation: "경기도 안성시",
+              }
+            : undefined;
+        return new Response(
+          JSON.stringify({ response: { body: { items: { item } } } }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const service = new RegionRecommendationService(database as never);
+    const [result] = await service.searchRegionAttractions(
+      "region-anseong",
+      "",
+      12,
+    );
+
+    expect(result).toMatchObject({
+      title: "안성성당",
+      imageUrl: "https://example.com/anseong.jpg",
+      photoCredit: "한국관광공사 포토코리아 · 홍길동",
+      photoLocation: "경기도 안성시",
+    });
+  });
+
+  it("prioritizes a nearby place found in related attraction data", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    vi.stubEnv("KTO_RELATED_API_KEY", "related-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        const item = url.includes("locationBasedList2")
+          ? [
+              {
+                title: "안성성당",
+                firstimage: "https://example.com/church.jpg",
+                mapx: "127.271",
+                mapy: "37.005",
+                contentid: "1",
+              },
+              {
+                title: "안성맞춤랜드",
+                firstimage: "https://example.com/land.jpg",
+                mapx: "127.31",
+                mapy: "37.03",
+                contentid: "2",
+              },
+            ]
+          : url.includes("searchKeyword1")
+            ? [{ rlteTatsNm: "안성맞춤랜드" }]
+            : undefined;
+        return new Response(
+          JSON.stringify({ response: { body: { items: { item } } } }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const service = new RegionRecommendationService(database as never);
+    const result = await service.searchRegionAttractions(
+      "region-anseong",
+      "",
+      12,
+    );
+
+    expect(result[0]).toMatchObject({
+      title: "안성맞춤랜드",
+      recommendationReason: "RELATED",
+      relatedRank: 1,
+    });
+    expect(result[1]?.recommendationReason).toBe("NEARBY");
+  });
+
+  it("normalizes attraction names and reads supported related-name fields", () => {
+    expect(normalizeAttractionName(" 안성 맞춤-랜드 ")).toBe("안성맞춤랜드");
+    expect(readRelatedAttractionName({ rlteTatsNm: "안성맞춤랜드" })).toBe(
+      "안성맞춤랜드",
+    );
   });
 });

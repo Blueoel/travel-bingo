@@ -118,6 +118,10 @@ type AttractionRecommendation = {
   latitude: number;
   longitude: number;
   source: "KTO" | "DATABASE";
+  recommendationReason: "NEARBY" | "RELATED";
+  relatedRank: number | null;
+  photoCredit: string | null;
+  photoLocation: string | null;
 };
 type MissionDraft = {
   title: string;
@@ -1774,8 +1778,27 @@ export default function AdminPage() {
                                 ? "관광공사"
                                 : "저장 장소"}
                             </mark>
+                            <mark
+                              className={
+                                attraction.recommendationReason === "RELATED"
+                                  ? "relatedStatus"
+                                  : "nearbyStatus"
+                              }
+                            >
+                              {attraction.recommendationReason === "RELATED"
+                                ? "함께 방문 추천"
+                                : "주변 관광지"}
+                            </mark>
                             <h3>{attraction.title}</h3>
                             <p>{attraction.address ?? "주소 정보 없음"}</p>
+                            {attraction.photoCredit && (
+                              <small className="attractionCredit">
+                                사진 · {attraction.photoCredit}
+                                {attraction.photoLocation
+                                  ? ` / ${attraction.photoLocation}`
+                                  : ""}
+                              </small>
+                            )}
                             <button
                               className="primary"
                               onClick={() =>
