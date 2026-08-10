@@ -16,15 +16,4 @@ services:
       - key: CORS_ORIGINS
         value: https://travel-bingo-walk.blueo03.chatgpt.site
       - key: DATABASE_URL
-        fromDatabase:
-          name: travel-bingo-db
-          property: connectionString
-
-databases:
-  - name: travel-bingo-db
-    region: singapore
-    plan: free
-    databaseName: travel_bingo
-    user: travel_bingo
-    postgresMajorVersion: "17"
-    ipAllowList: []
+        sync: false
