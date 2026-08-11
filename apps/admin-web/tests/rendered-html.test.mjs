@@ -89,6 +89,13 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /관광지 추천/);
   assert.match(pageSource, /createMissionFromAttraction/);
   assert.match(pageSource, /이 장소로 미션 만들기/);
+  assert.match(pageSource, /모든 관광지 유형/);
+  assert.match(pageSource, /검색 반경/);
+  assert.match(pageSource, /상세 보기/);
+  assert.match(pageSource, /중심지에서/);
+  assert.match(pageSource, /장소 좌표 기준 100m/);
+  assert.match(pageSource, /같은 관광지는 중복 등록되지/);
+  assert.match(stylesSource, /\.attractionDetail/);
   assert.match(pageSource, /const API = "\/api\/backend"/);
   assert.match(pageSource, /공지사항/);
   assert.match(pageSource, /announcementFilter/);

@@ -45,6 +45,18 @@ export interface AdminAttractionRecommendation {
   readonly relatedRank: number | null;
   readonly photoCredit: string | null;
   readonly photoLocation: string | null;
+  readonly distanceKm: number;
+  readonly contentCategory: string;
+  readonly existingMission: {
+    readonly id: string;
+    readonly title: string;
+    readonly status: string;
+  } | null;
+}
+
+export interface AttractionSearchOptions {
+  readonly contentTypeId?: string;
+  readonly radiusKm?: number;
 }
 
 @Injectable()
@@ -148,6 +160,7 @@ export class RegionRecommendationService {
     regionId: string,
     query: string,
     limit: number,
+    options: AttractionSearchOptions = {},
   ): Promise<AdminAttractionRecommendation[]> {
     const region = await this.database.region.findUnique({
       where: { id: regionId },
@@ -165,7 +178,13 @@ export class RegionRecommendationService {
       latitude: Number(region.centerLatitude),
       longitude: Number(region.centerLongitude),
     };
-    const ktoItems = await this.fetchKtoAttractions(center, 30);
+    const radiusKm = options.radiusKm ?? 20;
+    const ktoItems = await this.fetchKtoAttractions(center, 30, {
+      ...(options.contentTypeId
+        ? { contentTypeId: options.contentTypeId }
+        : {}),
+      radiusM: Math.round(radiusKm * 1_000),
+    });
     const relatedNames = ktoItems.length
       ? await this.fetchRelatedAttractionNames(
           query.trim() || ktoItems[0]?.title || region.name,
@@ -194,6 +213,12 @@ export class RegionRecommendationService {
               relatedRank: relatedRank ?? null,
               photoCredit: null,
               photoLocation: null,
+              distanceKm: roundedDistanceKm(center, {
+                latitude: Number(item.mapy),
+                longitude: Number(item.mapx),
+              }),
+              contentCategory: contentTypeName(item.contenttypeid),
+              existingMission: null,
             };
           })
           .sort((first, second) => {
@@ -204,20 +229,33 @@ export class RegionRecommendationService {
             if (second.relatedRank) return 1;
             return 0;
           })
-      : region.places.map((place) => ({
-          contentId: place.externalContentId,
-          contentTypeId: place.contentType,
-          title: place.title,
-          address: place.address,
-          imageUrl: place.imageUrl,
-          latitude: Number(place.latitude),
-          longitude: Number(place.longitude),
-          source: "DATABASE" as const,
-          recommendationReason: "NEARBY" as const,
-          relatedRank: null,
-          photoCredit: null,
-          photoLocation: null,
-        }));
+      : region.places
+          .map((place) => ({
+            contentId: place.externalContentId,
+            contentTypeId: place.contentType,
+            title: place.title,
+            address: place.address,
+            imageUrl: place.imageUrl,
+            latitude: Number(place.latitude),
+            longitude: Number(place.longitude),
+            source: "DATABASE" as const,
+            recommendationReason: "NEARBY" as const,
+            relatedRank: null,
+            photoCredit: null,
+            photoLocation: null,
+            distanceKm: roundedDistanceKm(center, {
+              latitude: Number(place.latitude),
+              longitude: Number(place.longitude),
+            }),
+            contentCategory: contentTypeName(place.contentType),
+            existingMission: null,
+          }))
+          .filter((item) => item.distanceKm <= radiusKm)
+          .filter(
+            (item) =>
+              !options.contentTypeId ||
+              item.contentTypeId === options.contentTypeId,
+          );
     const normalizedQuery = query.toLocaleLowerCase("ko");
     const selected = recommendations
       .filter(
@@ -227,14 +265,22 @@ export class RegionRecommendationService {
           item.address?.toLocaleLowerCase("ko").includes(normalizedQuery),
       )
       .slice(0, limit);
-    return Promise.all(
+    const enriched = await Promise.all(
       selected.map((recommendation, index) =>
-        recommendation.source === "KTO" &&
-        index < 6
+        recommendation.source === "KTO" && index < 6
           ? this.enrichWithTourismPhoto(recommendation)
           : recommendation,
       ),
     );
+    const existingMissions = await this.findExistingMissions(
+      regionId,
+      enriched,
+    );
+    return enriched.map((recommendation) => ({
+      ...recommendation,
+      existingMission:
+        existingMissions.get(attractionKey(recommendation)) ?? null,
+    }));
   }
 
   private async findKtoAttraction(
@@ -259,6 +305,7 @@ export class RegionRecommendationService {
   private async fetchKtoAttractions(
     center: Coordinates,
     limit: number,
+    options: { contentTypeId?: string; radiusM?: number } = {},
   ): Promise<KtoItem[]> {
     const serviceKey = normalizeKtoServiceKey(process.env.KTO_API_KEY);
     if (!serviceKey) return [];
@@ -269,11 +316,14 @@ export class RegionRecommendationService {
       _type: "json",
       mapX: String(center.longitude),
       mapY: String(center.latitude),
-      radius: "20000",
+      radius: String(options.radiusM ?? 20_000),
       arrange: "E",
       numOfRows: String(limit),
       pageNo: "1",
     });
+    if (options.contentTypeId) {
+      parameters.set("contentTypeId", options.contentTypeId);
+    }
     try {
       const response = await fetch(`${KTO_LOCATION_URL}?${parameters}`, {
         signal: AbortSignal.timeout(6_000),
@@ -307,7 +357,9 @@ export class RegionRecommendationService {
     };
   }
 
-  private async fetchTourismPhoto(keyword: string): Promise<KtoPhotoItem | null> {
+  private async fetchTourismPhoto(
+    keyword: string,
+  ): Promise<KtoPhotoItem | null> {
     const items = await this.fetchKtoItems<KtoPhotoItem>(
       KTO_PHOTO_SEARCH_URL,
       process.env.KTO_PHOTO_API_KEY || process.env.KTO_API_KEY,
@@ -352,8 +404,62 @@ export class RegionRecommendationService {
       const normalized = normalizeAttractionName(
         readRelatedAttractionName(item),
       );
-      if (normalized && !result.has(normalized)) result.set(normalized, index + 1);
+      if (normalized && !result.has(normalized))
+        result.set(normalized, index + 1);
     });
+    return result;
+  }
+
+  private async findExistingMissions(
+    regionId: string,
+    recommendations: readonly AdminAttractionRecommendation[],
+  ): Promise<Map<string, { id: string; title: string; status: string }>> {
+    const missionClient = (
+      this.database as unknown as {
+        mission?: {
+          findMany?: (input: unknown) => Promise<
+            Array<{
+              id: string;
+              title: string;
+              status: string;
+              place: {
+                externalContentId: string;
+                contentType: string;
+              } | null;
+            }>
+          >;
+        };
+      }
+    ).mission;
+    if (!missionClient?.findMany || !recommendations.length) return new Map();
+
+    const externalContentIds = [
+      ...new Set(recommendations.map((item) => item.contentId)),
+    ];
+    const missions = await missionClient.findMany({
+      where: {
+        scope: "REGION",
+        regionLinks: { some: { regionId } },
+        place: { is: { externalContentId: { in: externalContentIds } } },
+      },
+      include: { place: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    const result = new Map<
+      string,
+      { id: string; title: string; status: string }
+    >();
+    for (const mission of missions) {
+      if (!mission.place) continue;
+      const key = `${mission.place.externalContentId}:${mission.place.contentType}`;
+      if (!result.has(key)) {
+        result.set(key, {
+          id: mission.id,
+          title: mission.title,
+          status: mission.status,
+        });
+      }
+    }
     return result;
   }
 
@@ -433,4 +539,34 @@ export function distanceKm(first: Coordinates, second: Coordinates): number {
       Math.cos(radians(second.latitude)) *
       Math.sin(longitudeDelta / 2) ** 2;
   return 6_371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function roundedDistanceKm(first: Coordinates, second: Coordinates): number {
+  return Math.round(distanceKm(first, second) * 10) / 10;
+}
+
+function attractionKey(
+  attraction: Pick<
+    AdminAttractionRecommendation,
+    "contentId" | "contentTypeId"
+  >,
+): string {
+  return `${attraction.contentId}:${attraction.contentTypeId ?? "TOURIST_SPOT"}`;
+}
+
+export function contentTypeName(
+  contentTypeId: string | null | undefined,
+): string {
+  const names: Record<string, string> = {
+    "12": "관광지",
+    "14": "문화시설",
+    "15": "축제·행사",
+    "25": "여행코스",
+    "28": "레포츠",
+    "32": "숙박",
+    "38": "쇼핑",
+    "39": "음식점",
+    TOURIST_SPOT: "관광지",
+  };
+  return names[contentTypeId ?? ""] ?? "기타 관광정보";
 }

@@ -58,6 +58,8 @@ export class RegionRecommendationController {
     @Headers("x-user-id") developmentUserId: string | undefined,
     @Query("q") query = "",
     @Query("limit") limitInput = "12",
+    @Query("contentTypeId") contentTypeIdInput = "",
+    @Query("radiusKm") radiusKmInput = "20",
   ) {
     await this.auth.requireAdminId(cookie, developmentUserId);
     const parsedLimit = Number(limitInput);
@@ -65,10 +67,21 @@ export class RegionRecommendationController {
       Number.isInteger(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 30
         ? parsedLimit
         : 12;
+    const parsedRadiusKm = Number(radiusKmInput);
+    const radiusKm =
+      Number.isFinite(parsedRadiusKm) &&
+      parsedRadiusKm >= 1 &&
+      parsedRadiusKm <= 20
+        ? parsedRadiusKm
+        : 20;
+    const contentTypeId = /^\d+$/.test(contentTypeIdInput)
+      ? contentTypeIdInput
+      : undefined;
     return this.recommendations.searchRegionAttractions(
       regionId,
       query.trim(),
       limit,
+      { ...(contentTypeId ? { contentTypeId } : {}), radiusKm },
     );
   }
 }

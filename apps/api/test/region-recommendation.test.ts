@@ -237,6 +237,70 @@ describe("admin tourism data enrichment", () => {
     expect(result[1]?.recommendationReason).toBe("NEARBY");
   });
 
+  it("applies type and radius filters and marks an existing regional mission", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    const requestedUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        requestedUrls.push(url);
+        const item = url.includes("locationBasedList2")
+          ? {
+              title: "안성맞춤랜드",
+              addr1: "경기도 안성시",
+              firstimage: "https://example.com/land.jpg",
+              mapx: "127.31",
+              mapy: "37.03",
+              contentid: "kto-place-1",
+              contenttypeid: "12",
+            }
+          : undefined;
+        return new Response(
+          JSON.stringify({ response: { body: { items: { item } } } }),
+          { status: 200 },
+        );
+      }),
+    );
+    const service = new RegionRecommendationService({
+      region: database.region,
+      mission: {
+        findMany: async () => [
+          {
+            id: "mission-1",
+            title: "안성맞춤랜드 방문하기",
+            status: "ACTIVE",
+            place: {
+              externalContentId: "kto-place-1",
+              contentType: "12",
+            },
+          },
+        ],
+      },
+    } as never);
+
+    const [result] = await service.searchRegionAttractions(
+      "region-anseong",
+      "",
+      12,
+      { contentTypeId: "12", radiusKm: 5 },
+    );
+
+    const locationRequest = new URL(
+      requestedUrls.find((url) => url.includes("locationBasedList2"))!,
+    );
+    expect(locationRequest.searchParams.get("contentTypeId")).toBe("12");
+    expect(locationRequest.searchParams.get("radius")).toBe("5000");
+    expect(result).toMatchObject({
+      contentCategory: "관광지",
+      distanceKm: expect.any(Number),
+      existingMission: {
+        id: "mission-1",
+        title: "안성맞춤랜드 방문하기",
+      },
+    });
+  });
+
   it("normalizes attraction names and reads supported related-name fields", () => {
     expect(normalizeAttractionName(" 안성 맞춤-랜드 ")).toBe("안성맞춤랜드");
     expect(readRelatedAttractionName({ rlteTatsNm: "안성맞춤랜드" })).toBe(

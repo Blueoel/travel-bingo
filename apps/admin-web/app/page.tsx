@@ -122,6 +122,9 @@ type AttractionRecommendation = {
   relatedRank: number | null;
   photoCredit: string | null;
   photoLocation: string | null;
+  distanceKm: number;
+  contentCategory: string;
+  existingMission: { id: string; title: string; status: string } | null;
 };
 type MissionDraft = {
   title: string;
@@ -136,6 +139,7 @@ type MissionDraft = {
   imageUrl?: string | null;
   externalContentId?: string;
   contentTypeId?: string | null;
+  radiusM?: number;
 };
 const API = "/api/backend";
 const PHOTO_API =
@@ -157,6 +161,11 @@ const verificationName: Record<string, string> = {
   QUIZ: "퀴즈",
   MANUAL: "직접 인증",
 };
+const attractionContentTypes = [
+  ["", "모든 관광지 유형"], ["12", "관광지"], ["14", "문화시설"],
+  ["15", "축제·행사"], ["25", "여행코스"], ["28", "레포츠"],
+  ["32", "숙박"], ["38", "쇼핑"], ["39", "음식점"],
+] as const;
 const toLocalInput = (value?: string | null) =>
   value ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
 const announcementPhase = (item: Announcement) => {
@@ -221,7 +230,10 @@ export default function AdminPage() {
   const [managedRegionId, setManagedRegionId] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState("");
   const [attractionQuery, setAttractionQuery] = useState("");
+  const [attractionContentType, setAttractionContentType] = useState("");
+  const [attractionRadiusKm, setAttractionRadiusKm] = useState("20");
   const [attractions, setAttractions] = useState<AttractionRecommendation[]>([]);
+  const [selectedAttraction, setSelectedAttraction] = useState<AttractionRecommendation | null>(null);
   const [attractionsLoading, setAttractionsLoading] = useState(false);
   const [regionPublishing, setRegionPublishing] = useState(false);
   const [regionMissions, setRegionMissions] = useState<Mission[]>([]);
@@ -293,10 +305,13 @@ export default function AdminPage() {
     if (!regionId) return;
     setManagedRegionId(regionId);
     setSelectedRegionId(regionId);
+    setSelectedAttraction(null);
     setAttractionsLoading(true);
     try {
       const params = new URLSearchParams({ limit: "12" });
       if (q.trim()) params.set("q", q.trim());
+      if (attractionContentType) params.set("contentTypeId", attractionContentType);
+      params.set("radiusKm", attractionRadiusKm);
       const response = await fetch(
         `${API}/recommendations/regions/${regionId}/attractions?${params}`,
         { headers: { "x-user-id": ADMIN } },
@@ -378,11 +393,15 @@ export default function AdminPage() {
     });
   }
   function createMissionFromAttraction(attraction: AttractionRecommendation) {
+    if (attraction.existingMission) {
+      setNotice(`이미 '${attraction.existingMission.title}' 미션으로 등록된 관광지입니다.`);
+      return;
+    }
     setEditing(null);
     setFormVerificationType("GPS");
     setMissionDraft({
       title: `${attraction.title} 방문하기`,
-      description: `${attraction.title}을 방문해 인증 사진을 남겨보세요.`,
+      description: `${attraction.title}의 100m 이내에서 위치를 인증해보세요.`,
       scope: "REGION",
       category: "관광지 탐방",
       regionId: selectedRegionId,
@@ -393,6 +412,7 @@ export default function AdminPage() {
       imageUrl: attraction.imageUrl,
       externalContentId: attraction.contentId,
       contentTypeId: attraction.contentTypeId,
+      radiusM: 100,
     });
     setOpen(true);
   }
@@ -470,7 +490,23 @@ export default function AdminPage() {
       },
     );
     if (!result.ok) return setError(`저장 실패: ${await result.text()}`);
+    const savedMission = (await result.json()) as Mission;
+    const recommendationDraft = missionDraft;
     setOpen(false);
+    setMissionDraft(null);
+    if (!editing && recommendationDraft) {
+      setRegionMissions((current) => current.some((mission) => mission.id === savedMission.id) ? current : [savedMission, ...current]);
+      setSelectedRegionMissionIds((current) => current.length < 25 && !current.includes(savedMission.id) ? [...current, savedMission.id] : current);
+      setAttractions((current) => current.map((attraction) =>
+        attraction.contentId === recommendationDraft.externalContentId && attraction.contentTypeId === recommendationDraft.contentTypeId
+          ? { ...attraction, existingMission: { id: savedMission.id, title: savedMission.title, status: savedMission.status } }
+          : attraction,
+      ));
+      setSelectedAttraction((current) => current && current.contentId === recommendationDraft.externalContentId
+        ? { ...current, existingMission: { id: savedMission.id, title: savedMission.title, status: savedMission.status } }
+        : current,
+      );
+    }
     setNotice(
       editing ? "미션 수정이 반영되었습니다." : "새 미션이 등록되었습니다.",
     );
@@ -1750,8 +1786,33 @@ export default function AdminPage() {
                         setAttractionQuery(event.target.value)
                       }
                     />
+                    <select aria-label="관광지 유형" value={attractionContentType} onChange={(event) => setAttractionContentType(event.target.value)}>
+                      {attractionContentTypes.map(([value, label]) => <option key={value || "all"} value={value}>{label}</option>)}
+                    </select>
+                    <select aria-label="검색 반경" value={attractionRadiusKm} onChange={(event) => setAttractionRadiusKm(event.target.value)}>
+                      <option value="5">5km 이내</option>
+                      <option value="10">10km 이내</option>
+                      <option value="20">20km 이내</option>
+                    </select>
                     <button className="secondary">검색</button>
                   </form>
+                  {selectedAttraction && (
+                    <aside className="attractionDetail">
+                      {selectedAttraction.imageUrl ? <img src={selectedAttraction.imageUrl} alt={`${selectedAttraction.title} 상세 사진`} /> : <div className="attractionPlaceholder">사진 없음</div>}
+                      <div>
+                        <div className="attractionDetailMarks"><mark className="activeStatus">{selectedAttraction.contentCategory}</mark><mark className="nearbyStatus">중심지에서 {selectedAttraction.distanceKm}km</mark></div>
+                        <h3>{selectedAttraction.title}</h3>
+                        <p>{selectedAttraction.address ?? "주소 정보 없음"}</p>
+                        <dl>
+                          <div><dt>좌표</dt><dd>{selectedAttraction.latitude.toFixed(6)}, {selectedAttraction.longitude.toFixed(6)}</dd></div>
+                          <div><dt>추천 근거</dt><dd>{selectedAttraction.recommendationReason === "RELATED" ? "함께 방문한 관광지 데이터" : "지역 중심지 주변 관광지"}</dd></div>
+                          <div><dt>GPS 인증</dt><dd>장소 좌표 기준 100m</dd></div>
+                        </dl>
+                        {selectedAttraction.photoCredit && <small className="attractionCredit">사진 · {selectedAttraction.photoCredit}{selectedAttraction.photoLocation ? ` / ${selectedAttraction.photoLocation}` : ""}</small>}
+                        {selectedAttraction.existingMission ? <p className="existingMissionNotice">등록 완료 · {selectedAttraction.existingMission.title}</p> : <button type="button" className="primary" onClick={() => createMissionFromAttraction(selectedAttraction)}>이 장소로 미션 만들기</button>}
+                      </div>
+                    </aside>
+                  )}
                   {attractionsLoading ? (
                     <p className="attractionEmpty">관광지를 찾고 있습니다.</p>
                   ) : attractions.length ? (
@@ -1799,13 +1860,17 @@ export default function AdminPage() {
                                   : ""}
                               </small>
                             )}
+                            <p className="attractionMeta">{attraction.contentCategory} · {attraction.distanceKm}km</p>
+                            <button type="button" className="secondary" onClick={() => setSelectedAttraction(attraction)}>상세 보기</button>
                             <button
+                              type="button"
                               className="primary"
+                              disabled={Boolean(attraction.existingMission)}
                               onClick={() =>
                                 createMissionFromAttraction(attraction)
                               }
                             >
-                              이 장소로 미션 만들기
+                              {attraction.existingMission ? `등록됨 · ${attraction.existingMission.title}` : "이 장소로 미션 만들기"}
                             </button>
                           </div>
                         </article>
@@ -2413,7 +2478,7 @@ export default function AdminPage() {
                       min="30"
                       max="1000"
                       required
-                      defaultValue={editing?.radiusM ?? 100}
+                      defaultValue={editing?.radiusM ?? missionDraft?.radiusM ?? 100}
                     />
                   </label>
                   <label>
@@ -2433,6 +2498,7 @@ export default function AdminPage() {
                     사용자가 인증 반경 안에 있고 GPS 오차가 허용값 이하일
                     때만 완료됩니다.
                   </small>
+                  {missionDraft?.externalContentId && <small className="ktoMissionSource">한국관광공사 콘텐츠를 기준으로 장소·주소·좌표가 자동 입력되었습니다. 같은 관광지는 중복 등록되지 않습니다.</small>}
                 </div>
               )}
               {formVerificationType === "TEXT" && (

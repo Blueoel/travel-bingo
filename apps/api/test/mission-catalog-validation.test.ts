@@ -67,4 +67,39 @@ describe("admin mission verification settings", () => {
       ),
     ).rejects.toThrow(/radius between 30 and 1000 meters/);
   });
+
+  it("rejects a duplicate KTO place mission in the same region", async () => {
+    const duplicateService = new MissionCatalogService({
+      mission: {
+        findFirst: async () => ({ title: "안성맞춤랜드 방문하기" }),
+      },
+    } as never);
+
+    await expect(
+      duplicateService.create(
+        {
+          ...baseMission,
+          title: "안성맞춤랜드 다시 방문하기",
+          scope: "REGION",
+          regionIds: ["10000000-0000-4000-8000-000000000010"],
+          verificationType: "GPS",
+          verificationPolicy: {
+            type: "GPS",
+            maximumAccuracyM: 50,
+            maximumAgeMs: 60_000,
+          },
+          radiusM: 100,
+          place: {
+            title: "안성맞춤랜드",
+            latitude: 37.03,
+            longitude: 127.31,
+            source: "KTO",
+            externalContentId: "kto-place-1",
+            contentType: "12",
+          },
+        },
+        adminId,
+      ),
+    ).rejects.toThrow(/이미 '안성맞춤랜드 방문하기' 미션으로 등록/);
+  });
 });

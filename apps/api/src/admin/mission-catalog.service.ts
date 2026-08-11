@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -308,6 +309,7 @@ export class MissionCatalogService {
 
   async create(input: MissionCatalogInput, adminId: string) {
     validateInput(input);
+    await this.assertNoDuplicateKtoMission(input);
     const mission = await this.database.$transaction(async (transaction) => {
       const placeId = await resolvePlaceId(transaction, input);
       const created = await transaction.mission.create({
@@ -334,6 +336,36 @@ export class MissionCatalogService {
     return toCatalogMission(mission);
   }
 
+  private async assertNoDuplicateKtoMission(
+    input: MissionCatalogInput,
+  ): Promise<void> {
+    const externalContentId = input.place?.externalContentId?.trim();
+    const regionId = input.regionIds[0];
+    if (input.place?.source !== "KTO" || !externalContentId || !regionId) {
+      return;
+    }
+    const contentType = input.place.contentType?.trim() || "TOURIST_SPOT";
+    const duplicate = await this.database.mission.findFirst({
+      where: {
+        scope: "REGION",
+        regionLinks: { some: { regionId } },
+        place: {
+          is: {
+            source: "KTO",
+            externalContentId,
+            contentType,
+          },
+        },
+      },
+      select: { title: true },
+    });
+    if (duplicate) {
+      throw new ConflictException(
+        `이 관광지는 이미 '${duplicate.title}' 미션으로 등록되어 있습니다.`,
+      );
+    }
+  }
+
   async update(id: string, input: MissionCatalogInput, adminId: string) {
     validateInput(input);
     const existing = await this.database.mission.findUnique({ where: { id } });
@@ -344,7 +376,11 @@ export class MissionCatalogService {
         where: { missionId: id },
         _max: { revision: true },
       });
-      const placeId = await resolvePlaceId(transaction, input, existing.placeId);
+      const placeId = await resolvePlaceId(
+        transaction,
+        input,
+        existing.placeId,
+      );
       await transaction.missionRegion.deleteMany({ where: { missionId: id } });
       const updated = await transaction.mission.update({
         where: { id },
@@ -533,7 +569,9 @@ export class MissionCatalogService {
         include: { sessionCell: { include: { session: true } } },
       });
       if (!verification || verification.status !== "NEEDS_REVIEW") {
-        throw new NotFoundException("검수 대기 중인 사진 인증을 찾을 수 없습니다.");
+        throw new NotFoundException(
+          "검수 대기 중인 사진 인증을 찾을 수 없습니다.",
+        );
       }
       const mission = asRecord(verification.sessionCell.missionSnapshot);
       const points = Math.max(0, Number(mission?.points ?? 0));
@@ -543,7 +581,9 @@ export class MissionCatalogService {
         where: { id },
         data: {
           status: decision,
-          reasonCode: approved ? "PHOTO_ADMIN_APPROVED" : "PHOTO_ADMIN_REJECTED",
+          reasonCode: approved
+            ? "PHOTO_ADMIN_APPROVED"
+            : "PHOTO_ADMIN_REJECTED",
           reasonDetail: normalizedReason,
           decidedAt,
           seenAt: null,
