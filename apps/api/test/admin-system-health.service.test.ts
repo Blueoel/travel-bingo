@@ -86,6 +86,10 @@ describe("AdminSystemHealthService", () => {
 
     const result = await new AdminSystemHealthService(database).inspect();
 
+    expect(vi.mocked(fetch).mock.calls[1]?.[0]).toContain(
+      "/B551011/KorService2/ldongCode2?",
+    );
+
     expect(result.status).toBe("WARNING");
     expect(
       result.components.every((component) => component.status === "HEALTHY"),

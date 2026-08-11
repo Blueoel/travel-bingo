@@ -132,10 +132,12 @@ describe("region recommendation distance", () => {
 describe("admin nationwide region discovery", () => {
   it("searches KTO legal regions and marks an already managed region", async () => {
     vi.stubEnv("KTO_API_KEY", "main-key");
+    const requestedUrls: URL[] = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = new URL(String(input));
+        requestedUrls.push(url);
         const item = url.searchParams.has("lDongRegnCd")
           ? [
               { code: "110", name: "수원시" },
@@ -168,6 +170,11 @@ describe("admin nationwide region discovery", () => {
         registeredRegionId: "region-suwon",
       },
     ]);
+    expect(
+      requestedUrls.every(
+        (url) => url.pathname === "/B551011/KorService2/ldongCode2",
+      ),
+    ).toBe(true);
   });
 
   it("registers a searched region as inactive using its tourism center", async () => {

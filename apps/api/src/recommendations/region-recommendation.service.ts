@@ -6,7 +6,7 @@ import { DATABASE_CLIENT } from "../database/database.module.js";
 const KTO_LOCATION_URL =
   "https://apis.data.go.kr/B551011/KorService2/locationBasedList2";
 const KTO_LEGAL_REGION_URL =
-  "https://apis.data.go.kr/B551011/KorService2/lDongCode2";
+  "https://apis.data.go.kr/B551011/KorService2/ldongCode2";
 const KTO_AREA_BASED_URL =
   "https://apis.data.go.kr/B551011/KorService2/areaBasedList2";
 const KTO_PHOTO_SEARCH_URL =

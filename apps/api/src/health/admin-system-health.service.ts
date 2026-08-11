@@ -7,7 +7,7 @@ import type { DatabaseClient } from "@travel-bingo/database";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
 
-const KTO_HEALTH_URL = "https://apis.data.go.kr/B551011/KorService2/lDongCode2";
+const KTO_HEALTH_URL = "https://apis.data.go.kr/B551011/KorService2/ldongCode2";
 const EXTERNAL_TIMEOUT_MS = 5_000;
 
 type HealthStatus = "HEALTHY" | "WARNING" | "ERROR" | "NOT_CONFIGURED";
