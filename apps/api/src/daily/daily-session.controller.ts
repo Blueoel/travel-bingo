@@ -154,6 +154,12 @@ function parseEvidence(body: unknown): MissionEvidence {
   if (input.type === "QUIZ" && typeof input.answer === "string") {
     return { type: "QUIZ", answer: input.answer };
   }
+  if (input.type === "QR" && typeof input.token === "string") {
+    const token = input.token.trim();
+    if (token.length >= 20 && token.length <= 500) {
+      return { type: "QR", token };
+    }
+  }
   if (input.type === "TEXT" && typeof input.text === "string") {
     return { type: "TEXT", text: input.text };
   }

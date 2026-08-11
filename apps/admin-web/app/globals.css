@@ -918,6 +918,16 @@ textarea {
   justify-content: flex-end;
   gap: 8px;
 }
+.qrButton { margin-right: 8px; color: #2f6f48; }
+.qrMissionModal { position: relative; width: min(460px, calc(100vw - 32px)); padding: 30px; border: 1px solid #b8c8b8; border-radius: 20px; background: #fffdf7; text-align: center; box-shadow: 0 22px 70px rgba(18, 45, 32, .22); }
+.qrMissionModal > small { color: #5a815e; font-size: 10px; font-weight: 900; letter-spacing: .16em; }
+.qrMissionModal h2 { margin: 8px 0 5px; color: #173b2c; }
+.qrMissionModal p { margin: 0 auto 14px; color: #69746c; line-height: 1.55; }
+.qrMissionModal img { display: block; width: min(320px, 80vw); margin: 0 auto 14px; border: 1px solid #dce4da; border-radius: 14px; }
+.qrMissionModal code { display: block; overflow: hidden; padding: 10px; border-radius: 8px; background: #f0f4ed; color: #687169; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.qrModalClose { position: absolute; top: 14px; right: 16px; border: 0; background: transparent; color: #183a2d; font-size: 24px; cursor: pointer; }
+.qrMissionActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.qrMissionActions a { display: grid; place-items: center; border-radius: 8px; text-decoration: none; }
 .announcementAdmin { display: grid; grid-template-columns: minmax(320px, .85fr) minmax(420px, 1.15fr); gap: 20px; align-items: start; }
 .announcementForm, .announcementList { background: #fff; border: 1px solid #dfe4df; border-radius: 14px; padding: 22px; }
 .announcementForm { display: grid; gap: 16px; position: sticky; top: 24px; }

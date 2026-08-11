@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from "react";
+import type { IScannerControls } from "@zxing/browser";
 
 import { AuthScreen } from "./auth-screen";
 
@@ -14,6 +15,7 @@ type MissionKind =
   | "CHECK_IN"
   | "QUIZ"
   | "PLACE_VISIT"
+  | "QR_SCAN"
   | "PHOTO"
   | "COMPOSITE"
   | "WALK_DISTANCE"
@@ -272,6 +274,7 @@ const icon: Record<MissionKind, string> = {
   CHECK_IN: "✓",
   QUIZ: "?",
   PLACE_VISIT: "⌖",
+  QR_SCAN: "▦",
   PHOTO: "▣",
   COMPOSITE: "◷",
   WALK_DISTANCE: "↝",
@@ -401,6 +404,7 @@ function friendlyError(code?: string): string {
     TEXT_REQUIRED: "오늘의 기록을 한 문장으로 남겨주세요.",
     TEXT_TOO_LONG: "기록은 100자 이내로 작성해주세요.",
     TIMER_NOT_REACHED: "목표 시간이 끝난 뒤 인증할 수 있어요.",
+    QR_INVALID: "이 미션의 QR 코드가 아니거나 유효하지 않은 코드예요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
 }
@@ -426,6 +430,7 @@ function verificationLabel(
     return `GPS ${Math.round(target / 60)}분 기록`;
   }
   if (kind === "PLACE_VISIT") return "현재 위치 GPS";
+  if (kind === "QR_SCAN") return "현장 QR 스캔";
   return undefined;
 }
 
@@ -515,6 +520,8 @@ export default function Home() {
   const [selected, setSelected] = useState<Mission | null>(null);
   const [answer, setAnswer] = useState("");
   const [textRecord, setTextRecord] = useState("");
+  const [qrToken, setQrToken] = useState("");
+  const [qrScanning, setQrScanning] = useState(false);
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
   const [timerNow, setTimerNow] = useState(Date.now());
   const [loading, setLoading] = useState(true);
@@ -679,6 +686,8 @@ export default function Home() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const albumInput = useRef<HTMLInputElement>(null);
   const representativePhotoInput = useRef<HTMLInputElement>(null);
+  const qrVideo = useRef<HTMLVideoElement>(null);
+  const qrScannerControls = useRef<IScannerControls | null>(null);
   const trackingWatchId = useRef<number | null>(null);
   const trackingStartedAt = useRef<number | null>(null);
   const lastTrackingPosition = useRef<{
@@ -1854,6 +1863,10 @@ export default function Home() {
   };
 
   const closeMission = () => {
+    qrScannerControls.current?.stop();
+    qrScannerControls.current = null;
+    setQrScanning(false);
+    setQrToken("");
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoStage("DETAIL");
@@ -1861,6 +1874,95 @@ export default function Home() {
     setPhotoVerificationId(null);
     setTextRecord("");
     setSelected(null);
+  };
+
+  const submitQrMission = async (scannedToken = qrToken) => {
+    if (!selected || selected.kind !== "QR_SCAN" || selected.done) return;
+    const token = scannedToken.trim();
+    if (!token) {
+      setMessage("QR을 스캔하거나 인증 코드를 입력해주세요.");
+      return;
+    }
+    qrScannerControls.current?.stop();
+    qrScannerControls.current = null;
+    setQrScanning(false);
+    if (demoMode || !sessionId) {
+      const nextItems = items.map((item) =>
+        item.id === selected.id ? { ...item, done: true } : item,
+      );
+      const nextLineKeys = completedClientLineKeys(nextItems);
+      celebrate(nextLineKeys.filter((key) => !lineKeys.includes(key)).length);
+      setItems(nextItems);
+      setLineKeys(nextLineKeys);
+      setPoints((current) => current + selected.points);
+      setSelected(null);
+      return;
+    }
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const response = await apiFetch(
+        `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "idempotency-key": `web-qr-${crypto.randomUUID()}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ type: "QR", token }),
+        },
+      );
+      if (!response.ok) throw new Error("QR verification request failed");
+      const result = (await response.json()) as VerificationResult;
+      if (result.verificationStatus === "REJECTED") {
+        setMessage(friendlyError(result.reasonCode));
+        return;
+      }
+      celebrate(
+        result.completedLineKeys.filter((key) => !lineKeys.includes(key))
+          .length,
+      );
+      setSelected(null);
+      setQrToken("");
+      await reloadCurrentBingo();
+      await syncEarnedBadges();
+    } catch {
+      setMessage("QR 인증 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startQrScanner = async () => {
+    if (!qrVideo.current) return;
+    qrScannerControls.current?.stop();
+    setQrScanning(true);
+    setMessage(null);
+    try {
+      const { BrowserQRCodeReader } = await import("@zxing/browser");
+      const reader = new BrowserQRCodeReader(undefined, {
+        delayBetweenScanAttempts: 250,
+      });
+      qrScannerControls.current = await reader.decodeFromVideoDevice(
+        undefined,
+        qrVideo.current,
+        (result, _error, controls) => {
+          if (!result) return;
+          const token = result.getText();
+          controls.stop();
+          qrScannerControls.current = null;
+          setQrScanning(false);
+          setQrToken(token);
+          void submitQrMission(token);
+        },
+      );
+    } catch {
+      qrScannerControls.current = null;
+      setQrScanning(false);
+      setMessage(
+        "카메라를 열 수 없어요. 아래 인증 코드를 직접 입력해주세요.",
+      );
+    }
   };
 
   const startMissionTimer = () => {
@@ -2397,6 +2499,7 @@ export default function Home() {
       : 0;
   const recordMission = selected?.interactionType === "TEXT";
   const timerMission = selected?.interactionType === "TIMER";
+  const qrMission = selected?.kind === "QR_SCAN";
   const timerTarget = selected?.timerSeconds ?? selected?.targetValue ?? 0;
   const timerElapsed = timerStartedAt
     ? Math.max(
@@ -4027,6 +4130,46 @@ export default function Home() {
                     placeholder="정답을 입력해주세요"
                   />
                 )}
+                {qrMission && !selected.done && (
+                  <div className="qr-verification-panel">
+                    <div className={`qr-camera ${qrScanning ? "active" : ""}`}>
+                      <video ref={qrVideo} muted playsInline />
+                      {!qrScanning && (
+                        <div>
+                          <span aria-hidden="true">▦</span>
+                          <b>현장 QR 코드를 화면 안에 맞춰주세요.</b>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={startQrScanner}
+                      disabled={submitting || qrScanning}
+                    >
+                      {qrScanning ? "QR을 찾고 있어요…" : "카메라로 QR 스캔"}
+                    </button>
+                    <div className="qr-divider"><span>또는</span></div>
+                    <label>
+                      현장 인증 코드
+                      <input
+                        value={qrToken}
+                        onChange={(event) => setQrToken(event.target.value)}
+                        placeholder="QR 아래 인증 코드를 입력해주세요"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => void submitQrMission()}
+                      disabled={submitting || !qrToken.trim()}
+                    >
+                      {submitting ? "인증하고 있어요…" : "코드로 인증하기"}
+                    </button>
+                  </div>
+                )}
                 {recordMission && !selected.done && (
                   <div className="journal-paper">
                     <label htmlFor="mission-record">오늘의 이야기</label>
@@ -4157,13 +4300,13 @@ export default function Home() {
                         </small>
                       </div>
                     )}
-                    {!recordMission && !timerMission && (
+                    {!recordMission && !timerMission && !qrMission && (
                       <div className="reward">
                         <span>획득 보상</span>
                         <b>+ {selected.points} Point</b>
                       </div>
                     )}
-                    {recordMission ? (
+                    {qrMission ? null : recordMission ? (
                       <button
                         className="primary journal-submit"
                         onClick={submitRecordMission}

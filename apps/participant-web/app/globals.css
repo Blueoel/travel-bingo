@@ -2705,6 +2705,16 @@ nav .active {
   font-size: 12px;
   font-weight: 700;
 }
+.qr-verification-panel { display: grid; gap: 12px; margin-top: 18px; }
+.qr-camera { position: relative; display: grid; min-height: 210px; overflow: hidden; place-items: center; border: 1px dashed #9aae9a; border-radius: 16px; background: #edf3e9; }
+.qr-camera video { display: none; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.qr-camera.active video { display: block; }
+.qr-camera > div { display: grid; gap: 10px; max-width: 230px; place-items: center; color: #355d3f; text-align: center; line-height: 1.5; }
+.qr-camera > div span { font-size: 44px; }
+.qr-verification-panel > label { display: grid; gap: 7px; color: #355a3d; font-size: 12px; font-weight: 800; }
+.qr-verification-panel input { box-sizing: border-box; width: 100%; padding: 13px; border: 1px solid #bdc9ba; border-radius: 10px; background: #fff; font: inherit; }
+.qr-divider { position: relative; height: 20px; border-top: 1px solid #e1e4dc; text-align: center; }
+.qr-divider span { position: relative; top: -9px; padding: 0 10px; background: #fffdf7; color: #8b918a; font-size: 11px; }
 .reward {
   display: flex;
   justify-content: space-between;

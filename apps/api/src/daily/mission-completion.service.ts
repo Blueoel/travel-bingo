@@ -15,6 +15,7 @@ import {
 } from "@travel-bingo/domain";
 
 import { DATABASE_CLIENT } from "../database/database.module.js";
+import { MissionQrService } from "../qr/mission-qr.service.js";
 import type { PhotoAnalysis } from "./photo-verification.service.js";
 
 const POINTS_PER_LINE = 100;
@@ -43,6 +44,7 @@ export type MissionEvidence =
       readonly completedAt: Date;
     }
   | { readonly type: "QUIZ"; readonly answer: string }
+  | { readonly type: "QR"; readonly token: string }
   | {
       readonly type: "PHOTO";
       readonly analysis: PhotoAnalysis;
@@ -79,6 +81,7 @@ export interface MissionCompletionResult {
 }
 
 type MissionSnapshot = {
+  readonly id?: unknown;
   readonly kind?: unknown;
   readonly points?: unknown;
   readonly radiusM?: unknown;
@@ -107,6 +110,7 @@ type MissionDecision =
 export class MissionCompletionService {
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
+    private readonly missionQrService: MissionQrService,
   ) {}
 
   async completeCheckIn(
@@ -295,6 +299,7 @@ export class MissionCompletionService {
         mission,
         evidence,
         command.now ?? new Date(),
+        this.missionQrService,
       );
       if (!decision.approved) {
         const needsReview = decision.reasonCode === "PHOTO_NEEDS_REVIEW";
@@ -528,6 +533,7 @@ export function evaluateMission(
   mission: MissionSnapshot,
   evidence: MissionEvidence,
   receivedAt: Date,
+  qrVerifier?: Pick<MissionQrService, "verifies">,
 ): MissionDecision {
   if (mission.kind === "CHECK_IN" && evidence.type === "CHECK_IN") {
     const policy = asRecord(mission.verificationPolicy);
@@ -585,6 +591,20 @@ export function evaluateMission(
     return submittedHash === answerHash
       ? { approved: true, reasonCode: "QUIZ_CORRECT" }
       : { approved: false, reasonCode: "QUIZ_INCORRECT" };
+  }
+
+  if (mission.kind === "QR_SCAN" && evidence.type === "QR") {
+    const policy = asRecord(mission.verificationPolicy);
+    if (
+      policy?.type !== "QR_SCAN" ||
+      typeof mission.id !== "string" ||
+      !qrVerifier
+    ) {
+      throw new ConflictException("The QR mission policy is invalid.");
+    }
+    return qrVerifier.verifies(evidence.token, mission.id)
+      ? { approved: true, reasonCode: "QR_VERIFIED" }
+      : { approved: false, reasonCode: "QR_INVALID" };
   }
 
   if (mission.kind === "PLACE_VISIT" && evidence.type === "GPS") {
@@ -741,6 +761,12 @@ function publicEvidence(
         .digest("hex"),
     };
   }
+  if (evidence.type === "QR") {
+    return {
+      method: evidence.type,
+      tokenHash: createHash("sha256").update(evidence.token.trim()).digest("hex"),
+    };
+  }
   if (evidence.type === "PHOTO") {
     return {
       method: evidence.type,
@@ -789,8 +815,9 @@ function isGpsEvidence(
 
 function verificationType(
   evidence: MissionEvidence,
-): "GPS" | "QUIZ" | "PHOTO" | "COMPOSITE" | "ADMIN" {
+): "GPS" | "QR" | "QUIZ" | "PHOTO" | "COMPOSITE" | "ADMIN" {
   if (isGpsEvidence(evidence)) return "GPS";
+  if (evidence.type === "QR") return "QR";
   if (evidence.type === "QUIZ") return "QUIZ";
   if (evidence.type === "PHOTO") return "PHOTO";
   if (evidence.type === "TIMER") return "COMPOSITE";

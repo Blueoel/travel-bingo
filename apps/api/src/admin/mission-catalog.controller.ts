@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 
 import { AuthService } from "../auth/auth.service.js";
+import { MissionQrService } from "../qr/mission-qr.service.js";
 import {
   MissionCatalogService,
   type MissionCatalogInput,
@@ -30,6 +31,7 @@ export class MissionCatalogController {
   constructor(
     private readonly missions: MissionCatalogService,
     private readonly auth: AuthService,
+    private readonly missionQr: MissionQrService,
   ) {}
 
   @Get("regions")
@@ -132,6 +134,22 @@ export class MissionCatalogController {
       throw new BadRequestException("Region status must be ACTIVE or INACTIVE.");
     }
     return this.missions.updateRegionStatus(id, body.status, adminId);
+  }
+
+  @Get(":id/qr")
+  async getMissionQr(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    const mission = await this.missions.getQrMission(id);
+    return {
+      missionId: mission.id,
+      title: mission.title,
+      status: mission.status,
+      token: this.missionQr.issue(mission.id),
+    };
   }
 
   @Patch(":id")

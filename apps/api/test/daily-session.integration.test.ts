@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MissionCatalogService } from "../src/admin/mission-catalog.service.js";
 import { DailySessionService } from "../src/daily/daily-session.service.js";
 import { MissionCompletionService } from "../src/daily/mission-completion.service.js";
+import { MissionQrService } from "../src/qr/mission-qr.service.js";
 
 loadEnvironment({
   path: resolve(import.meta.dirname, "../../../.env"),
@@ -35,7 +36,10 @@ describeWithDatabase("DailySessionService integration", () => {
   beforeAll(async () => {
     database = createDatabaseClient({ connectionString: databaseUrl! });
     service = new DailySessionService(database);
-    completionService = new MissionCompletionService(database);
+    completionService = new MissionCompletionService(
+      database,
+      new MissionQrService(),
+    );
     adminMissionService = new MissionCatalogService(database);
 
     const suffix = crypto.randomUUID().slice(0, 8);

@@ -9,6 +9,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { FriendsModule } from "./friends/friends.module.js";
 import { RankingModule } from "./ranking/ranking.module.js";
+import { QrModule } from "./qr/qr.module.js";
 import { RecommendationsModule } from "./recommendations/recommendations.module.js";
 
 @Module({
@@ -22,6 +23,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module.
     AnnouncementsModule,
     FriendsModule,
     RankingModule,
+    QrModule,
     RecommendationsModule,
   ],
 })

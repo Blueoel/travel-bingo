@@ -48,7 +48,14 @@ export interface MissionCatalogInput {
     | "CHECK_IN"
     | "COMPOSITE";
   readonly verificationType?:
-    "PHOTO" | "GPS" | "GPS_STAY" | "QUIZ" | "TEXT" | "TIMER" | "MANUAL";
+    | "PHOTO"
+    | "GPS"
+    | "GPS_STAY"
+    | "QUIZ"
+    | "TEXT"
+    | "TIMER"
+    | "QR_SCAN"
+    | "MANUAL";
   readonly scope: "COMMON" | "REGION" | "EVENT";
   readonly category: string;
   readonly difficulty: MissionDifficulty;
@@ -94,6 +101,22 @@ export class MissionCatalogService {
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
   ) {}
+
+  async getQrMission(id: string): Promise<{
+    readonly id: string;
+    readonly title: string;
+    readonly status: string;
+  }> {
+    const mission = await this.database.mission.findUnique({
+      where: { id },
+      select: { id: true, title: true, kind: true, status: true },
+    });
+    if (!mission) throw new NotFoundException("Mission not found.");
+    if (mission.kind !== "QR_SCAN") {
+      throw new BadRequestException("Only QR missions can issue a QR code.");
+    }
+    return mission;
+  }
 
   async listRegions(): Promise<RegionAdminSummary[]> {
     const regions = await this.database.region.findMany({
@@ -704,6 +727,9 @@ function validateVerificationPolicy(input: MissionCatalogInput): void {
       );
     }
   }
+  if (type === "QR_SCAN" && input.kind && input.kind !== "QR_SCAN") {
+    throw new BadRequestException("QR verification requires a QR mission.");
+  }
   if (type === "GPS") {
     const place = input.place;
     if (
@@ -830,6 +856,7 @@ function verificationKind(
   if (value === "TEXT" || value === "TIMER") return "CHECK_IN";
   if (value === "GPS") return "PLACE_VISIT";
   if (value === "GPS_STAY") return "COMPOSITE";
+  if (value === "QR_SCAN") return "QR_SCAN";
   return "COMPOSITE";
 }
 

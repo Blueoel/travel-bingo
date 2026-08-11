@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 
 type Region = {
   id: string;
@@ -149,6 +150,13 @@ type MissionDraft = {
   contentTypeId?: string | null;
   radiusM?: number;
 };
+type MissionQr = {
+  missionId: string;
+  title: string;
+  status: string;
+  token: string;
+  imageUrl: string;
+};
 const API = "/api/backend";
 const PHOTO_API =
   process.env.NEXT_PUBLIC_PHOTO_REVIEW_API_URL ??
@@ -213,6 +221,8 @@ export default function AdminPage() {
     Record<string, string>
   >({});
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+  const [missionQr, setMissionQr] = useState<MissionQr | null>(null);
+  const [missionQrLoading, setMissionQrLoading] = useState(false);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [reports, setReports] = useState<UserReport[]>([]);
   const [reportStatus, setReportStatus] = useState<"OPEN" | "RESOLVED" | "DISMISSED">("OPEN");
@@ -339,6 +349,32 @@ export default function AdminPage() {
     setEditing(mission);
     setFormVerificationType(mission?.verificationPolicy?.type ?? "PHOTO");
     setOpen(true);
+  }
+  async function showMissionQr(mission: Mission) {
+    setMissionQrLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API}/admin/missions/${mission.id}/qr`, {
+        headers: { "x-user-id": ADMIN },
+      });
+      if (!response.ok) throw new Error("QR 코드를 불러오지 못했습니다.");
+      const data = (await response.json()) as Omit<MissionQr, "imageUrl">;
+      const imageUrl = await QRCode.toDataURL(data.token, {
+        width: 420,
+        margin: 2,
+        color: { dark: "#15382a", light: "#fffdf7" },
+        errorCorrectionLevel: "M",
+      });
+      setMissionQr({ ...data, imageUrl });
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "QR 코드를 불러오지 못했습니다.",
+      );
+    } finally {
+      setMissionQrLoading(false);
+    }
   }
   async function loadAttractions(regionId: string, q = attractionQuery) {
     if (!regionId) return;
@@ -1215,6 +1251,15 @@ export default function AdminPage() {
                             </mark>
                           </td>
                           <td>
+                            {m.kind === "QR_SCAN" && (
+                              <button
+                                className="textButton qrButton"
+                                onClick={() => showMissionQr(m)}
+                                disabled={missionQrLoading}
+                              >
+                                QR 보기
+                              </button>
+                            )}
                             <button
                               className="textButton"
                               onClick={() => showForm(m)}
@@ -2152,6 +2197,44 @@ export default function AdminPage() {
           <img src={zoomedPhoto} alt="확대된 인증 사진" />
         </div>
       )}
+      {missionQr && (
+        <div className="backdrop" onMouseDown={() => setMissionQr(null)}>
+          <section
+            className="qrMissionModal"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="qrModalClose"
+              aria-label="QR 창 닫기"
+              onClick={() => setMissionQr(null)}
+            >
+              ×
+            </button>
+            <small>MISSION QR</small>
+            <h2>{missionQr.title}</h2>
+            <p>현장에 인쇄해 두면 참가자가 스캔하여 미션을 완료할 수 있습니다.</p>
+            <img src={missionQr.imageUrl} alt={`${missionQr.title} 인증 QR 코드`} />
+            <code>{missionQr.token}</code>
+            <div className="qrMissionActions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => navigator.clipboard.writeText(missionQr.token)}
+              >
+                인증 코드 복사
+              </button>
+              <a
+                className="primary"
+                href={missionQr.imageUrl}
+                download={`${missionQr.title}-qr.png`}
+              >
+                QR 이미지 저장
+              </a>
+            </div>
+          </section>
+        </div>
+      )}
       {open && (
         <div className="backdrop" onMouseDown={() => setOpen(false)}>
           <form
@@ -2237,6 +2320,7 @@ export default function AdminPage() {
                   <option value="QUIZ">문제</option>
                   <option value="TEXT">텍스트 기록</option>
                   <option value="TIMER">타이머</option>
+                  <option value="QR_SCAN">QR 스캔</option>
                   <option value="MANUAL">직접 확인</option>
                 </select>
               </label>

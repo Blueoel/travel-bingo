@@ -790,3 +790,15 @@ test("manages the participant profile and shows cumulative account stats", async
   assert.match(stylesSource, /\.account-settings-card/);
   assert.match(stylesSource, /\.withdraw-card/);
 });
+
+test("supports secure QR mission scanning with a manual code fallback", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  const stylesSource = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");
+  assert.match(pageSource, /BrowserQRCodeReader/);
+  assert.match(pageSource, /type: "QR", token/);
+  assert.match(pageSource, /카메라로 QR 스캔/);
+  assert.match(pageSource, /코드로 인증하기/);
+  assert.match(pageSource, /QR_INVALID/);
+  assert.match(stylesSource, /\.qr-verification-panel/);
+  assert.match(stylesSource, /\.qr-camera/);
+});

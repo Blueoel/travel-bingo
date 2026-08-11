@@ -125,6 +125,11 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /누락 정산 확인/);
   assert.match(pageSource, /동점자는 같은 순위/);
   assert.match(stylesSource, /\.rankingSettlementAdmin/);
+  assert.match(pageSource, /admin\/missions\/\$\{mission\.id\}\/qr/);
+  assert.match(pageSource, /QR 이미지 저장/);
+  assert.match(pageSource, /인증 코드 복사/);
+  assert.match(pageSource, /option value="QR_SCAN"/);
+  assert.match(stylesSource, /\.qrMissionModal/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),
