@@ -155,7 +155,20 @@ type MissionQr = {
   title: string;
   status: string;
   token: string;
+  issuedAt: string;
+  expiresAt: string;
+  validHours: number;
   imageUrl: string;
+};
+type MissionQrUsageItem = {
+  id: string;
+  status: string;
+  reasonCode: string | null;
+  submittedAt: string;
+  decidedAt: string | null;
+  sessionId: string;
+  position: number;
+  participant: { nickname: string; email: string | null };
 };
 const API = "/api/backend";
 const PHOTO_API =
@@ -223,6 +236,9 @@ export default function AdminPage() {
   const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
   const [missionQr, setMissionQr] = useState<MissionQr | null>(null);
   const [missionQrLoading, setMissionQrLoading] = useState(false);
+  const [missionQrValidHours, setMissionQrValidHours] = useState(24);
+  const [missionQrHistory, setMissionQrHistory] = useState<MissionQrUsageItem[]>([]);
+  const [missionQrHistoryLoading, setMissionQrHistoryLoading] = useState(false);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [reports, setReports] = useState<UserReport[]>([]);
   const [reportStatus, setReportStatus] = useState<"OPEN" | "RESOLVED" | "DISMISSED">("OPEN");
@@ -350,12 +366,41 @@ export default function AdminPage() {
     setFormVerificationType(mission?.verificationPolicy?.type ?? "PHOTO");
     setOpen(true);
   }
-  async function showMissionQr(mission: Mission) {
+  async function loadMissionQrHistory(missionId: string) {
+    setMissionQrHistoryLoading(true);
+    try {
+      const response = await fetch(
+        `${API}/admin/missions/${missionId}/qr/history?limit=30`,
+        { headers: { "x-user-id": ADMIN } },
+      );
+      if (!response.ok) throw new Error("QR 사용 이력을 불러오지 못했습니다.");
+      const data = (await response.json()) as { items: MissionQrUsageItem[] };
+      setMissionQrHistory(data.items);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "QR 사용 이력을 불러오지 못했습니다.",
+      );
+    } finally {
+      setMissionQrHistoryLoading(false);
+    }
+  }
+
+  async function showMissionQr(
+    mission: Pick<Mission, "id" | "title" | "status">,
+    validHours = 24,
+  ) {
     setMissionQrLoading(true);
     setError("");
     try {
       const response = await fetch(`${API}/admin/missions/${mission.id}/qr`, {
-        headers: { "x-user-id": ADMIN },
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-user-id": ADMIN,
+        },
+        body: JSON.stringify({ validHours }),
       });
       if (!response.ok) throw new Error("QR 코드를 불러오지 못했습니다.");
       const data = (await response.json()) as Omit<MissionQr, "imageUrl">;
@@ -366,6 +411,8 @@ export default function AdminPage() {
         errorCorrectionLevel: "M",
       });
       setMissionQr({ ...data, imageUrl });
+      setMissionQrValidHours(data.validHours);
+      await loadMissionQrHistory(mission.id);
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -2214,8 +2261,54 @@ export default function AdminPage() {
             <small>MISSION QR</small>
             <h2>{missionQr.title}</h2>
             <p>현장에 인쇄해 두면 참가자가 스캔하여 미션을 완료할 수 있습니다.</p>
+            <div className="qrValiditySummary">
+              <span>
+                <small>발급</small>
+                <b>{new Date(missionQr.issuedAt).toLocaleString("ko-KR")}</b>
+              </span>
+              <span>
+                <small>만료</small>
+                <b>{new Date(missionQr.expiresAt).toLocaleString("ko-KR")}</b>
+              </span>
+            </div>
             <img src={missionQr.imageUrl} alt={`${missionQr.title} 인증 QR 코드`} />
             <code>{missionQr.token}</code>
+            <div className="qrReissueControls">
+              <label>
+                유효기간
+                <select
+                  value={missionQrValidHours}
+                  onChange={(event) =>
+                    setMissionQrValidHours(Number(event.target.value))
+                  }
+                >
+                  <option value={1}>1시간</option>
+                  <option value={24}>24시간</option>
+                  <option value={168}>7일</option>
+                  <option value={720}>30일</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                disabled={missionQrLoading}
+                onClick={() =>
+                  showMissionQr(
+                    {
+                      id: missionQr.missionId,
+                      title: missionQr.title,
+                      status: missionQr.status as Mission["status"],
+                    },
+                    missionQrValidHours,
+                  )
+                }
+              >
+                {missionQrLoading ? "발급 중…" : "새 QR 재발급"}
+              </button>
+            </div>
+            <p className="qrReissueNote">
+              재발급 전 QR도 표시된 만료 시각까지는 유효합니다.
+            </p>
             <div className="qrMissionActions">
               <button
                 type="button"
@@ -2232,6 +2325,43 @@ export default function AdminPage() {
                 QR 이미지 저장
               </a>
             </div>
+            <section className="qrUsageHistory">
+              <div>
+                <h3>최근 사용 이력</h3>
+                <button
+                  type="button"
+                  className="textButton"
+                  onClick={() => loadMissionQrHistory(missionQr.missionId)}
+                  disabled={missionQrHistoryLoading}
+                >
+                  새로고침
+                </button>
+              </div>
+              {missionQrHistoryLoading ? (
+                <p>사용 이력을 불러오는 중입니다.</p>
+              ) : missionQrHistory.length === 0 ? (
+                <p>아직 이 QR 미션을 인증한 참가자가 없습니다.</p>
+              ) : (
+                <ul>
+                  {missionQrHistory.map((item) => (
+                    <li key={item.id}>
+                      <span
+                        className={`qrUsageStatus ${item.status.toLowerCase()}`}
+                      >
+                        {item.status === "APPROVED"
+                          ? "성공"
+                          : item.status === "REJECTED"
+                            ? "실패"
+                            : "확인 중"}
+                      </span>
+                      <b>{item.participant.nickname}</b>
+                      <small>{item.participant.email ?? "이메일 없음"}</small>
+                      <time>{new Date(item.submittedAt).toLocaleString("ko-KR")}</time>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </section>
         </div>
       )}

@@ -533,7 +533,7 @@ export function evaluateMission(
   mission: MissionSnapshot,
   evidence: MissionEvidence,
   receivedAt: Date,
-  qrVerifier?: Pick<MissionQrService, "verifies">,
+  qrVerifier?: Pick<MissionQrService, "inspect">,
 ): MissionDecision {
   if (mission.kind === "CHECK_IN" && evidence.type === "CHECK_IN") {
     const policy = asRecord(mission.verificationPolicy);
@@ -602,9 +602,19 @@ export function evaluateMission(
     ) {
       throw new ConflictException("The QR mission policy is invalid.");
     }
-    return qrVerifier.verifies(evidence.token, mission.id)
-      ? { approved: true, reasonCode: "QR_VERIFIED" }
-      : { approved: false, reasonCode: "QR_INVALID" };
+    const inspection = qrVerifier.inspect(
+      evidence.token,
+      mission.id,
+      receivedAt,
+    );
+    if (inspection.valid) {
+      return { approved: true, reasonCode: "QR_VERIFIED" };
+    }
+    return {
+      approved: false,
+      reasonCode:
+        inspection.reason === "EXPIRED" ? "QR_EXPIRED" : "QR_INVALID",
+    };
   }
 
   if (mission.kind === "PLACE_VISIT" && evidence.type === "GPS") {

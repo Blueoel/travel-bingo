@@ -128,8 +128,12 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /admin\/missions\/\$\{mission\.id\}\/qr/);
   assert.match(pageSource, /QR 이미지 저장/);
   assert.match(pageSource, /인증 코드 복사/);
+  assert.match(pageSource, /새 QR 재발급/);
+  assert.match(pageSource, /최근 사용 이력/);
+  assert.match(pageSource, /qr\/history\?limit=30/);
   assert.match(pageSource, /option value="QR_SCAN"/);
   assert.match(stylesSource, /\.qrMissionModal/);
+  assert.match(stylesSource, /\.qrUsageHistory/);
 
   const proxySource = await readFile(
     new URL("../app/api/backend/[...path]/route.ts", import.meta.url),

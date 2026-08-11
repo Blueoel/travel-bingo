@@ -405,6 +405,7 @@ function friendlyError(code?: string): string {
     TEXT_TOO_LONG: "기록은 100자 이내로 작성해주세요.",
     TIMER_NOT_REACHED: "목표 시간이 끝난 뒤 인증할 수 있어요.",
     QR_INVALID: "이 미션의 QR 코드가 아니거나 유효하지 않은 코드예요.",
+    QR_EXPIRED: "QR 코드가 만료되었어요. 관리자에게 새 코드를 요청해주세요.",
   };
   return messages[code ?? ""] ?? "미션을 인증하지 못했어요. 다시 시도해주세요.";
 }

@@ -799,6 +799,7 @@ test("supports secure QR mission scanning with a manual code fallback", async ()
   assert.match(pageSource, /카메라로 QR 스캔/);
   assert.match(pageSource, /코드로 인증하기/);
   assert.match(pageSource, /QR_INVALID/);
+  assert.match(pageSource, /QR_EXPIRED/);
   assert.match(stylesSource, /\.qr-verification-panel/);
   assert.match(stylesSource, /\.qr-camera/);
 });

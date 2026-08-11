@@ -144,12 +144,58 @@ export class MissionCatalogController {
   ) {
     await this.auth.requireAdminId(cookie, developmentUserId);
     const mission = await this.missions.getQrMission(id);
+    const issued = this.missionQr.issue(mission.id);
     return {
       missionId: mission.id,
       title: mission.title,
       status: mission.status,
-      token: this.missionQr.issue(mission.id),
+      token: issued.token,
+      issuedAt: issued.issuedAt.toISOString(),
+      expiresAt: issued.expiresAt.toISOString(),
+      validHours: issued.validHours,
     };
+  }
+
+  @Post(":id/qr")
+  async reissueMissionQr(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Body() body: { validHours?: number },
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    const mission = await this.missions.getQrMission(id);
+    const validHours = body.validHours ?? 24;
+    if (
+      !Number.isInteger(validHours) ||
+      validHours < 1 ||
+      validHours > 24 * 30
+    ) {
+      throw new BadRequestException(
+        "QR validity must be between 1 and 720 hours.",
+      );
+    }
+    const issued = this.missionQr.issue(mission.id, validHours);
+    return {
+      missionId: mission.id,
+      title: mission.title,
+      status: mission.status,
+      token: issued.token,
+      issuedAt: issued.issuedAt.toISOString(),
+      expiresAt: issued.expiresAt.toISOString(),
+      validHours: issued.validHours,
+    };
+  }
+
+  @Get(":id/qr/history")
+  async getMissionQrHistory(
+    @Param("id") id: string,
+    @Headers("cookie") cookie: string | undefined,
+    @Headers("x-user-id") developmentUserId: string | undefined,
+    @Query("limit") limit: string | undefined,
+  ) {
+    await this.auth.requireAdminId(cookie, developmentUserId);
+    return this.missions.listQrUsage(id, positiveInteger(limit, 30));
   }
 
   @Patch(":id")

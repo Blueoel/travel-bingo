@@ -96,6 +96,20 @@ export interface RegionAdminSummary {
   readonly missingMissionCount: number;
 }
 
+export interface MissionQrUsageItem {
+  readonly id: string;
+  readonly status: string;
+  readonly reasonCode: string | null;
+  readonly submittedAt: string;
+  readonly decidedAt: string | null;
+  readonly sessionId: string;
+  readonly position: number;
+  readonly participant: {
+    readonly nickname: string;
+    readonly email: string | null;
+  };
+}
+
 @Injectable()
 export class MissionCatalogService {
   constructor(
@@ -116,6 +130,39 @@ export class MissionCatalogService {
       throw new BadRequestException("Only QR missions can issue a QR code.");
     }
     return mission;
+  }
+
+  async listQrUsage(
+    id: string,
+    limit = 30,
+  ): Promise<{ readonly items: MissionQrUsageItem[] }> {
+    await this.getQrMission(id);
+    const verifications = await this.database.verification.findMany({
+      where: {
+        type: "QR",
+        sessionCell: {
+          missionSnapshot: { path: ["id"], equals: id },
+        },
+      },
+      include: {
+        user: { select: { nickname: true, email: true } },
+        sessionCell: { select: { sessionId: true, position: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take: Math.min(Math.max(limit, 1), 100),
+    });
+    return {
+      items: verifications.map((verification) => ({
+        id: verification.id,
+        status: verification.status,
+        reasonCode: verification.reasonCode,
+        submittedAt: verification.submittedAt.toISOString(),
+        decidedAt: verification.decidedAt?.toISOString() ?? null,
+        sessionId: verification.sessionCell.sessionId,
+        position: verification.sessionCell.position,
+        participant: verification.user,
+      })),
+    };
   }
 
   async listRegions(): Promise<RegionAdminSummary[]> {
