@@ -67,7 +67,10 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /durationSeconds/);
   assert.match(pageSource, /const usesEstimatedTime/);
   assert.match(pageSource, /formVerificationType === "GPS_STAY"/);
-  assert.match(pageSource, /usesEstimatedTime\s*\? Number\(data\.estimatedMinutesMin\)\s*: null/);
+  assert.match(
+    pageSource,
+    /usesEstimatedTime\s*\? Number\(data\.estimatedMinutesMin\)\s*: null/,
+  );
   assert.match(pageSource, /name="quizAnswer"/);
   assert.match(pageSource, /정답은\s*참가자 화면에 공개되지/);
   assert.match(pageSource, /admin\/missions\/photo-reviews/);
@@ -125,6 +128,13 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /누락 정산 확인/);
   assert.match(pageSource, /동점자는 같은 순위/);
   assert.match(stylesSource, /\.rankingSettlementAdmin/);
+  assert.match(pageSource, /시스템 점검/);
+  assert.match(pageSource, /admin\/system-health/);
+  assert.match(pageSource, /전체 새로고침/);
+  assert.match(pageSource, /Daily 후보/);
+  assert.match(pageSource, /Lucky 설정/);
+  assert.match(pageSource, /최근 자동 작업/);
+  assert.match(stylesSource, /\.systemHealthAdmin/);
   assert.match(pageSource, /admin\/missions\/\$\{mission\.id\}\/qr/);
   assert.match(pageSource, /QR 이미지 저장/);
   assert.match(pageSource, /인증 코드 복사/);
