@@ -11,6 +11,14 @@ type Region = {
   canActivate?: boolean;
   missingMissionCount?: number;
 };
+type RegionSearchResult = {
+  administrativeCode: string;
+  name: string;
+  province: string;
+  legalRegionCode: string;
+  legalSigunguCode: string | null;
+  registeredRegionId: string | null;
+};
 type Mission = {
   id: string;
   title: string;
@@ -227,6 +235,9 @@ export default function AdminPage() {
   });
   const [userQuery, setUserQuery] = useState("");
   const [regionQuery, setRegionQuery] = useState("");
+  const [regionDiscoveryQuery, setRegionDiscoveryQuery] = useState("");
+  const [regionDiscoveryResults, setRegionDiscoveryResults] = useState<RegionSearchResult[]>([]);
+  const [regionDiscoveryLoading, setRegionDiscoveryLoading] = useState(false);
   const [managedRegionId, setManagedRegionId] = useState("");
   const [selectedRegionId, setSelectedRegionId] = useState("");
   const [attractionQuery, setAttractionQuery] = useState("");
@@ -295,6 +306,41 @@ export default function AdminPage() {
   useEffect(() => {
     void load();
   }, [params]);
+  useEffect(() => {
+    const query = regionDiscoveryQuery.trim();
+    if (view !== "regions" || !query) {
+      setRegionDiscoveryResults([]);
+      setRegionDiscoveryLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setRegionDiscoveryLoading(true);
+      try {
+        const search = new URLSearchParams({ q: query, limit: "10" });
+        const response = await fetch(
+          `${API}/recommendations/admin/regions/search?${search}`,
+          {
+            headers: { "x-user-id": ADMIN },
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error("전국 지역 검색을 불러오지 못했습니다.");
+        setRegionDiscoveryResults(await response.json());
+        setError("");
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        setRegionDiscoveryResults([]);
+        setError(cause instanceof Error ? cause.message : "전국 지역 검색을 불러오지 못했습니다.");
+      } finally {
+        if (!controller.signal.aborted) setRegionDiscoveryLoading(false);
+      }
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [regionDiscoveryQuery, view]);
   function showForm(mission: Mission | null = null) {
     setMissionDraft(null);
     setEditing(mission);
@@ -328,6 +374,38 @@ export default function AdminPage() {
       );
     } finally {
       setAttractionsLoading(false);
+    }
+  }
+  async function startRegionManagement(candidate: RegionSearchResult) {
+    setRegionDiscoveryLoading(true);
+    try {
+      let registeredRegionId = candidate.registeredRegionId;
+      if (!registeredRegionId) {
+        const response = await fetch(`${API}/recommendations/admin/regions`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-user-id": ADMIN,
+          },
+          body: JSON.stringify(candidate),
+        });
+        if (!response.ok) throw new Error("지역 관리를 시작하지 못했습니다.");
+        registeredRegionId = ((await response.json()) as Region).id;
+      }
+
+      const regionsResponse = await fetch(`${API}/admin/missions/regions`, {
+        headers: { "x-user-id": ADMIN },
+      });
+      if (!regionsResponse.ok) throw new Error("지역 목록을 갱신하지 못했습니다.");
+      setRegions(await regionsResponse.json());
+      setRegionDiscoveryQuery("");
+      setRegionDiscoveryResults([]);
+      setNotice(`${candidate.name} 관리를 시작합니다. 추천 관광지를 확인해보세요.`);
+      await loadAttractions(registeredRegionId, "");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "지역 관리를 시작하지 못했습니다.");
+    } finally {
+      setRegionDiscoveryLoading(false);
     }
   }
   async function openRegionComposer(region: Region) {
@@ -1401,6 +1479,69 @@ export default function AdminPage() {
           </section>
         ) : view === "regions" ? (
           <>
+            <section className="catalog regionDiscovery">
+              <div className="catalogHead">
+                <div>
+                  <small>REGION DISCOVERY</small>
+                  <h2>관리할 지역 찾기</h2>
+                  <p>
+                    전국 지역명을 검색하고 한국관광공사 지역코드 기준 추천
+                    관광지를 바로 확인하세요.
+                  </p>
+                </div>
+              </div>
+              <div className="regionDiscoverySearch">
+                <input
+                  aria-label="전국 지역 검색"
+                  placeholder="예: 수원시, 전주시, 제주특별자치도"
+                  value={regionDiscoveryQuery}
+                  onChange={(event) => setRegionDiscoveryQuery(event.target.value)}
+                  autoComplete="off"
+                />
+                {regionDiscoveryQuery && (
+                  <button
+                    type="button"
+                    aria-label="전국 지역 검색어 지우기"
+                    onClick={() => setRegionDiscoveryQuery("")}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {regionDiscoveryQuery.trim() && (
+                <div className="regionDiscoveryResults">
+                  {regionDiscoveryLoading ? (
+                    <p className="empty">지역 정보를 찾고 있습니다.</p>
+                  ) : regionDiscoveryResults.length ? (
+                    regionDiscoveryResults.map((candidate) => (
+                      <article key={candidate.administrativeCode}>
+                        <div>
+                          <b>{candidate.name}</b>
+                          <small>
+                            {candidate.province} · 행정구역 코드 {candidate.administrativeCode}
+                          </small>
+                        </div>
+                        <div className="regionDiscoveryAction">
+                          {candidate.registeredRegionId && <mark>관리 중</mark>}
+                          <button
+                            type="button"
+                            className="primary"
+                            disabled={regionDiscoveryLoading}
+                            onClick={() => void startRegionManagement(candidate)}
+                          >
+                            {candidate.registeredRegionId
+                              ? "관광지 추천 보기"
+                              : "이 지역 관리 시작"}
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="empty">검색 결과와 일치하는 지역이 없습니다.</p>
+                  )}
+                </div>
+              )}
+            </section>
             <section className="summary">
               <article>
                 <span>전체 지역</span>
@@ -1437,7 +1578,7 @@ export default function AdminPage() {
             <section className="catalog regionCatalog">
               <div className="catalogHead">
                 <div>
-                  <h2>지역 서비스 준비 현황</h2>
+                  <h2>관리 중인 지역</h2>
                   <p>
                     활성 지역 미션 25개와 공개된 25칸 빙고판이 있어야
                     활성화할 수 있습니다.

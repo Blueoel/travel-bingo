@@ -274,6 +274,86 @@ mark {
 .regionFilters {
   grid-template-columns: minmax(260px, 520px);
 }
+.regionDiscovery {
+  margin-bottom: 18px;
+  border-color: #b9ccbf;
+  background: linear-gradient(135deg, #fbfefc, #f3f8f4);
+}
+.regionDiscovery .catalogHead small {
+  display: block;
+  margin-bottom: 5px;
+  color: #397454;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.regionDiscoverySearch {
+  position: relative;
+  padding: 0 24px 18px;
+}
+.regionDiscoverySearch input {
+  min-height: 48px;
+  padding-right: 48px;
+  border-color: #9fbaa8;
+  font-weight: 700;
+}
+.regionDiscoverySearch button {
+  position: absolute;
+  right: 34px;
+  top: 7px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #728078;
+  font-size: 22px;
+  cursor: pointer;
+}
+.regionDiscoveryResults {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid #dbe5dd;
+  background: #dbe5dd;
+}
+.regionDiscoveryResults article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 24px;
+  background: #fff;
+}
+.regionDiscoveryResults article > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.regionDiscoveryResults small {
+  color: #849088;
+}
+.regionDiscoveryResults .empty {
+  margin: 0;
+  padding: 28px 24px;
+  background: #fff;
+  text-align: center;
+}
+.regionDiscoveryAction {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.regionDiscoveryAction mark {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e7f4eb;
+  color: #24704a;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.regionDiscoveryAction .primary {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
 .regionActions {
   display: flex;
   gap: 10px;
@@ -1092,6 +1172,13 @@ textarea {
 .reportAdminList dt { color: #7a837b; }
 .reportAdminList footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 @media (max-width: 560px) {
+  .regionDiscoveryResults article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .regionDiscoveryAction {
+    justify-content: space-between;
+  }
   .reportAdminList { grid-template-columns: 1fr; }
   .composerHead { align-items: flex-start; flex-direction: column; }
   .composerFilters { grid-template-columns: 1fr; }

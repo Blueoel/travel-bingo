@@ -129,6 +129,100 @@ describe("region recommendation distance", () => {
   });
 });
 
+describe("admin nationwide region discovery", () => {
+  it("searches KTO legal regions and marks an already managed region", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = new URL(String(input));
+        const item = url.searchParams.has("lDongRegnCd")
+          ? [
+              { code: "110", name: "수원시" },
+              { code: "550", name: "안성시" },
+            ]
+          : [{ code: "41", name: "경기도" }];
+        return new Response(
+          JSON.stringify({ response: { body: { items: { item } } } }),
+          { status: 200 },
+        );
+      }),
+    );
+    const service = new RegionRecommendationService({
+      region: {
+        findMany: async () => [
+          { id: "region-suwon", administrativeCode: "41110" },
+        ],
+      },
+    } as never);
+
+    const result = await service.searchAdministrativeRegions("수원", 8);
+
+    expect(result).toEqual([
+      {
+        administrativeCode: "41110",
+        name: "경기도 수원시",
+        province: "경기도",
+        legalRegionCode: "41",
+        legalSigunguCode: "110",
+        registeredRegionId: "region-suwon",
+      },
+    ]);
+  });
+
+  it("registers a searched region as inactive using its tourism center", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    let upsertInput: unknown;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            response: {
+              body: {
+                items: {
+                  item: [
+                    { mapx: "127.0", mapy: "37.0" },
+                    { mapx: "128.0", mapy: "38.0" },
+                  ],
+                },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    const service = new RegionRecommendationService({
+      region: {
+        findUnique: async () => null,
+        upsert: async (input: unknown) => {
+          upsertInput = input;
+          return { id: "region-new", name: "경기도 수원시" };
+        },
+      },
+    } as never);
+
+    const result = await service.ensureAdministrativeRegion({
+      administrativeCode: "41110",
+      name: "경기도 수원시",
+      province: "경기도",
+      legalRegionCode: "41",
+      legalSigunguCode: "110",
+    });
+
+    expect(result).toMatchObject({ id: "region-new" });
+    expect(upsertInput).toMatchObject({
+      create: {
+        administrativeCode: "41110",
+        centerLatitude: 37.5,
+        centerLongitude: 127.5,
+        status: "INACTIVE",
+      },
+    });
+  });
+});
+
 describe("admin tourism data enrichment", () => {
   const database = {
     region: {

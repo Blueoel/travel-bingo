@@ -5,6 +5,10 @@ import { DATABASE_CLIENT } from "../database/database.module.js";
 
 const KTO_LOCATION_URL =
   "https://apis.data.go.kr/B551011/KorService2/locationBasedList2";
+const KTO_LEGAL_REGION_URL =
+  "https://apis.data.go.kr/B551011/KorService2/lDongCode2";
+const KTO_AREA_BASED_URL =
+  "https://apis.data.go.kr/B551011/KorService2/areaBasedList2";
 const KTO_PHOTO_SEARCH_URL =
   "https://apis.data.go.kr/B551011/PhotoGalleryService1/gallerySearchList1";
 const KTO_RELATED_SEARCH_URL =
@@ -31,6 +35,19 @@ type KtoPhotoItem = {
   galSearchKeyword?: string;
 };
 type KtoRelatedItem = Record<string, unknown>;
+type KtoLegalRegionItem = {
+  code?: string;
+  name?: string;
+};
+
+export interface AdminRegionSearchResult {
+  readonly administrativeCode: string;
+  readonly name: string;
+  readonly province: string;
+  readonly legalRegionCode: string;
+  readonly legalSigunguCode: string | null;
+  readonly registeredRegionId: string | null;
+}
 
 export interface AdminAttractionRecommendation {
   readonly contentId: string;
@@ -59,11 +76,92 @@ export interface AttractionSearchOptions {
   readonly radiusKm?: number;
 }
 
+export interface RegisterAdministrativeRegionInput {
+  readonly administrativeCode: string;
+  readonly name: string;
+  readonly province: string;
+  readonly legalRegionCode: string;
+  readonly legalSigunguCode: string | null;
+}
+
+export interface RegisteredAdminRegion {
+  readonly id: string;
+  readonly name: string;
+  readonly administrativeCode: string;
+  readonly status: string;
+}
+
 @Injectable()
 export class RegionRecommendationService {
+  private regionDirectoryCache:
+    | { expiresAt: number; entries: AdminRegionSearchResult[] }
+    | undefined;
+
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
   ) {}
+
+  async searchAdministrativeRegions(
+    query: string,
+    limit: number,
+  ): Promise<AdminRegionSearchResult[]> {
+    const normalizedQuery = normalizeRegionName(query);
+    if (!normalizedQuery) return [];
+
+    const directory = await this.loadAdministrativeRegionDirectory();
+    const matched = directory
+      .filter((region) => {
+        const searchable = normalizeRegionName(
+          `${region.name} ${region.province} ${region.administrativeCode}`,
+        );
+        return searchable.includes(normalizedQuery);
+      })
+      .slice(0, limit);
+    if (!matched.length) return [];
+
+    const registered = await this.database.region.findMany({
+      where: {
+        administrativeCode: {
+          in: matched.map((region) => region.administrativeCode),
+        },
+      },
+      select: { id: true, administrativeCode: true },
+    });
+    const registeredByCode = new Map(
+      registered.map((region) => [region.administrativeCode, region.id]),
+    );
+    return matched.map((region) => ({
+      ...region,
+      registeredRegionId:
+        registeredByCode.get(region.administrativeCode) ?? null,
+    }));
+  }
+
+  async ensureAdministrativeRegion(
+    input: RegisterAdministrativeRegionInput,
+  ): Promise<RegisteredAdminRegion> {
+    const existing = await this.database.region.findUnique({
+      where: { administrativeCode: input.administrativeCode },
+    });
+    if (existing) return existing;
+
+    const center = await this.findAdministrativeRegionCenter(input);
+    return this.database.region.upsert({
+      where: { administrativeCode: input.administrativeCode },
+      update: {
+        name: input.name,
+        centerLatitude: center.latitude,
+        centerLongitude: center.longitude,
+      },
+      create: {
+        name: input.name,
+        administrativeCode: input.administrativeCode,
+        centerLatitude: center.latitude,
+        centerLongitude: center.longitude,
+        status: "INACTIVE",
+      },
+    });
+  }
 
   async recommend(
     current: Coordinates | null,
@@ -302,6 +400,115 @@ export class RegionRecommendationService {
     );
   }
 
+  private async loadAdministrativeRegionDirectory(): Promise<
+    AdminRegionSearchResult[]
+  > {
+    if (
+      this.regionDirectoryCache &&
+      this.regionDirectoryCache.expiresAt > Date.now()
+    ) {
+      return this.regionDirectoryCache.entries;
+    }
+
+    const provinces = await this.fetchKtoItems<KtoLegalRegionItem>(
+      KTO_LEGAL_REGION_URL,
+      process.env.KTO_API_KEY,
+      { numOfRows: "50", pageNo: "1" },
+    );
+    const entries = (
+      await Promise.all(
+        provinces
+          .filter((province) => province.code && province.name)
+          .map(async (province) => {
+            const provinceCode = province.code!.trim();
+            const provinceName = province.name!.trim();
+            if (isMetropolitanRegion(provinceName)) {
+              return [
+                toAdministrativeRegionEntry({
+                  provinceCode,
+                  provinceName,
+                  child: null,
+                }),
+              ];
+            }
+
+            const children = await this.fetchKtoItems<KtoLegalRegionItem>(
+              KTO_LEGAL_REGION_URL,
+              process.env.KTO_API_KEY,
+              {
+                lDongRegnCd: provinceCode,
+                numOfRows: "100",
+                pageNo: "1",
+              },
+            );
+            return children
+              .filter((child) => child.code && child.name)
+              .map((child) =>
+                toAdministrativeRegionEntry({
+                  provinceCode,
+                  provinceName,
+                  child,
+                }),
+              );
+          }),
+      )
+    ).flat();
+
+    const uniqueEntries = [
+      ...new Map(
+        entries.map((entry) => [entry.administrativeCode, entry]),
+      ).values(),
+    ].sort((first, second) => first.name.localeCompare(second.name, "ko"));
+    this.regionDirectoryCache = {
+      expiresAt: Date.now() + 6 * 60 * 60 * 1_000,
+      entries: uniqueEntries,
+    };
+    return uniqueEntries;
+  }
+
+  private async findAdministrativeRegionCenter(
+    input: RegisterAdministrativeRegionInput,
+  ): Promise<Coordinates> {
+    const items = await this.fetchKtoItems<KtoItem>(
+      KTO_AREA_BASED_URL,
+      process.env.KTO_API_KEY,
+      {
+        lDongRegnCd: input.legalRegionCode,
+        ...(input.legalSigunguCode
+          ? { lDongSignguCd: input.legalSigunguCode }
+          : {}),
+        arrange: "A",
+        numOfRows: "100",
+        pageNo: "1",
+      },
+    );
+    const coordinates = items
+      .map((item) => ({
+        latitude: Number(item.mapy),
+        longitude: Number(item.mapx),
+      }))
+      .filter(
+        (item) =>
+          Number.isFinite(item.latitude) &&
+          Number.isFinite(item.longitude) &&
+          item.latitude >= 32 &&
+          item.latitude <= 39 &&
+          item.longitude >= 124 &&
+          item.longitude <= 132,
+      );
+    if (coordinates.length) {
+      return {
+        latitude:
+          coordinates.reduce((sum, item) => sum + item.latitude, 0) /
+          coordinates.length,
+        longitude:
+          coordinates.reduce((sum, item) => sum + item.longitude, 0) /
+          coordinates.length,
+      };
+    }
+    return provinceFallbackCenter(input.legalRegionCode);
+  }
+
   private async fetchKtoAttractions(
     center: Coordinates,
     limit: number,
@@ -511,6 +718,69 @@ export function normalizeAttractionName(value: unknown): string {
         .toLocaleLowerCase("ko")
         .replace(/[^0-9a-z가-힣]/g, "")
     : "";
+}
+
+export function normalizeRegionName(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase("ko").replace(/\s+/g, "");
+}
+
+function isMetropolitanRegion(name: string): boolean {
+  return /(특별시|광역시|특별자치시)$/.test(name);
+}
+
+function toAdministrativeRegionEntry(input: {
+  provinceCode: string;
+  provinceName: string;
+  child: KtoLegalRegionItem | null;
+}): AdminRegionSearchResult {
+  if (!input.child?.code || !input.child.name) {
+    return {
+      administrativeCode: input.provinceCode,
+      name: input.provinceName,
+      province: input.provinceName,
+      legalRegionCode: input.provinceCode,
+      legalSigunguCode: null,
+      registeredRegionId: null,
+    };
+  }
+
+  const rawChildCode = input.child.code.trim();
+  const sigunguCode = rawChildCode.startsWith(input.provinceCode)
+    ? rawChildCode.slice(input.provinceCode.length)
+    : rawChildCode;
+  return {
+    administrativeCode: rawChildCode.startsWith(input.provinceCode)
+      ? rawChildCode
+      : `${input.provinceCode}${rawChildCode}`,
+    name: `${input.provinceName} ${input.child.name.trim()}`,
+    province: input.provinceName,
+    legalRegionCode: input.provinceCode,
+    legalSigunguCode: sigunguCode || null,
+    registeredRegionId: null,
+  };
+}
+
+function provinceFallbackCenter(legalRegionCode: string): Coordinates {
+  const centers: Record<string, Coordinates> = {
+    "11": { latitude: 37.5665, longitude: 126.978 },
+    "26": { latitude: 35.1796, longitude: 129.0756 },
+    "27": { latitude: 35.8714, longitude: 128.6014 },
+    "28": { latitude: 37.4563, longitude: 126.7052 },
+    "29": { latitude: 35.1595, longitude: 126.8526 },
+    "30": { latitude: 36.3504, longitude: 127.3845 },
+    "31": { latitude: 35.5384, longitude: 129.3114 },
+    "36": { latitude: 36.48, longitude: 127.289 },
+    "41": { latitude: 37.4138, longitude: 127.5183 },
+    "42": { latitude: 37.8228, longitude: 128.1555 },
+    "43": { latitude: 36.6357, longitude: 127.4917 },
+    "44": { latitude: 36.6588, longitude: 126.6728 },
+    "45": { latitude: 35.8203, longitude: 127.1088 },
+    "46": { latitude: 34.8161, longitude: 126.4629 },
+    "47": { latitude: 36.576, longitude: 128.5056 },
+    "48": { latitude: 35.2383, longitude: 128.6924 },
+    "50": { latitude: 33.489, longitude: 126.4983 },
+  };
+  return centers[legalRegionCode.slice(0, 2)] ?? centers["11"]!;
 }
 
 export function readRelatedAttractionName(item: KtoRelatedItem): string {

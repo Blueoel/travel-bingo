@@ -72,7 +72,12 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /정답은\s*참가자 화면에 공개되지/);
   assert.match(pageSource, /admin\/missions\/photo-reviews/);
   assert.match(pageSource, /화면을 벗어나도 실제 경과 시간/);
-  assert.match(pageSource, /지역 서비스 준비 현황/);
+  assert.match(pageSource, /관리할 지역 찾기/);
+  assert.match(pageSource, /전국 지역 검색/);
+  assert.match(pageSource, /recommendations\/admin\/regions\/search/);
+  assert.match(pageSource, /startRegionManagement/);
+  assert.match(pageSource, /이 지역 관리 시작/);
+  assert.match(pageSource, /관리 중인 지역/);
   assert.match(pageSource, /행정구역 코드 검색/);
   assert.match(pageSource, /updateRegionStatus/);
   assert.match(pageSource, /region\.canActivate/);
@@ -96,6 +101,7 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /장소 좌표 기준 100m/);
   assert.match(pageSource, /같은 관광지는 중복 등록되지/);
   assert.match(stylesSource, /\.attractionDetail/);
+  assert.match(stylesSource, /\.regionDiscoveryResults/);
   assert.match(pageSource, /const API = "\/api\/backend"/);
   assert.match(pageSource, /공지사항/);
   assert.match(pageSource, /announcementFilter/);
