@@ -92,6 +92,8 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.doesNotMatch(pageSource, /5×5 배치 미리보기/);
   assert.doesNotMatch(pageSource, /publishRegionBoard/);
   assert.match(pageSource, /한국관광공사 Open API/);
+  assert.match(pageSource, /이벤트 누적 원인/);
+  assert.match(pageSource, /outboxTopics/);
   assert.match(pageSource, /관광지 추천/);
   assert.match(pageSource, /createMissionFromAttraction/);
   assert.match(pageSource, /이 장소로 미션 만들기/);

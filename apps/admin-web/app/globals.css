@@ -1899,6 +1899,14 @@ textarea {
   color: #939a94;
   font-size: 10px;
 }
+.healthComponentGrid .providerDetail {
+  display: block;
+  min-height: 28px;
+  margin: -3px 0 8px;
+  color: #7f554e;
+  line-height: 1.45;
+  word-break: break-word;
+}
 .healthMetricGrid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1950,6 +1958,62 @@ textarea {
   border: 1px solid #dfe4df;
   border-radius: 15px;
   background: #fff;
+}
+.outboxHealthPanel {
+  background: #fbfcf9;
+}
+.outboxExplanation {
+  margin: 0;
+  color: #626f65;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.outboxMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 13px 0;
+}
+.outboxMeta span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef2eb;
+  color: #536258;
+  font-size: 10px;
+  font-weight: 800;
+}
+.outboxTopicList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.outboxTopicList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e3e8e1;
+  border-radius: 9px;
+  background: #fff;
+}
+.outboxTopicList code {
+  overflow: hidden;
+  color: #375241;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outboxTopicList b {
+  color: #244332;
+  font-size: 11px;
+}
+.outboxTopicList small {
+  color: #899289;
+  font-size: 9px;
 }
 .healthPanelHead {
   display: flex;
@@ -2117,7 +2181,8 @@ textarea {
   }
   .healthComponentGrid,
   .healthMetricGrid,
-  .healthDetailGrid {
+  .healthDetailGrid,
+  .outboxTopicList {
     grid-template-columns: 1fr;
   }
   .operationHealthList > div {

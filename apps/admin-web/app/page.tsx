@@ -163,6 +163,7 @@ type SystemHealth = {
     label: string;
     status: SystemHealthStatus;
     summary: string;
+    detail: string | null;
     latencyMs: number | null;
   }>;
   content: {
@@ -178,6 +179,14 @@ type SystemHealth = {
     }>;
     pendingPhotoReviewCount: number;
     pendingOutboxCount: number;
+    outboxFailedCount: number;
+    outboxWorkerConnected: boolean;
+    outboxOldestOccurredAt: string | null;
+    outboxTopics: Array<{
+      topic: string;
+      count: number;
+      failedCount: number;
+    }>;
     luckyChancePercent: number;
     luckyPoints: number;
   };
@@ -2980,6 +2989,11 @@ export default function AdminPage() {
                         <mark>{healthStatusLabel[component.status]}</mark>
                       </header>
                       <p>{component.summary}</p>
+                      {component.detail ? (
+                        <small className="providerDetail">
+                          {component.detail}
+                        </small>
+                      ) : null}
                       <small>
                         {component.latencyMs === null
                           ? "설정 상태 확인"
@@ -3027,12 +3041,22 @@ export default function AdminPage() {
                     <p>승인·반려 대기</p>
                   </article>
                   <article>
-                    <span>후속 처리</span>
+                    <span>이벤트 기록</span>
                     <b>
                       {systemHealth.content.pendingOutboxCount}
                       <small>건</small>
                     </b>
-                    <p>알림·이벤트 처리 대기</p>
+                    <p
+                      className={
+                        systemHealth.content.outboxFailedCount
+                          ? "warningText"
+                          : "healthyText"
+                      }
+                    >
+                      {systemHealth.content.outboxFailedCount
+                        ? `${systemHealth.content.outboxFailedCount}건 실패 기록`
+                        : "실패 기록 없음"}
+                    </p>
                   </article>
                   <article>
                     <span>Lucky 설정</span>
@@ -3043,6 +3067,56 @@ export default function AdminPage() {
                     <p>당첨 시 {systemHealth.content.luckyPoints}P</p>
                   </article>
                 </div>
+                <article className="healthPanel outboxHealthPanel">
+                  <div className="healthPanelHead">
+                    <div>
+                      <small>EVENT OUTBOX</small>
+                      <h3>이벤트 누적 원인</h3>
+                    </div>
+                    <b>{systemHealth.content.pendingOutboxCount}건 기록</b>
+                  </div>
+                  <p className="outboxExplanation">
+                    현재 사진 검수 알림은 인증 기록에서 직접 제공됩니다. 이
+                    Outbox 항목은 이벤트 이력으로 저장되며 별도 전송 처리기가
+                    연결되지 않아 처리 시간이 비어 있습니다.
+                  </p>
+                  <div className="outboxMeta">
+                    <span>
+                      처리기{" "}
+                      {systemHealth.content.outboxWorkerConnected
+                        ? "연결"
+                        : "미연결"}
+                    </span>
+                    <span>
+                      실제 실패 {systemHealth.content.outboxFailedCount}건
+                    </span>
+                    {systemHealth.content.outboxOldestOccurredAt ? (
+                      <span>
+                        최초 기록{" "}
+                        {new Date(
+                          systemHealth.content.outboxOldestOccurredAt,
+                        ).toLocaleString("ko-KR")}
+                      </span>
+                    ) : null}
+                  </div>
+                  {systemHealth.content.outboxTopics.length ? (
+                    <ul className="outboxTopicList">
+                      {systemHealth.content.outboxTopics.map((item) => (
+                        <li key={item.topic}>
+                          <code>{item.topic}</code>
+                          <b>{item.count}건</b>
+                          {item.failedCount ? (
+                            <small>{item.failedCount}건 실패</small>
+                          ) : (
+                            <small>실패 없음</small>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="healthyEmpty">누적된 이벤트가 없습니다.</p>
+                  )}
+                </article>
                 <div className="healthDetailGrid">
                   <article className="healthPanel">
                     <div className="healthPanelHead">

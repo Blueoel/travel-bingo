@@ -17,6 +17,7 @@ interface ComponentHealth {
   readonly label: string;
   readonly status: HealthStatus;
   readonly summary: string;
+  readonly detail: string | null;
   readonly latencyMs: number | null;
 }
 
@@ -37,6 +38,14 @@ export interface AdminSystemHealth {
     }[];
     readonly pendingPhotoReviewCount: number;
     readonly pendingOutboxCount: number;
+    readonly outboxFailedCount: number;
+    readonly outboxWorkerConnected: boolean;
+    readonly outboxOldestOccurredAt: string | null;
+    readonly outboxTopics: readonly {
+      readonly topic: string;
+      readonly count: number;
+      readonly failedCount: number;
+    }[];
     readonly luckyChancePercent: number;
     readonly luckyPoints: number;
   };
@@ -79,6 +88,7 @@ export class AdminSystemHealthService {
       label: "API 서버",
       status: "HEALTHY",
       summary: "관리자 진단 요청을 정상 처리했습니다.",
+      detail: null,
       latencyMs: null,
     };
     const databaseComponent = await this.checkDatabase();
@@ -129,6 +139,7 @@ export class AdminSystemHealthService {
         label: "Neon 데이터베이스",
         status: "HEALTHY",
         summary: "연결과 읽기 요청이 정상입니다.",
+        detail: null,
         latencyMs: Date.now() - startedAt,
       };
     } catch {
@@ -137,6 +148,7 @@ export class AdminSystemHealthService {
         label: "Neon 데이터베이스",
         status: "ERROR",
         summary: "데이터베이스 연결을 확인할 수 없습니다.",
+        detail: null,
         latencyMs: Date.now() - startedAt,
       };
     }
@@ -170,6 +182,7 @@ export class AdminSystemHealthService {
         response.ok
           ? `${model} 모델을 사용할 수 있습니다.`
           : "API 키 또는 모델 설정을 확인해주세요.",
+        response.ok ? null : `HTTP ${response.status}`,
       );
     } catch {
       return unavailable("gemini", "Gemini 사진 인증", Date.now() - startedAt);
@@ -199,10 +212,8 @@ export class AdminSystemHealthService {
         signal: AbortSignal.timeout(EXTERNAL_TIMEOUT_MS),
       });
       const body = await response.text();
-      const validResponse =
-        response.ok &&
-        (/"resultCode"\s*:\s*"?0000"?/.test(body) ||
-          /<resultCode>0000<\/resultCode>/.test(body));
+      const provider = parseKtoResponse(body);
+      const validResponse = response.ok && provider.code === "0000";
       return externalResult(
         "kto",
         "한국관광공사 Open API",
@@ -211,6 +222,9 @@ export class AdminSystemHealthService {
         validResponse
           ? "국문 관광정보 서비스에 연결되었습니다."
           : "일반 인증키 또는 활용 상태를 확인해주세요.",
+        validResponse
+          ? `응답 코드 ${provider.code}`
+          : ktoFailureDetail(response.status, provider),
       );
     } catch {
       return unavailable(
@@ -228,6 +242,7 @@ export class AdminSystemHealthService {
         regionRows,
         pendingPhotoReviewCount,
         pendingOutboxCount,
+        pendingOutboxEvents,
         daily,
         settlements,
         outboxErrors,
@@ -260,6 +275,17 @@ export class AdminSystemHealthService {
           },
         }),
         this.database.outboxEvent.count({ where: { processedAt: null } }),
+        this.database.outboxEvent.findMany({
+          where: { processedAt: null },
+          orderBy: { occurredAt: "asc" },
+          take: 500,
+          select: {
+            topic: true,
+            occurredAt: true,
+            attempts: true,
+            lastError: true,
+          },
+        }),
         this.database.dailyOperation.findFirst({
           orderBy: { cycleDate: "desc" },
         }),
@@ -285,6 +311,12 @@ export class AdminSystemHealthService {
           missingMissionCount: BOARD_CELL_COUNT - region.missionLinks.length,
         }));
       const warnings: string[] = [];
+      const outboxTopics = summarizeOutboxTopics(pendingOutboxEvents);
+      const outboxFailedCount = pendingOutboxEvents.filter(
+        (item) => item.attempts > 0 || item.lastError,
+      ).length;
+      const outboxOldestOccurredAt =
+        pendingOutboxEvents[0]?.occurredAt.toISOString() ?? null;
       if (dailyCandidateCount < BOARD_CELL_COUNT) {
         warnings.push(
           `Daily 활성 후보가 ${dailyCandidateCount}개입니다. 최소 ${BOARD_CELL_COUNT}개가 필요합니다.`,
@@ -300,9 +332,9 @@ export class AdminSystemHealthService {
           `사진 검수 ${pendingPhotoReviewCount}건이 대기 중입니다.`,
         );
       }
-      if (pendingOutboxCount > 0) {
+      if (outboxFailedCount > 0) {
         warnings.push(
-          `알림·후속 처리 ${pendingOutboxCount}건이 대기 중입니다.`,
+          `이벤트 후속 처리 실패 기록 ${outboxFailedCount}건을 확인해주세요.`,
         );
       }
       if (daily?.status === "FAILED") {
@@ -347,6 +379,10 @@ export class AdminSystemHealthService {
           regionsNeedingMissions,
           pendingPhotoReviewCount,
           pendingOutboxCount,
+          outboxFailedCount,
+          outboxWorkerConnected: false,
+          outboxOldestOccurredAt,
+          outboxTopics,
           luckyChancePercent: DAILY_LUCKY_CHANCE_PERCENT,
           luckyPoints: 50,
         },
@@ -391,6 +427,10 @@ function emptyDatabaseDiagnostics() {
       regionsNeedingMissions: [],
       pendingPhotoReviewCount: 0,
       pendingOutboxCount: 0,
+      outboxFailedCount: 0,
+      outboxWorkerConnected: false,
+      outboxOldestOccurredAt: null,
+      outboxTopics: [],
       luckyChancePercent: DAILY_LUCKY_CHANCE_PERCENT,
       luckyPoints: 50,
     },
@@ -405,7 +445,14 @@ function notConfigured(
   label: string,
   summary: string,
 ): ComponentHealth {
-  return { key, label, status: "NOT_CONFIGURED", summary, latencyMs: null };
+  return {
+    key,
+    label,
+    status: "NOT_CONFIGURED",
+    summary,
+    detail: null,
+    latencyMs: null,
+  };
 }
 
 function unavailable(
@@ -418,6 +465,7 @@ function unavailable(
     label,
     status: "WARNING",
     summary: "응답 시간이 초과되었거나 일시적으로 연결할 수 없습니다.",
+    detail: "요청 시간 초과 또는 네트워크 연결 실패",
     latencyMs,
   };
 }
@@ -428,6 +476,7 @@ function externalResult(
   response: Pick<Response, "ok" | "status">,
   latencyMs: number,
   summary: string,
+  detail: string | null = null,
 ): ComponentHealth {
   return {
     key,
@@ -438,8 +487,97 @@ function externalResult(
         ? "ERROR"
         : "WARNING",
     summary,
+    detail,
     latencyMs,
   };
+}
+
+function parseKtoResponse(body: string): { code: string; message: string } {
+  try {
+    const payload = JSON.parse(body) as {
+      response?: { header?: { resultCode?: unknown; resultMsg?: unknown } };
+      OpenAPI_ServiceResponse?: {
+        cmmMsgHeader?: {
+          returnReasonCode?: unknown;
+          returnAuthMsg?: unknown;
+          errMsg?: unknown;
+        };
+      };
+    };
+    const header = payload.response?.header;
+    if (header?.resultCode !== undefined) {
+      return {
+        code: String(header.resultCode),
+        message: safeProviderMessage(header.resultMsg),
+      };
+    }
+    const error = payload.OpenAPI_ServiceResponse?.cmmMsgHeader;
+    if (error) {
+      return {
+        code: String(error.returnReasonCode ?? "UNKNOWN"),
+        message: safeProviderMessage(error.returnAuthMsg ?? error.errMsg),
+      };
+    }
+  } catch {
+    // XML and plain-text provider responses are handled below.
+  }
+
+  return {
+    code:
+      xmlValue(body, "resultCode") ||
+      xmlValue(body, "returnReasonCode") ||
+      "UNKNOWN",
+    message:
+      safeProviderMessage(
+        xmlValue(body, "resultMsg") ||
+          xmlValue(body, "returnAuthMsg") ||
+          xmlValue(body, "errMsg"),
+      ) || "응답 메시지가 제공되지 않았습니다.",
+  };
+}
+
+function ktoFailureDetail(
+  httpStatus: number,
+  provider: { code: string; message: string },
+): string {
+  return `HTTP ${httpStatus} · 응답 코드 ${provider.code} · ${provider.message}`;
+}
+
+function xmlValue(body: string, tag: string): string {
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (
+    body
+      .match(new RegExp(`<${escaped}>([^<]*)<\\/${escaped}>`, "i"))?.[1]
+      ?.trim() ?? ""
+  );
+}
+
+function safeProviderMessage(value: unknown): string {
+  return typeof value === "string"
+    ? value.replace(/\s+/g, " ").replace(/[<>]/g, "").trim().slice(0, 180)
+    : "";
+}
+
+function summarizeOutboxTopics(
+  events: readonly {
+    topic: string;
+    attempts: number;
+    lastError: string | null;
+  }[],
+) {
+  const topics = new Map<string, { count: number; failedCount: number }>();
+  for (const event of events) {
+    const summary = topics.get(event.topic) ?? { count: 0, failedCount: 0 };
+    summary.count += 1;
+    if (event.attempts > 0 || event.lastError) summary.failedCount += 1;
+    topics.set(event.topic, summary);
+  }
+  return [...topics.entries()]
+    .map(([topic, summary]) => ({ topic, ...summary }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.topic.localeCompare(right.topic),
+    );
 }
 
 function normalizeServiceKey(value: string): string {
