@@ -83,13 +83,11 @@ test("renders mission editing and Daily composition controls", async () => {
   assert.match(pageSource, /region\.canActivate/);
   assert.match(pageSource, /상세 관리/);
   assert.match(pageSource, /공개 준비/);
-  assert.match(pageSource, /지역 미션 25칸 구성/);
-  assert.match(pageSource, /5×5 배치 미리보기/);
-  assert.match(pageSource, /자동 섞기/);
-  assert.match(pageSource, /선택한 25칸으로 생성 및 공개/);
-  assert.match(pageSource, /missionIds: selectedRegionMissionIds/);
-  assert.match(pageSource, /publishRegionBoard/);
-  assert.match(pageSource, /publish-board/);
+  assert.match(pageSource, /사용자별 25칸 자동 구성/);
+  assert.match(pageSource, /난이도·미션 유형·유사 그룹을 고려해 무작위 배치/);
+  assert.doesNotMatch(pageSource, /지역 미션 25칸 구성/);
+  assert.doesNotMatch(pageSource, /5×5 배치 미리보기/);
+  assert.doesNotMatch(pageSource, /publishRegionBoard/);
   assert.match(pageSource, /한국관광공사 Open API/);
   assert.match(pageSource, /관광지 추천/);
   assert.match(pageSource, /createMissionFromAttraction/);

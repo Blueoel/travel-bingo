@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MissionCatalogService } from "../src/admin/mission-catalog.service.js";
 
 describe("region administration", () => {
-  it("reports bingo readiness from active missions and published 25-cell boards", async () => {
+  it("reports readiness from the active regional mission pool", async () => {
     const database = {
       region: {
         findMany: vi.fn().mockResolvedValue([
@@ -15,13 +15,7 @@ describe("region administration", () => {
             missionLinks: Array.from({ length: 25 }, (_, index) => ({
               missionId: `mission-${index}`,
             })),
-            templates: [
-              {
-                id: "board",
-                title: "지역 빙고",
-                _count: { cells: 25 },
-              },
-            ],
+            templates: [],
           },
           {
             id: "draft",
@@ -43,7 +37,7 @@ describe("region administration", () => {
     expect(result[0]).toMatchObject({
       canActivate: true,
       activeMissionCount: 25,
-      publishedBoardCount: 1,
+      publishedBoardCount: 0,
       missingMissionCount: 0,
     });
     expect(result[1]).toMatchObject({
@@ -70,13 +64,13 @@ describe("region administration", () => {
     };
     const service = new MissionCatalogService(database as never);
 
-    await expect(service.updateRegionStatus("draft", "ACTIVE")).rejects.toThrow(
-      "지역 미션 25개",
+    await expect(service.updateRegionStatus("draft", "ACTIVE", "admin")).rejects.toThrow(
+      "활성 지역 미션이 25개 이상",
     );
     expect(database.region.update).not.toHaveBeenCalled();
   });
 
-  it("publishes a 25-cell board and activates the region in one operation", async () => {
+  it("automatically prepares the regional template when activating a region", async () => {
     const transaction = {
       region: {
         findUnique: vi.fn().mockResolvedValue({
@@ -85,6 +79,7 @@ describe("region administration", () => {
           missionLinks: Array.from({ length: 25 }, (_, index) => ({
             missionId: `mission-${index}`,
           })),
+          templates: [],
         }),
         update: vi.fn(),
       },
@@ -122,12 +117,8 @@ describe("region administration", () => {
       },
     };
 
-    const selectedMissionIds = Array.from(
-      { length: 25 },
-      (_, index) => `mission-${24 - index}`,
-    );
     const result = await new MissionCatalogService(database as never)
-      .publishRegionBoard("ready", "admin", selectedMissionIds);
+      .updateRegionStatus("ready", "ACTIVE", "admin");
 
     expect(transaction.bingoTemplate.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -135,8 +126,8 @@ describe("region administration", () => {
         type: "REGION",
         version: 2,
         cells: {
-          create: selectedMissionIds.map((missionId, position) => ({
-            missionId,
+          create: Array.from({ length: 25 }, (_, position) => ({
+            missionId: `mission-${position}`,
             position,
           })),
         },

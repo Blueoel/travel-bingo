@@ -127,22 +127,11 @@ export class MissionCatalogController {
     @Headers("x-user-id") developmentUserId: string | undefined,
     @Body() body: { status?: string },
   ): Promise<RegionAdminSummary> {
-    await this.auth.requireAdminId(cookie, developmentUserId);
+    const adminId = await this.auth.requireAdminId(cookie, developmentUserId);
     if (body.status !== "ACTIVE" && body.status !== "INACTIVE") {
       throw new BadRequestException("Region status must be ACTIVE or INACTIVE.");
     }
-    return this.missions.updateRegionStatus(id, body.status);
-  }
-
-  @Post("regions/:id/publish-board")
-  async publishRegionBoard(
-    @Param("id") id: string,
-    @Headers("cookie") cookie: string | undefined,
-    @Headers("x-user-id") developmentUserId: string | undefined,
-    @Body() body: { missionIds?: string[] },
-  ): Promise<RegionAdminSummary> {
-    const adminId = await this.auth.requireAdminId(cookie, developmentUserId);
-    return this.missions.publishRegionBoard(id, adminId, body.missionIds);
+    return this.missions.updateRegionStatus(id, body.status, adminId);
   }
 
   @Patch(":id")

@@ -125,7 +125,7 @@ export class MissionCatalogService {
         status: region.status,
         activeMissionCount,
         publishedBoardCount,
-        canActivate: activeMissionCount >= 25 && publishedBoardCount > 0,
+        canActivate: activeMissionCount >= 25,
         missingMissionCount: Math.max(0, 25 - activeMissionCount),
       };
     });
@@ -134,29 +134,26 @@ export class MissionCatalogService {
   async updateRegionStatus(
     id: string,
     status: "ACTIVE" | "INACTIVE",
+    adminId: string,
   ): Promise<RegionAdminSummary> {
     const regions = await this.listRegions();
     const region = regions.find((candidate) => candidate.id === id);
     if (!region) throw new NotFoundException("Region not found.");
     if (status === "ACTIVE" && !region.canActivate) {
       throw new BadRequestException(
-        "지역 미션 25개와 공개된 25칸 지역 빙고판이 있어야 활성화할 수 있습니다.",
+        "활성 지역 미션이 25개 이상 있어야 지역 서비스를 활성화할 수 있습니다.",
       );
     }
-    await this.database.region.update({
-      where: { id },
-      data: { status },
-    });
-    return { ...region, status };
-  }
+    if (status === "INACTIVE") {
+      await this.database.region.update({
+        where: { id },
+        data: { status },
+      });
+      return { ...region, status };
+    }
 
-  async publishRegionBoard(
-    id: string,
-    adminId: string,
-    requestedMissionIds?: readonly string[],
-  ): Promise<RegionAdminSummary> {
     await this.database.$transaction(async (transaction) => {
-      const region = await transaction.region.findUnique({
+      const regionRecord = await transaction.region.findUnique({
         where: { id },
         include: {
           missionLinks: {
@@ -164,85 +161,76 @@ export class MissionCatalogService {
             orderBy: { createdAt: "asc" },
             select: { missionId: true },
           },
+          templates: {
+            where: { status: "PUBLISHED", type: "REGION" },
+            select: { id: true, _count: { select: { cells: true } } },
+          },
         },
       });
-      if (!region) throw new NotFoundException("Region not found.");
-      if (region.missionLinks.length < 25) {
+      if (!regionRecord) throw new NotFoundException("Region not found.");
+      if (regionRecord.missionLinks.length < 25) {
         throw new BadRequestException(
-          `지역 빙고판을 공개하려면 활성 지역 미션이 25개 필요합니다. 현재 ${region.missionLinks.length}개입니다.`,
+          `지역 서비스를 활성화하려면 활성 지역 미션이 25개 필요합니다. 현재 ${regionRecord.missionLinks.length}개입니다.`,
         );
       }
-
-      const availableMissionIds = new Set(
-        region.missionLinks.map((link) => link.missionId),
+      const hasReadyTemplate = regionRecord.templates.some(
+        (template) => template._count.cells === 25,
       );
-      const missionIds = requestedMissionIds
-        ? [...requestedMissionIds]
-        : region.missionLinks.slice(0, 25).map((link) => link.missionId);
-      if (
-        missionIds.length !== 25 ||
-        new Set(missionIds).size !== 25 ||
-        missionIds.some((missionId) => !availableMissionIds.has(missionId))
-      ) {
-        throw new BadRequestException(
-          "이 지역에 연결된 활성 미션 중 서로 다른 25개를 선택해야 합니다.",
-        );
-      }
-
-      let theme = await transaction.bingoTheme.findFirst({
-        where: { regionId: id, status: "ACTIVE" },
-        orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
-      });
-      if (!theme) {
-        theme = await transaction.bingoTheme.create({
+      if (!hasReadyTemplate) {
+        let theme = await transaction.bingoTheme.findFirst({
+          where: { regionId: id, status: "ACTIVE" },
+          orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+        });
+        if (!theme) {
+          theme = await transaction.bingoTheme.create({
+            data: {
+              regionId: id,
+              name: "대표 여행",
+              category: "지역 탐험",
+              isRequiredForRegionCompletion: true,
+              status: "ACTIVE",
+              displayOrder: 0,
+            },
+          });
+        }
+        const latest = await transaction.bingoTemplate.findFirst({
+          where: { themeId: theme.id },
+          orderBy: { version: "desc" },
+          select: { version: true },
+        });
+        await transaction.bingoTemplate.updateMany({
+          where: { regionId: id, type: "REGION", status: "PUBLISHED" },
+          data: { status: "ARCHIVED" },
+        });
+        await transaction.bingoTemplate.create({
           data: {
             regionId: id,
-            name: "대표 여행",
-            category: "지역 탐험",
-            isRequiredForRegionCompletion: true,
-            status: "ACTIVE",
-            displayOrder: 0,
+            themeId: theme.id,
+            ownerId: adminId,
+            title: `${regionRecord.name} 여행 빙고`,
+            type: "REGION",
+            status: "PUBLISHED",
+            version: (latest?.version ?? 0) + 1,
+            startsAt: new Date(),
+            publishedAt: new Date(),
+            cells: {
+              create: regionRecord.missionLinks
+                .slice(0, 25)
+                .map(({ missionId }, position) => ({ missionId, position })),
+            },
           },
         });
       }
-      const latest = await transaction.bingoTemplate.findFirst({
-        where: { themeId: theme.id },
-        orderBy: { version: "desc" },
-        select: { version: true },
-      });
-      await transaction.bingoTemplate.updateMany({
-        where: { regionId: id, type: "REGION", status: "PUBLISHED" },
-        data: { status: "ARCHIVED" },
-      });
-      await transaction.bingoTemplate.create({
-        data: {
-          regionId: id,
-          themeId: theme.id,
-          ownerId: adminId,
-          title: `${region.name} 여행 빙고`,
-          type: "REGION",
-          status: "PUBLISHED",
-          version: (latest?.version ?? 0) + 1,
-          startsAt: new Date(),
-          publishedAt: new Date(),
-          cells: {
-            create: missionIds.map((missionId, position) => ({
-              missionId,
-              position,
-            })),
-          },
-        },
-      });
       await transaction.region.update({
         where: { id },
         data: { status: "ACTIVE" },
       });
     });
-    const published = (await this.listRegions()).find(
+    const activated = (await this.listRegions()).find(
       (region) => region.id === id,
     );
-    if (!published) throw new NotFoundException("Region not found.");
-    return published;
+    if (!activated) throw new NotFoundException("Region not found.");
+    return activated;
   }
 
   async list(query: MissionCatalogQuery) {
