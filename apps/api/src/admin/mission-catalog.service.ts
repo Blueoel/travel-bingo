@@ -343,7 +343,8 @@ export class MissionCatalogService {
         ? { regionLinks: { some: { regionId: query.regionId } } }
         : {}),
     };
-    const [items, total] = await this.database.$transaction([
+    const [items, total, common, regional, active] =
+      await this.database.$transaction([
       this.database.mission.findMany({
         where,
         orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
@@ -356,12 +357,16 @@ export class MissionCatalogService {
         },
       }),
       this.database.mission.count({ where }),
+      this.database.mission.count({ where: { ...where, scope: "COMMON" } }),
+      this.database.mission.count({ where: { ...where, scope: "REGION" } }),
+      this.database.mission.count({ where: { ...where, status: "ACTIVE" } }),
     ]);
     return {
       items: items.map(toCatalogMission),
       page: query.page,
       pageSize: query.pageSize,
       total,
+      summary: { total, common, regional, active },
     };
   }
 

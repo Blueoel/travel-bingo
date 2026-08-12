@@ -322,6 +322,14 @@ export default function AdminPage() {
     [regions, setRegions] = useState<Region[]>([]),
     [dailyIds, setDailyIds] = useState<string[]>([]),
     [dailyMissions, setDailyMissions] = useState<Mission[]>([]);
+  const [missionPage, setMissionPage] = useState(1);
+  const [missionTotal, setMissionTotal] = useState(0);
+  const [missionSummary, setMissionSummary] = useState({
+    total: 0,
+    common: 0,
+    regional: 0,
+    active: 0,
+  });
   const [query, setQuery] = useState(""),
     [scope, setScope] = useState(""),
     [regionId, setRegionId] = useState(""),
@@ -419,7 +427,10 @@ export default function AdminPage() {
     [notice, setNotice] = useState("");
   const [formVerificationType, setFormVerificationType] = useState("PHOTO");
   const params = useMemo(() => {
-    const p = new URLSearchParams({ pageSize: "100" });
+    const p = new URLSearchParams({
+      page: String(missionPage),
+      pageSize: "20",
+    });
     if (query) p.set("q", query);
     if (scope) p.set("scope", scope);
     if (regionId) p.set("regionId", regionId);
@@ -438,6 +449,7 @@ export default function AdminPage() {
     kind,
     similarityGroup,
     dailyCandidate,
+    missionPage,
   ]);
   async function load() {
     try {
@@ -449,7 +461,26 @@ export default function AdminPage() {
       ]);
       if (!a.ok || !b.ok || !c.ok)
         throw new Error("관리자 API에 연결할 수 없습니다.");
-      setMissions(((await a.json()) as { items: Mission[] }).items);
+      const missionResult = (await a.json()) as {
+        items: Mission[];
+        total: number;
+        summary?: {
+          total: number;
+          common: number;
+          regional: number;
+          active: number;
+        };
+      };
+      setMissions(missionResult.items);
+      setMissionTotal(missionResult.total);
+      setMissionSummary(
+        missionResult.summary ?? {
+          total: missionResult.total,
+          common: missionResult.items.filter((item) => item.scope === "COMMON").length,
+          regional: missionResult.items.filter((item) => item.scope === "REGION").length,
+          active: missionResult.items.filter((item) => item.status === "ACTIVE").length,
+        },
+      );
       setRegions(await b.json());
       const daily = (await c.json()) as {
         missionIds: string[];
@@ -465,6 +496,9 @@ export default function AdminPage() {
   useEffect(() => {
     void load();
   }, [params]);
+  useEffect(() => {
+    setMissionPage(1);
+  }, [query, scope, regionId, missionStatus, difficulty, kind, similarityGroup, dailyCandidate]);
   useEffect(() => {
     const query = regionDiscoveryQuery.trim();
     if (view !== "regions" || !query) {
@@ -1286,11 +1320,9 @@ export default function AdminPage() {
       );
     });
   }, [announcements, announcementFilter, announcementQuery]);
-  const common = missions.filter((m) => m.scope === "COMMON").length,
-    regional = missions.filter((m) => m.scope === "REGION").length,
-    dailyCandidates = missions.filter(
-      (m) => m.scope === "COMMON" && m.status === "ACTIVE",
-    );
+  const dailyCandidates = dailyMissions.filter(
+    (m) => m.scope === "COMMON" && m.status === "ACTIVE",
+  );
   const selectedDailyMissions = useMemo(() => {
     const available = new Map(
       [...dailyMissions, ...dailyCandidates].map((mission) => [
@@ -1500,23 +1532,23 @@ export default function AdminPage() {
             <section className="summary">
               <article>
                 <span>전체 미션</span>
-                <b>{missions.length}</b>
+                <b>{missionSummary.total}</b>
                 <small>현재 검색 결과</small>
               </article>
               <article>
                 <span>공통 미션</span>
-                <b>{common}</b>
+                <b>{missionSummary.common}</b>
                 <small>Daily 빙고 후보</small>
               </article>
               <article>
                 <span>지역 미션</span>
-                <b>{regional}</b>
+                <b>{missionSummary.regional}</b>
                 <small>지역 연결 미션</small>
               </article>
               <article>
                 <span>활성 미션</span>
                 <b className="green">
-                  {missions.filter((m) => m.status === "ACTIVE").length}
+                  {missionSummary.active}
                 </b>
                 <small>현재 운영 중</small>
               </article>
@@ -1708,6 +1740,28 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              {missionTotal > 20 && (
+                <nav className="pagination" aria-label="미션 목록 페이지">
+                  <button
+                    className="secondary"
+                    disabled={missionPage === 1}
+                    onClick={() => setMissionPage((page) => Math.max(1, page - 1))}
+                  >
+                    이전
+                  </button>
+                  <span>
+                    {missionPage} / {Math.ceil(missionTotal / 20)} 페이지
+                    <small>총 {missionTotal}개</small>
+                  </span>
+                  <button
+                    className="secondary"
+                    disabled={missionPage >= Math.ceil(missionTotal / 20)}
+                    onClick={() => setMissionPage((page) => page + 1)}
+                  >
+                    다음
+                  </button>
+                </nav>
+              )}
             </section>
           </>
         ) : view === "daily" ? (
