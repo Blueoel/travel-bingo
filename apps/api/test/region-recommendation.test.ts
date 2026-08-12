@@ -130,6 +130,29 @@ describe("region recommendation distance", () => {
 });
 
 describe("admin nationwide region discovery", () => {
+  it("returns a priority population-decline region without loading the full directory", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const service = new RegionRecommendationService({
+      region: { findMany: async () => [] },
+    } as never);
+
+    const result = await service.searchAdministrativeRegions("공주시", 8);
+
+    expect(result).toEqual([
+      {
+        administrativeCode: "44150",
+        name: "충청남도 공주시",
+        province: "충청남도",
+        legalRegionCode: "44",
+        legalSigunguCode: "150",
+        registeredRegionId: null,
+      },
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("searches KTO legal regions and marks an already managed region", async () => {
     vi.stubEnv("KTO_API_KEY", "main-key");
     const requestedUrls: URL[] = [];

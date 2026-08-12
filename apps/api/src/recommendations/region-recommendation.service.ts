@@ -40,6 +40,10 @@ type KtoLegalRegionItem = {
   name?: string;
 };
 
+const PRIORITY_ADMINISTRATIVE_REGIONS: readonly AdminRegionSearchResult[] = [
+  priorityRegion("44150", "충청남도 공주시", "충청남도", "44", "150"),
+];
+
 export interface AdminRegionSearchResult {
   readonly administrativeCode: string;
   readonly name: string;
@@ -108,7 +112,14 @@ export class RegionRecommendationService {
     const normalizedQuery = normalizeRegionName(query);
     if (!normalizedQuery) return [];
 
-    const directory = await this.loadAdministrativeRegionDirectory();
+    const priorityMatches = PRIORITY_ADMINISTRATIVE_REGIONS.filter((region) =>
+      normalizeRegionName(
+        `${region.name} ${region.province} ${region.administrativeCode}`,
+      ).includes(normalizedQuery),
+    );
+    const directory = priorityMatches.length
+      ? priorityMatches
+      : await this.loadAdministrativeRegionDirectory();
     const matched = directory
       .filter((region) => {
         const searchable = normalizeRegionName(
@@ -698,6 +709,23 @@ export class RegionRecommendationService {
       return [];
     }
   }
+}
+
+function priorityRegion(
+  administrativeCode: string,
+  name: string,
+  province: string,
+  legalRegionCode: string,
+  legalSigunguCode: string,
+): AdminRegionSearchResult {
+  return {
+    administrativeCode,
+    name,
+    province,
+    legalRegionCode,
+    legalSigunguCode,
+    registeredRegionId: null,
+  };
 }
 
 export function normalizeKtoServiceKey(value: string | undefined): string {
