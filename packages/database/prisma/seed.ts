@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { createDatabaseClient } from "../src/client.js";
+import { gongjuMissionSeed } from "./gongju-missions.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -19,6 +20,12 @@ const ids = {
   regionTemplate: "40000000-0000-4000-8000-000000000002",
   collection: "70000000-0000-4000-8000-000000000001",
 };
+
+const gongjuRegionId = "20000000-0000-4000-8000-000000000002";
+
+function gongjuMissionId(order: number): string {
+  return `90000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
 
 const places = [
   ["안성맞춤랜드", 37.0316, 127.3105],
@@ -987,6 +994,65 @@ async function seed(): Promise<void> {
       centerLongitude: 127.2797,
     },
   });
+  const gongjuRegion = await database.region.upsert({
+    where: { administrativeCode: "44150" },
+    update: {
+      name: "충청남도 공주시",
+      centerLatitude: 36.4465,
+      centerLongitude: 127.119,
+      populationDeclineFlag: true,
+    },
+    create: {
+      id: gongjuRegionId,
+      name: "충청남도 공주시",
+      administrativeCode: "44150",
+      centerLatitude: 36.4465,
+      centerLongitude: 127.119,
+      populationDeclineFlag: true,
+      status: "NEEDS_REVIEW",
+    },
+  });
+
+  for (const mission of gongjuMissionSeed) {
+    const id = gongjuMissionId(mission.order);
+    await database.mission.upsert({
+      where: { id },
+      update: {
+        kind: mission.kind,
+        scope: "REGION",
+        title: mission.title,
+        description: mission.description,
+        category: mission.category,
+        verificationPolicy: mission.verificationPolicy,
+        targetValue: mission.targetValue,
+        targetUnit: mission.targetUnit,
+        points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
+        difficulty: mission.difficulty,
+        similarityGroup: mission.similarityGroup,
+        status: mission.status,
+      },
+      create: {
+        id,
+        kind: mission.kind,
+        scope: "REGION",
+        title: mission.title,
+        description: mission.description,
+        category: mission.category,
+        verificationPolicy: mission.verificationPolicy,
+        targetValue: mission.targetValue,
+        targetUnit: mission.targetUnit,
+        points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
+        difficulty: mission.difficulty,
+        similarityGroup: mission.similarityGroup,
+        status: mission.status,
+      },
+    });
+    await database.missionRegion.upsert({
+      where: { missionId_regionId: { missionId: id, regionId: gongjuRegion.id } },
+      update: {},
+      create: { missionId: id, regionId: gongjuRegion.id },
+    });
+  }
   await database.bingoTheme.upsert({
     where: { id: ids.theme },
     update: { name: "Daily 산책 빙고", status: "ACTIVE" },
