@@ -3374,6 +3374,12 @@ nav .active {
 .badge-celebration-card h3 { margin: 9px 0 5px; color: #161f19; font-size: 19px; }
 .badge-celebration-card p { margin: 0 auto 22px; color: #746e62; font-size: 13px; line-height: 1.6; }
 .badge-celebration-view { width: 100%; min-height: 52px; border: 0; border-radius: 15px; background: #467149; color: #fff; font-size: 15px; font-weight: 800; }
+.composite-evidence-panel { display: grid; gap: 12px; }
+.composite-requirement { display: grid; gap: 7px; padding: 12px; border: 1px dashed #cbbd9f; border-radius: 14px; background: rgb(255 255 255 / 58%); }
+.composite-requirement b { color: #315b43; font-size: 13px; }
+.composite-requirement small { color: #777166; font-size: 11px; }
+.composite-requirement textarea { min-height: 88px; padding: 12px; resize: vertical; border: 1px solid #d8cdb8; border-radius: 12px; background: #fffdf8; font: inherit; }
+.composite-file-button { display: grid !important; min-height: 44px; place-items: center; cursor: pointer; }
 @keyframes badge-pop { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {

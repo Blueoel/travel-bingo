@@ -127,3 +127,94 @@ describe("record and timer mission verification", () => {
     ).toMatchObject({ approved: false, reasonCode: "TIMER_NOT_REACHED" });
   });
 });
+
+describe("composite mission verification", () => {
+  const photo = {
+    type: "PHOTO" as const,
+    imageDataUrl: "data:image/jpeg;base64,dGVzdA==",
+    analysis: {
+      decision: "APPROVED" as const,
+      targetVisible: true,
+      confidence: 0.9,
+      evidence: ["target"],
+      failureReasons: [],
+      retryGuide: null,
+      model: "test",
+    },
+  };
+
+  it("requires every configured evidence type", () => {
+    const mission = {
+      kind: "COMPOSITE",
+      verificationPolicy: {
+        type: "COMPOSITE",
+        requirements: [
+          { type: "PHOTO", count: 1 },
+          { type: "TEXT", maxLength: 100 },
+        ],
+      },
+    };
+    expect(
+      evaluateMission(
+        mission,
+        { type: "COMPOSITE", items: [photo] },
+        now,
+      ),
+    ).toMatchObject({ approved: false, reasonCode: "COMPOSITE_TEXT_REQUIRED" });
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "COMPOSITE",
+          items: [photo, { type: "TEXT", text: "오늘의 기록" }],
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "COMPOSITE_VERIFIED" });
+  });
+
+  it("supports multiple photos", () => {
+    const mission = {
+      kind: "COMPOSITE",
+      verificationPolicy: {
+        type: "COMPOSITE",
+        requirements: [{ type: "PHOTO", count: 3 }],
+      },
+    };
+    expect(
+      evaluateMission(
+        mission,
+        { type: "COMPOSITE", items: [photo, photo] },
+        now,
+      ),
+    ).toMatchObject({ approved: false, reasonCode: "COMPOSITE_PHOTO_REQUIRED" });
+    expect(
+      evaluateMission(
+        mission,
+        { type: "COMPOSITE", items: [photo, photo, photo] },
+        now,
+      ),
+    ).toMatchObject({ approved: true });
+  });
+
+  it("approves an automatic mission after the configured count", () => {
+    const mission = {
+      kind: "COMPOSITE",
+      verificationPolicy: { type: "AUTO_MISSION_COUNT", requiredCount: 7 },
+    };
+    expect(
+      evaluateMission(
+        mission,
+        { type: "AUTO", completedMissionCount: 6 },
+        now,
+      ),
+    ).toMatchObject({ approved: false, reasonCode: "AUTO_MISSION_COUNT_NOT_REACHED" });
+    expect(
+      evaluateMission(
+        mission,
+        { type: "AUTO", completedMissionCount: 7 },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "AUTO_MISSION_COUNT_REACHED" });
+  });
+});

@@ -65,7 +65,12 @@ export type MissionEvidence =
       readonly longitude: number;
       readonly accuracyM: number;
       readonly measuredAt: Date;
-    };
+    }
+  | {
+      readonly type: "COMPOSITE";
+      readonly items: readonly Exclude<MissionEvidence, { readonly type: "COMPOSITE" }>[];
+    }
+  | { readonly type: "AUTO"; readonly completedMissionCount: number };
 
 export interface MissionCompletionResult {
   readonly sessionId: string;
@@ -474,6 +479,13 @@ export class MissionCompletionService {
       };
     });
 
+    if (evidence.type !== "AUTO" && outcome.verificationStatus === "APPROVED") {
+      await this.reconcileAutomaticMissions(
+        command.userId,
+        command.sessionId,
+        command.now ?? new Date(),
+      );
+    }
     return this.buildResult(
       command.sessionId,
       command.cellId,
@@ -527,6 +539,44 @@ export class MissionCompletionService {
       ...(reasonCode ? { reasonCode } : {}),
     };
   }
+
+  private async reconcileAutomaticMissions(
+    userId: string,
+    sessionId: string,
+    now: Date,
+  ): Promise<void> {
+    const cells = await this.database.sessionCell.findMany({
+      where: { sessionId },
+      select: { id: true, status: true, missionSnapshot: true },
+    });
+    const completedMissionCount = cells.filter(
+      (cell) => cell.status === "VERIFIED",
+    ).length;
+    for (const cell of cells) {
+      if (cell.status !== "AVAILABLE" && cell.status !== "REJECTED") continue;
+      const mission = asRecord(cell.missionSnapshot);
+      const policy = asRecord(mission?.verificationPolicy);
+      const requiredCount = toFiniteNumber(policy?.requiredCount);
+      if (
+        mission?.kind !== "COMPOSITE" ||
+        policy?.type !== "AUTO_MISSION_COUNT" ||
+        requiredCount === null ||
+        completedMissionCount < requiredCount
+      ) {
+        continue;
+      }
+      await this.verify(
+        {
+          userId,
+          sessionId,
+          cellId: cell.id,
+          idempotencyKey: `auto-mission-count:${sessionId}:${cell.id}`,
+          now,
+        },
+        { type: "AUTO", completedMissionCount },
+      );
+    }
+  }
 }
 
 export function evaluateMission(
@@ -535,6 +585,39 @@ export function evaluateMission(
   receivedAt: Date,
   qrVerifier?: Pick<MissionQrService, "inspect">,
 ): MissionDecision {
+  if (mission.kind === "COMPOSITE" && evidence.type === "COMPOSITE") {
+    const policy = asRecord(mission.verificationPolicy);
+    const requirements = Array.isArray(policy?.requirements)
+      ? policy.requirements.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
+      : [];
+    if (policy?.type !== "COMPOSITE" || requirements.length === 0) {
+      throw new ConflictException("The composite verification policy is invalid.");
+    }
+    for (const requirement of requirements) {
+      const requiredType = String(requirement.type ?? "");
+      const matching = evidence.items.filter((item) => item.type === requiredType);
+      const requiredCount = Math.max(1, Math.floor(toFiniteNumber(requirement.count) ?? 1));
+      if (matching.length < requiredCount) {
+        return { approved: false, reasonCode: `COMPOSITE_${requiredType}_REQUIRED` };
+      }
+      for (const item of matching.slice(0, requiredCount)) {
+        const decision = evaluateCompositeRequirement(mission, requirement, item, receivedAt);
+        if (!decision.approved) return decision;
+      }
+    }
+    return { approved: true, reasonCode: "COMPOSITE_VERIFIED" };
+  }
+  if (mission.kind === "COMPOSITE" && evidence.type === "AUTO") {
+    const policy = asRecord(mission.verificationPolicy);
+    const requiredCount = toFiniteNumber(policy?.requiredCount);
+    if (policy?.type !== "AUTO_MISSION_COUNT" || requiredCount === null) {
+      throw new ConflictException("The automatic mission policy is invalid.");
+    }
+    return evidence.completedMissionCount >= requiredCount
+      ? { approved: true, reasonCode: "AUTO_MISSION_COUNT_REACHED" }
+      : { approved: false, reasonCode: "AUTO_MISSION_COUNT_NOT_REACHED" };
+  }
+
   if (mission.kind === "CHECK_IN" && evidence.type === "CHECK_IN") {
     const policy = asRecord(mission.verificationPolicy);
     if (!policy || policy.type === "CHECK_IN") {
@@ -763,6 +846,24 @@ function toFiniteNumber(value: unknown): number | null {
 function publicEvidence(
   evidence: MissionEvidence,
 ): Record<string, string | number | string[] | null> {
+  if (evidence.type === "COMPOSITE") {
+    const photoData = evidence.items.flatMap((item) =>
+      item.type === "PHOTO" && item.imageDataUrl ? [item.imageDataUrl] : [],
+    );
+    return {
+      method: evidence.type,
+      evidenceTypes: evidence.items.map((item) => item.type),
+      itemCount: evidence.items.length,
+      imageDataUrl: photoData[0] ?? null,
+      imageDataUrls: photoData,
+    };
+  }
+  if (evidence.type === "AUTO") {
+    return {
+      method: evidence.type,
+      completedMissionCount: evidence.completedMissionCount,
+    };
+  }
   if (evidence.type === "QUIZ") {
     return {
       method: evidence.type,
@@ -823,6 +924,68 @@ function isGpsEvidence(
   return evidence.type === "GPS" || evidence.type === "ACTIVITY";
 }
 
+function evaluateCompositeRequirement(
+  mission: MissionSnapshot,
+  requirement: Record<string, unknown>,
+  evidence: Exclude<MissionEvidence, { readonly type: "COMPOSITE" }>,
+  receivedAt: Date,
+): MissionDecision {
+  if (requirement.type === "TEXT" && evidence.type === "TEXT") {
+    const text = evidence.text.trim();
+    const maxLength = toFiniteNumber(requirement.maxLength) ?? 100;
+    if (!text) return { approved: false, reasonCode: "TEXT_REQUIRED" };
+    return text.length <= maxLength
+      ? { approved: true, reasonCode: "TEXT_RECORDED" }
+      : { approved: false, reasonCode: "TEXT_TOO_LONG" };
+  }
+  if (requirement.type === "PHOTO" && evidence.type === "PHOTO") {
+    return evidence.analysis.decision === "APPROVED"
+      ? { approved: true, reasonCode: "PHOTO_AI_APPROVED" }
+      : {
+          approved: false,
+          reasonCode:
+            evidence.analysis.decision === "NEEDS_REVIEW"
+              ? "PHOTO_NEEDS_REVIEW"
+              : "PHOTO_AI_REJECTED",
+        };
+  }
+  if (requirement.type === "GPS" && evidence.type === "GPS") {
+    const latitude = toFiniteNumber(requirement.latitude) ?? toFiniteNumber(mission.place?.latitude);
+    const longitude = toFiniteNumber(requirement.longitude) ?? toFiniteNumber(mission.place?.longitude);
+    const radiusM = toFiniteNumber(requirement.radiusM) ?? toFiniteNumber(mission.radiusM);
+    if (latitude === null || longitude === null || radiusM === null) {
+      throw new ConflictException("The composite GPS policy is invalid.");
+    }
+    const result = evaluateGpsVerification({
+      target: { latitude, longitude },
+      measured: { latitude: evidence.latitude, longitude: evidence.longitude },
+      accuracyM: evidence.accuracyM,
+      measuredAt: evidence.measuredAt,
+      receivedAt,
+      rule: {
+        radiusM,
+        maximumAccuracyM: toFiniteNumber(requirement.maximumAccuracyM) ?? 50,
+        maximumAgeMs: toFiniteNumber(requirement.maximumAgeMs) ?? 60_000,
+      },
+    });
+    return result.approved
+      ? { approved: true, reasonCode: "GPS_INSIDE_RADIUS", distanceM: result.distanceM }
+      : { approved: false, reasonCode: result.code, ...("distanceM" in result && result.distanceM !== undefined ? { distanceM: result.distanceM } : {}) };
+  }
+  if (requirement.type === "ACTIVITY" && evidence.type === "ACTIVITY") {
+    const minimumSeconds = toFiniteNumber(requirement.minimumSeconds) ?? 0;
+    const minimumDistanceM = (toFiniteNumber(requirement.minimumKilometers) ?? 0) * 1_000;
+    if (evidence.durationSeconds < minimumSeconds) {
+      return { approved: false, reasonCode: "GPS_DURATION_NOT_REACHED", distanceM: evidence.distanceM };
+    }
+    if (evidence.distanceM < minimumDistanceM) {
+      return { approved: false, reasonCode: "GPS_DISTANCE_NOT_REACHED", distanceM: evidence.distanceM };
+    }
+    return { approved: true, reasonCode: "ACTIVITY_REACHED", distanceM: evidence.distanceM };
+  }
+  return { approved: false, reasonCode: `COMPOSITE_${String(requirement.type ?? "EVIDENCE")}_INVALID` };
+}
+
 function verificationType(
   evidence: MissionEvidence,
 ): "GPS" | "QR" | "QUIZ" | "PHOTO" | "COMPOSITE" | "ADMIN" {
@@ -831,6 +994,11 @@ function verificationType(
   if (evidence.type === "QUIZ") return "QUIZ";
   if (evidence.type === "PHOTO") return "PHOTO";
   if (evidence.type === "TIMER") return "COMPOSITE";
+  if (evidence.type === "COMPOSITE") {
+    return evidence.items.some((item) => item.type === "PHOTO")
+      ? "PHOTO"
+      : "COMPOSITE";
+  }
   return "ADMIN";
 }
 import { createHash } from "node:crypto";

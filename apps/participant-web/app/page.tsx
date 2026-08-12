@@ -36,6 +36,11 @@ type Mission = {
   interactionType?: "TEXT" | "TIMER";
   timerSeconds?: number | null;
   textMaxLength?: number | null;
+  compositeRequirements?: Array<{
+    type: "GPS" | "PHOTO" | "TEXT" | "ACTIVITY";
+    count: number;
+    maxLength?: number;
+  }>;
   radiusM?: number | null;
   place?: {
     title: string;
@@ -69,6 +74,7 @@ type DailySession = {
       interactionType?: "TEXT" | "TIMER";
       timerSeconds?: number | null;
       textMaxLength?: number | null;
+      compositeRequirements?: Mission["compositeRequirements"];
       radiusM?: number | null;
       place?: {
         title: string;
@@ -110,6 +116,7 @@ function toMission(cell: SessionCell): Mission {
     interactionType: cell.mission.interactionType,
     timerSeconds: cell.mission.timerSeconds ?? null,
     textMaxLength: cell.mission.textMaxLength ?? null,
+    compositeRequirements: cell.mission.compositeRequirements,
     radiusM: cell.mission.radiusM ?? null,
     place: cell.mission.place ?? null,
   };
@@ -521,6 +528,7 @@ export default function Home() {
   const [selected, setSelected] = useState<Mission | null>(null);
   const [answer, setAnswer] = useState("");
   const [textRecord, setTextRecord] = useState("");
+  const [compositePhotos, setCompositePhotos] = useState<File[]>([]);
   const [qrToken, setQrToken] = useState("");
   const [qrScanning, setQrScanning] = useState(false);
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
@@ -1874,7 +1882,71 @@ export default function Home() {
     setPhotoReviewState("NONE");
     setPhotoVerificationId(null);
     setTextRecord("");
+    setCompositePhotos([]);
     setSelected(null);
+  };
+
+  const submitCompositeMission = async () => {
+    if (!selected || selected.kind !== "COMPOSITE" || !sessionId) return;
+    const requirements = selected.compositeRequirements ?? [];
+    const items: Array<Record<string, unknown>> = [];
+    try {
+      for (const requirement of requirements) {
+        if (requirement.type === "TEXT") {
+          if (!textRecord.trim()) return setMessage("짧은 기록을 입력해주세요.");
+          items.push({ type: "TEXT", text: textRecord.trim() });
+        }
+        if (requirement.type === "PHOTO") {
+          if (compositePhotos.length < requirement.count) {
+            return setMessage(`사진을 ${requirement.count}장 선택해주세요.`);
+          }
+          for (const file of compositePhotos.slice(0, requirement.count)) {
+            items.push({ type: "PHOTO", imageDataUrl: await readAsDataUrl(file) });
+          }
+        }
+        if (requirement.type === "GPS") {
+          const { coords, timestamp } = await getGps();
+          items.push({
+            type: "GPS",
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracyM: coords.accuracy,
+            measuredAt: new Date(timestamp).toISOString(),
+          });
+        }
+      }
+      setSubmitting(true);
+      const response = await apiFetch(
+        `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "idempotency-key": `web-composite-${crypto.randomUUID()}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ type: "COMPOSITE", items }),
+        },
+      );
+      const result = (await response.json()) as VerificationResult;
+      if (!response.ok || result.verificationStatus === "REJECTED") {
+        setMessage(friendlyError(result.reasonCode));
+        return;
+      }
+      if (result.verificationStatus === "NEEDS_REVIEW") {
+        setMessage("관리자 검수 목록에 접수됐어요.");
+      } else {
+        celebrate(result.completedLineKeys.filter((key) => !lineKeys.includes(key)).length);
+      }
+      setSelected(null);
+      setTextRecord("");
+      setCompositePhotos([]);
+      await reloadCurrentBingo();
+      await syncEarnedBadges();
+    } catch {
+      setMessage("복합 인증 자료를 제출하지 못했어요. 위치 권한과 연결 상태를 확인해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const submitQrMission = async (scannedToken = qrToken) => {
@@ -2482,7 +2554,10 @@ export default function Home() {
   };
 
   const trackingMission =
-    selected?.kind === "WALK_DISTANCE" || selected?.kind === "COMPOSITE";
+    selected?.kind === "WALK_DISTANCE" ||
+    (selected?.kind === "COMPOSITE" && !selected.compositeRequirements);
+  const compositeMission =
+    selected?.kind === "COMPOSITE" && Boolean(selected.compositeRequirements?.length);
   const trackingTarget = selected?.targetValue ?? 0;
   const trackingBelongsToSelected =
     Boolean(selected) && trackingMissionId === selected?.id;
@@ -2622,6 +2697,8 @@ export default function Home() {
                 setPhotoPreview(null);
                 setPhotoReviewState(item.reviewPending ? "PENDING" : "NONE");
                 setPhotoVerificationId(null);
+                setCompositePhotos([]);
+                setTextRecord("");
                 if (item.reviewPending) {
                   setMessage(
                     "관리자가 사진을 확인하고 있어요. 결과는 검수 후 반영됩니다.",
@@ -4186,6 +4263,51 @@ export default function Home() {
                     </small>
                   </div>
                 )}
+                {compositeMission && !selected.done && (
+                  <div className="journal-paper composite-evidence-panel">
+                    <label>인증 자료</label>
+                    {selected.compositeRequirements?.map((requirement, index) => (
+                      <div key={`${requirement.type}-${index}`} className="composite-requirement">
+                        <b>
+                          {requirement.type === "GPS"
+                            ? "현재 위치"
+                            : requirement.type === "PHOTO"
+                              ? `사진 ${requirement.count}장`
+                              : requirement.type === "TEXT"
+                                ? "짧은 기록"
+                                : "활동 기록"}
+                        </b>
+                        {requirement.type === "TEXT" && (
+                          <textarea
+                            value={textRecord}
+                            maxLength={requirement.maxLength ?? 100}
+                            onChange={(event) => setTextRecord(event.target.value)}
+                            placeholder="현장에서 발견한 내용을 짧게 기록해주세요."
+                          />
+                        )}
+                        {requirement.type === "PHOTO" && (
+                          <label className="secondary composite-file-button">
+                            사진 선택 ({compositePhotos.length}/{requirement.count})
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple={requirement.count > 1}
+                              hidden
+                              onChange={(event) =>
+                                setCompositePhotos(
+                                  Array.from(event.target.files ?? []).slice(0, requirement.count),
+                                )
+                              }
+                            />
+                          </label>
+                        )}
+                        {requirement.type === "GPS" && (
+                          <small>제출할 때 현재 위치를 자동으로 확인합니다.</small>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {timerMission && !selected.done && (
                   <div
                     className={`mission-timer ${timerReady ? "is-complete" : ""}`}
@@ -4307,7 +4429,15 @@ export default function Home() {
                         <b>+ {selected.points} Point</b>
                       </div>
                     )}
-                    {qrMission ? null : recordMission ? (
+                    {qrMission ? null : compositeMission ? (
+                      <button
+                        className="primary journal-submit"
+                        onClick={() => void submitCompositeMission()}
+                        disabled={selected.done || submitting}
+                      >
+                        {submitting ? "인증 자료 확인 중…" : "복합 인증 제출하기"}
+                      </button>
+                    ) : recordMission ? (
                       <button
                         className="primary journal-submit"
                         onClick={submitRecordMission}

@@ -100,6 +100,49 @@ export class DailySessionController {
         imageDataUrl: input.imageDataUrl,
       });
     }
+    if (input.type === "COMPOSITE" && Array.isArray(input.items)) {
+      const items: Exclude<
+        MissionEvidence,
+        { readonly type: "COMPOSITE" }
+      >[] = [];
+      for (const rawItem of input.items) {
+        const item = asInput(rawItem);
+        if (item.type === "PHOTO") {
+          if (typeof item.imageDataUrl !== "string") {
+            throw new BadRequestException("Composite photo data is required.");
+          }
+          const analysis = await this.photoVerificationService.analyze({
+            userId: command.userId,
+            sessionId,
+            cellId,
+            imageDataUrl: item.imageDataUrl,
+          });
+          items.push({
+            type: "PHOTO",
+            analysis,
+            imageDataUrl: item.imageDataUrl,
+          });
+        } else {
+          const parsed = parseEvidence(rawItem);
+          if (parsed.type === "COMPOSITE") {
+            throw new BadRequestException("Nested composite evidence is invalid.");
+          }
+          items.push(
+            parsed as Exclude<
+              MissionEvidence,
+              { readonly type: "COMPOSITE" }
+            >,
+          );
+        }
+      }
+      if (items.length < 2 || items.length > 6) {
+        throw new BadRequestException("Composite evidence requires 2 to 6 items.");
+      }
+      return this.missionCompletionService.verify(command, {
+        type: "COMPOSITE",
+        items,
+      });
+    }
     return this.missionCompletionService.verify(command, parseEvidence(body));
   }
 

@@ -514,11 +514,20 @@ export const gongjuMissionSeed = [
     "category": "기록",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "사진+메모"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "PHOTO",
+          "count": 1
+        },
+        {
+          "type": "TEXT",
+          "maxLength": 100
+        }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -552,14 +561,19 @@ export const gongjuMissionSeed = [
     "category": "관찰·수집",
     "difficulty": 3,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "사진 3장"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "PHOTO",
+          "count": 3
+        }
+      ]
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 3,
+    "targetUnit": "PHOTO",
     "placeTitle": null,
     "address": null
   },
@@ -588,14 +602,14 @@ export const gongjuMissionSeed = [
     "category": "도전",
     "difficulty": 3,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "자동 판정"
+      "type": "AUTO_MISSION_COUNT",
+      "requiredCount": 7
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 7,
+    "targetUnit": "MISSION",
     "placeTitle": null,
     "address": null
   },
@@ -624,11 +638,20 @@ export const gongjuMissionSeed = [
     "category": "관찰",
     "difficulty": 2,
     "similarityGroup": "GONGJU_GEUMHAK_ECO",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "사진+메모"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "PHOTO",
+          "count": 1
+        },
+        {
+          "type": "TEXT",
+          "maxLength": 100
+        }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -678,11 +701,20 @@ export const gongjuMissionSeed = [
     "category": "관찰",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "기록(사진, 텍스트)"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "PHOTO",
+          "count": 1
+        },
+        {
+          "type": "TEXT",
+          "maxLength": 100
+        }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,

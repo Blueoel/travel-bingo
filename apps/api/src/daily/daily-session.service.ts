@@ -340,6 +340,20 @@ function toPublicMission(snapshot: unknown): unknown {
       : policy?.type === "TIMER"
         ? "TIMER"
         : undefined;
+  const compositeRequirements =
+    policy?.type === "COMPOSITE" && Array.isArray(policy.requirements)
+      ? policy.requirements
+          .filter((item): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null,
+          )
+          .map((item) => ({
+            type: String(item.type ?? ""),
+            count:
+              typeof item.count === "number" ? Math.max(1, item.count) : 1,
+            maxLength:
+              typeof item.maxLength === "number" ? item.maxLength : undefined,
+          }))
+      : undefined;
   return {
     ...publicMission,
     ...(interactionType ? { interactionType } : {}),
@@ -349,6 +363,9 @@ function toPublicMission(snapshot: unknown): unknown {
       : {}),
     ...(interactionType === "TEXT" && typeof policy?.maxLength === "number"
       ? { textMaxLength: policy.maxLength }
+      : {}),
+    ...(compositeRequirements
+      ? { compositeRequirements }
       : {}),
   };
 }
