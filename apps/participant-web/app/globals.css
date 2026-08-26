@@ -10,6 +10,12 @@
 * {
   box-sizing: border-box;
 }
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 body {
   margin: 0;
   background: #e9ece8;
@@ -28,6 +34,10 @@ button {
   padding: 22px 18px 100px;
   background: #fbfaf6;
   box-shadow: 0 0 40px #26382c1c;
+  overflow-x: clip;
+}
+.app-shell > * {
+  min-width: 0;
 }
 .home-screen {
   position: absolute;
@@ -576,6 +586,7 @@ button {
   z-index: 4;
   padding: 22px 18px 32px;
   overflow-y: auto;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 /
       18px 18px,
@@ -588,6 +599,9 @@ button {
   gap: 10px;
   padding: 2px 4px 12px;
 }
+.exploration-header > div {
+  min-width: 0;
+}
 .exploration-header small {
   color: #778f67;
   font-size: 9px;
@@ -599,6 +613,7 @@ button {
   color: #28452f;
   font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
   font-size: 24px;
+  word-break: keep-all;
 }
 .exploration-header p {
   margin: 0;
@@ -606,6 +621,7 @@ button {
   font-size: 11px;
 }
 .exploration-header-side {
+  width: min(190px, 44vw);
   min-width: 122px;
   display: grid;
   justify-items: end;
@@ -615,7 +631,8 @@ button {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  min-width: 122px;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid #ded4c2;
   border-radius: 12px 15px 11px 14px;
@@ -636,6 +653,10 @@ button {
   color: #3f693f;
   font-family: "Segoe Print", "Comic Sans MS", cursive;
   font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .exploration-summary span {
   color: #827d73;
@@ -653,6 +674,7 @@ button {
     5px 7px 0 #e5dbc8,
     0 11px 22px #66533314;
   transform: rotate(-0.35deg);
+  min-width: 0;
 }
 .map-paper-tape {
   position: absolute;
@@ -668,8 +690,8 @@ button {
 }
 .exploration-map-viewport {
   position: relative;
-  height: min(66vh, 620px);
-  min-height: 500px;
+  height: clamp(390px, 62vh, 620px);
+  min-height: 0;
   overflow: hidden;
   border: 1px dashed #d8cdb9;
   border-radius: 7px 9px 6px 10px;
@@ -3468,6 +3490,71 @@ nav .active {
     opacity: 1;
   }
 }
+@media (max-width: 420px) {
+  .exploration-screen {
+    padding: 16px 12px 26px;
+  }
+  .exploration-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding-right: 2px;
+    padding-left: 2px;
+  }
+  .exploration-header-side {
+    width: 100%;
+    min-width: 0;
+    justify-items: stretch;
+  }
+  .exploration-summary {
+    width: 100%;
+  }
+  .exploration-summary div {
+    min-width: 0;
+    padding: 7px 4px 8px;
+  }
+  .exploration-summary b {
+    font-size: 13px;
+  }
+  .map-paper {
+    padding: 9px 9px 8px;
+    transform: none;
+  }
+  .exploration-map-viewport {
+    height: clamp(360px, 58vh, 520px);
+  }
+  .exploration-map-controls {
+    right: 17px;
+    bottom: 34px;
+  }
+  .selected-region-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 9px;
+    padding: 11px;
+  }
+  .selected-region-card .region-stamp {
+    width: 42px;
+    height: 42px;
+  }
+  .selected-region-card .region-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .home-greeting {
+    grid-template-columns: minmax(0, 1fr) 82px;
+  }
+  .home-walker {
+    transform: scale(.82);
+    transform-origin: right center;
+  }
+  .daily-home-card {
+    grid-template-columns: minmax(0, 1fr) 92px;
+    padding: 15px;
+  }
+  .daily-notebook {
+    gap: 4px;
+    padding: 7px;
+  }
+}
 @media (max-width: 360px) {
   .auth-shell {
     padding-right: 18px;
@@ -3482,6 +3569,23 @@ nav .active {
   .app-shell {
     padding-left: 10px;
     padding-right: 10px;
+  }
+  .exploration-screen {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+  .exploration-header h1 {
+    font-size: 21px;
+  }
+  .exploration-map-viewport {
+    height: min(55vh, 460px);
+    min-height: 340px;
+  }
+  .daily-home-card {
+    grid-template-columns: minmax(0, 1fr) 82px;
+  }
+  .daily-home-card strong {
+    font-size: 19px;
   }
   .board {
     gap: 3px;
