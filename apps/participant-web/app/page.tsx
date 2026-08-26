@@ -1488,6 +1488,9 @@ export default function Home() {
       return bingo ? [{ region, bingo }] : [];
     })
     .slice(0, 3);
+  const ongoingRegionBingo = bingoCatalog.find(
+    (item) => item.type === "REGION" && item.state === "IN_PROGRESS",
+  );
   const normalizedRegionSearch = regionSearch.trim().toLocaleLowerCase("ko");
   const regionDirectoryResults = regionDirectory
     .filter((region) => {
@@ -2750,11 +2753,10 @@ export default function Home() {
 
           <div className="home-greeting">
             <div>
-              <p>좋은 오후예요 :)</p>
+              <p>좋은 오후예요, {nickname}님</p>
               <h1>
-                {nickname}님, 오늘은
-                <br />
-                어디를 걸어볼까요?
+                오늘도 작은 발견을
+                <br />시작해볼까요?
               </h1>
             </div>
             <div className="home-walker" aria-hidden="true">
@@ -2763,19 +2765,6 @@ export default function Home() {
               <i>⌁</i>
             </div>
           </div>
-
-          {announcements.length > 0 && (
-            <section className="home-announcements">
-              <div className="home-section-title"><h2>공지사항</h2><button type="button" onClick={() => setAnnouncementsOpen(true)}>더보기 ›</button></div>
-              {announcements.slice(0, 2).map((item) => (
-                <button type="button" key={item.id} onClick={() => openAnnouncement(item)}>
-                  <span>{item.isImportant ? "중요" : "안내"}</span>
-                  <b>{item.title}</b>
-                  {!item.isRead && <i>새 소식</i>}
-                </button>
-              ))}
-            </section>
-          )}
 
           <button
             className="daily-home-card"
@@ -2788,6 +2777,10 @@ export default function Home() {
               <em>
                 {completeCount} / 25 완료 · {lineKeys.length}줄 빙고
               </em>
+              <i className="daily-home-progress">
+                <b style={{ width: `${Math.round((completeCount / 25) * 100)}%` }} />
+              </i>
+              <span className="daily-home-action">이어하기 <b>›</b></span>
             </span>
             <div className="daily-notebook" aria-hidden="true">
               <i>✓</i>
@@ -2796,6 +2789,29 @@ export default function Home() {
               <i>⌁</i>
             </div>
           </button>
+
+          {ongoingRegionBingo && (
+            <>
+              <div className="home-section-title home-section-title-compact">
+                <h2>진행 중인 여행</h2>
+                <button type="button" onClick={() => setActiveTab("catalog")}>전체 보기 ›</button>
+              </div>
+              <button
+                className="ongoing-bingo-card region-ongoing"
+                type="button"
+                onClick={() => void openCatalogBingo(ongoingRegionBingo)}
+              >
+                <div className="ongoing-art" aria-hidden="true">⌖</div>
+                <span>
+                  <small>REGION BINGO</small>
+                  <strong>{ongoingRegionBingo.title}</strong>
+                  <em>{ongoingRegionBingo.completedCellCount} / {ongoingRegionBingo.totalCellCount} 완료</em>
+                  <i><b style={{ width: `${ongoingRegionBingo.totalCellCount ? Math.round((ongoingRegionBingo.completedCellCount / ongoingRegionBingo.totalCellCount) * 100) : 0}%` }} /></i>
+                </span>
+                <b>›</b>
+              </button>
+            </>
+          )}
 
           <div className="home-section-title">
             <h2>추천 지역</h2>
@@ -2893,34 +2909,18 @@ export default function Home() {
             </div>
           )}
 
-          <div className="home-section-title">
-            <h2>진행 중 빙고</h2>
-            <button type="button" onClick={() => setActiveTab("catalog")}>
-              더보기 ›
+          {announcements.length > 0 && (
+            <button
+              type="button"
+              className="home-announcement-banner"
+              onClick={() => openAnnouncement(announcements[0])}
+            >
+              <span>{announcements[0].isImportant ? "중요" : "안내"}</span>
+              <b>{announcements[0].title}</b>
+              {!announcements[0].isRead && <i>NEW</i>}
+              <em>›</em>
             </button>
-          </div>
-          <button
-            className="ongoing-bingo-card"
-            type="button"
-            onClick={() => setActiveTab("bingo")}
-          >
-            <div className="ongoing-art" aria-hidden="true">
-              🌳
-            </div>
-            <span>
-              <small>DAILY WALK</small>
-              <strong>오늘의 산책 빙고</strong>
-              <em>{completeCount} / 25</em>
-              <i>
-                <b
-                  style={{
-                    width: `${Math.round((completeCount / 25) * 100)}%`,
-                  }}
-                />
-              </i>
-            </span>
-            <b>›</b>
-          </button>
+          )}
 
           <div className="home-event">
             <span>✿</span>

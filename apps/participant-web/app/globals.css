@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #17211b;
-  --green: #2d7a55;
+  --ink: #10261c;
+  --green: #174c38;
   --lime: #dff36c;
   --cream: #f5f2e9;
   --line: #deddd6;
@@ -63,7 +63,7 @@ button {
   cursor: pointer;
 }
 .home-greeting {
-  min-height: 112px;
+  min-height: 96px;
   display: grid;
   grid-template-columns: 1fr 105px;
   align-items: center;
@@ -71,13 +71,13 @@ button {
 }
 .home-greeting p {
   margin: 0 0 7px;
-  color: #6b756d;
+  color: #3f6651;
   font-size: 12px;
   font-weight: 700;
 }
 .home-greeting h1 {
   margin: 0;
-  color: #243d2b;
+  color: #143d2c;
   font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
   font-size: 21px;
   line-height: 1.45;
@@ -110,16 +110,16 @@ button {
 }
 .daily-home-card {
   width: 100%;
-  min-height: 116px;
+  min-height: 164px;
   display: grid;
   grid-template-columns: 1fr 112px;
   align-items: center;
   gap: 8px;
   padding: 17px 18px;
-  border: 1px solid #dfd2bb;
+  border: 1px solid #123f2e;
   border-radius: 19px 15px 22px 16px;
-  background: linear-gradient(145deg, #fffaf0, #f5ecdc);
-  box-shadow: 0 9px 22px #5f492417;
+  background: linear-gradient(145deg, #174c38, #0f3929);
+  box-shadow: 0 11px 24px #123b2d2b;
   text-align: left;
   cursor: pointer;
 }
@@ -134,7 +134,7 @@ button {
   font-weight: 800;
 }
 .daily-home-card strong {
-  color: #2f5838;
+  color: #fffdf5;
   font-family: "Segoe Print", "Comic Sans MS", cursive;
   font-size: 21px;
 }
@@ -149,10 +149,10 @@ button {
   grid-template-columns: repeat(2, 1fr);
   gap: 5px;
   padding: 10px;
-  border: 2px solid #6d6047;
+  border: 2px solid #f2e8d3;
   border-radius: 8px 12px 9px 7px;
   background: #fffdf5;
-  box-shadow: 6px 6px 0 #dfcfae;
+  box-shadow: 6px 6px 0 #0a2b20;
   transform: rotate(3deg);
 }
 .daily-notebook i {
@@ -172,16 +172,18 @@ button {
 }
 .home-section-title h2 {
   margin: 0;
-  color: #344c38;
+  color: #153d2c;
   font-size: 16px;
 }
 .home-section-title button {
   border: 0;
   background: transparent;
-  color: #8a877e;
+  color: #315d48;
   font-size: 11px;
+  font-weight: 800;
   cursor: pointer;
 }
+.home-section-title-compact { margin-top: 18px; }
 .region-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -192,7 +194,7 @@ button {
   display: grid;
   gap: 4px;
   padding: 8px 8px 11px;
-  border: 1px solid #dfd8ca;
+  border: 1px solid #c8d2c9;
   border-radius: 15px 12px 16px 11px;
   background: #fffefa;
   text-align: left;
@@ -217,12 +219,12 @@ button {
   background: #f2eadc;
 }
 .region-cards b {
-  color: #3f533f;
+  color: #173e2d;
   font-size: 12px;
 }
 .region-cards small {
   overflow: hidden;
-  color: #8a867c;
+  color: #607068;
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -387,9 +389,10 @@ button {
   align-items: center;
   gap: 12px;
   padding: 13px;
-  border: 1px solid #ddd5c7;
+  border: 1px solid #aebfb1;
   border-radius: 16px 13px 18px 14px;
-  background: #fffefa;
+  background: #f8fbf7;
+  box-shadow: 0 6px 16px #173d2c12;
   text-align: left;
   cursor: pointer;
 }
@@ -399,7 +402,8 @@ button {
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #e8efdc;
+  background: #d9eadc;
+  color: #174c38;
   font-size: 34px;
 }
 .ongoing-bingo-card > span {
@@ -408,7 +412,7 @@ button {
   gap: 5px;
 }
 .ongoing-bingo-card strong {
-  color: #304b34;
+  color: #143d2c;
   font-size: 13px;
 }
 .ongoing-bingo-card > span > i {
@@ -421,8 +425,9 @@ button {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #739967;
+  background: #236c4d;
 }
+.region-ongoing { border-left: 5px solid #174c38; }
 .home-event {
   display: grid;
   grid-template-columns: 38px 1fr;
@@ -449,6 +454,46 @@ button {
 .home-event b {
   color: #614c44;
   font-size: 11px;
+}
+.home-announcement-banner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #d8c38f;
+  border-radius: 13px;
+  background: #fff8e5;
+  text-align: left;
+  cursor: pointer;
+}
+.home-announcement-banner span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f3b945;
+  color: #3f2d09;
+  font-size: 9px;
+  font-weight: 900;
+}
+.home-announcement-banner b {
+  overflow: hidden;
+  color: #273b2e;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-announcement-banner i {
+  color: #b64d36;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+}
+.home-announcement-banner em {
+  color: #4c6756;
+  font-size: 17px;
+  font-style: normal;
 }
 .notice-bell { position: relative; }
 .notice-bell i { position: absolute; top: -2px; right: -5px; display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ef7659; color: white; border: 1px solid #fffaf0; font-size: 9px; font-style: normal; font-weight: 900; line-height: 1; }
@@ -1798,6 +1843,34 @@ button {
   color: #aaa397;
   font-size: 22px;
 }
+.daily-home-card small,
+.daily-home-card em { color: #d8e7de; }
+.daily-home-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ffffff2b;
+}
+.daily-home-progress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #dff36c;
+}
+.daily-home-action {
+  width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 3px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: #fffdf5;
+  color: #123f2e;
+  font-size: 11px;
+  font-weight: 900;
+}
+.daily-home-action b { font-size: 15px; }
 
 .ranking-reward-view { display: grid; gap: 16px; padding: 0 16px 28px; }
 .ranking-reward-intro { padding: 22px; border: 1px solid #d9cbb2; border-radius: 20px; background: linear-gradient(145deg, #fffdf7, #f4eddd); }
