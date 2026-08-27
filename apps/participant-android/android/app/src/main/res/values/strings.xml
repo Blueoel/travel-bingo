@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Travel Bingo</string>
+    <string name="title_activity_main">Travel Bingo</string>
+    <string name="package_name">kr.co.travelbingo.app</string>
+    <string name="custom_url_scheme">kr.co.travelbingo.app</string>
+</resources>
