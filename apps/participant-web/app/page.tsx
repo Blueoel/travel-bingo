@@ -699,6 +699,8 @@ export default function Home() {
   const qrScannerControls = useRef<IScannerControls | null>(null);
   const trackingWatchId = useRef<number | null>(null);
   const trackingStartedAt = useRef<number | null>(null);
+  const nativeBackHandler = useRef<() => void>(() => undefined);
+  const lastNativeBackPressAt = useRef(0);
   const lastTrackingPosition = useRef<{
     latitude: number;
     longitude: number;
@@ -2588,6 +2590,100 @@ export default function Home() {
     : 0;
   const timerRemaining = Math.max(0, timerTarget - timerElapsed);
   const timerReady = timerMission && timerTarget > 0 && timerRemaining === 0;
+
+  nativeBackHandler.current = () => {
+    if (selected) {
+      closeMission();
+      return;
+    }
+    if (badgeCelebration) {
+      setBadgeCelebration(null);
+      return;
+    }
+    if (pendingRegionChallenge) {
+      setPendingRegionChallenge(null);
+      return;
+    }
+    if (memoryPhotoPickerOpen) {
+      setMemoryPhotoPickerOpen(false);
+      return;
+    }
+    if (memoryDetailOpen) {
+      setMemoryDetailOpen(false);
+      return;
+    }
+    if (selectedAnnouncement) {
+      setSelectedAnnouncement(null);
+      return;
+    }
+    if (announcementsOpen) {
+      setAnnouncementsOpen(false);
+      return;
+    }
+    if (reportTarget) {
+      setReportTarget(null);
+      return;
+    }
+    if (friendProfile) {
+      setFriendProfile(null);
+      return;
+    }
+    if (friendsOpen) {
+      setFriendsOpen(false);
+      return;
+    }
+    if (myView !== "main") {
+      setMyView("main");
+      return;
+    }
+    if (activeTab !== "home") {
+      setActiveTab("home");
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastNativeBackPressAt.current < 1_800) {
+      void import("@capacitor/app").then(({ App }) => App.exitApp());
+      return;
+    }
+    lastNativeBackPressAt.current = now;
+    setMessage("뒤로가기를 한 번 더 누르면 앱이 종료돼요.");
+  };
+
+  useEffect(() => {
+    let disposed = false;
+    const removers: Array<() => Promise<void>> = [];
+
+    void Promise.all([import("@capacitor/core"), import("@capacitor/app")]).then(
+      async ([{ Capacitor }, { App }]) => {
+        if (!Capacitor.isNativePlatform() || disposed) return;
+
+        const backHandle = await App.addListener("backButton", () => {
+          nativeBackHandler.current();
+        });
+        const stateHandle = await App.addListener(
+          "appStateChange",
+          ({ isActive }) => {
+            if (!isActive) return;
+            setOnline(navigator.onLine);
+            window.dispatchEvent(new Event("focus"));
+          },
+        );
+
+        if (disposed) {
+          await backHandle.remove();
+          await stateHandle.remove();
+          return;
+        }
+        removers.push(() => backHandle.remove(), () => stateHandle.remove());
+      },
+    );
+
+    return () => {
+      disposed = true;
+      for (const remove of removers) void remove();
+    };
+  }, []);
 
   if (authStatus === "checking") {
     return (

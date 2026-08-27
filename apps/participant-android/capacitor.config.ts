@@ -7,12 +7,13 @@ const config: CapacitorConfig = {
   server: {
     url: "https://travel-bingo-walk.blueo03.chatgpt.site",
     cleartext: false,
-    allowNavigation: ["travel-bingo-walk.blueo03.chatgpt.site"]
+    allowNavigation: ["travel-bingo-walk.blueo03.chatgpt.site"],
+    errorPath: "offline.html"
   },
   android: {
     allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: true
+    webContentsDebuggingEnabled: false
   }
 };
 

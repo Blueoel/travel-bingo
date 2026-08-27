@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#174c38" />
+    <title>Travel Bingo · 연결 확인</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+        background: radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 / 18px 18px, #faf7ef;
+        color: #173e2d;
+        font-family: Arial, "Noto Sans KR", sans-serif;
+      }
+      main {
+        width: min(100%, 390px);
+        padding: 34px 25px 28px;
+        border: 1px solid #d8cdb9;
+        border-radius: 24px 18px 27px 20px;
+        background: #fffdf8;
+        box-shadow: 7px 9px 0 #e7ddca;
+        text-align: center;
+      }
+      .mark {
+        width: 76px;
+        height: 76px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 20px;
+        border: 2px solid #66895d;
+        border-radius: 50% 45% 52% 47%;
+        background: #edf4e5;
+        font-size: 35px;
+        transform: rotate(-3deg);
+      }
+      small { color: #6f8d62; font-weight: 800; letter-spacing: .13em; }
+      h1 { margin: 8px 0 10px; font-size: 23px; }
+      p { margin: 0 0 22px; color: #777267; font-size: 13px; line-height: 1.7; }
+      button {
+        width: 100%;
+        min-height: 52px;
+        border: 0;
+        border-radius: 15px;
+        background: #174c38;
+        color: #fff;
+        font: inherit;
+        font-weight: 800;
+      }
+      #status { display: block; min-height: 18px; margin-top: 12px; color: #7a776e; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">⌁</div>
+      <small>TRAVEL BINGO</small>
+      <h1>인터넷 연결을 확인해주세요</h1>
+      <p>연결이 잠시 끊겼어요.<br />네트워크를 확인한 뒤 다시 시도해주세요.</p>
+      <button id="retry" type="button">다시 시도</button>
+      <span id="status" role="status"></span>
+    </main>
+    <script>
+      const appUrl = "https://travel-bingo-walk.blueo03.chatgpt.site/";
+      const status = document.querySelector("#status");
+      const retry = () => {
+        status.textContent = navigator.onLine ? "Travel Bingo를 다시 불러오고 있어요…" : "아직 오프라인 상태예요.";
+        if (navigator.onLine) window.location.replace(appUrl);
+      };
+      document.querySelector("#retry").addEventListener("click", retry);
+      window.addEventListener("online", retry);
+    </script>
+  </body>
+</html>
