@@ -1295,7 +1295,13 @@ export default function Home() {
         const payload = (await response.json()) as {
           items: BingoCatalogItem[];
         };
-        const regions = payload.items.filter((item) => item.type === "REGION");
+        // The catalog also contains REGION templates that the user can start.
+        // Exploration progress must only be derived from sessions the user has
+        // actually started (or completed), otherwise every published region is
+        // incorrectly shown as "도전 중" with zero progress.
+        const regions = payload.items.filter(
+          (item) => item.type === "REGION" && Boolean(item.sessionId),
+        );
         return Promise.all(
           regions.map(async (region) => {
             const regionCode =

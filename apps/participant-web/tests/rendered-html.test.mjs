@@ -187,7 +187,7 @@ test("unlocks and fills regions with persistent representative photos", async ()
   assert.match(photoRoute, /getReviewPhoto/);
 });
 
-test("loads all active region progress for the exploration map", async () => {
+test("loads only started region progress for the exploration map", async () => {
   const pageSource = await readFile(
     path.join(projectDirectory, "app", "page.tsx"),
     "utf8",
@@ -205,6 +205,7 @@ test("loads all active region progress for the exploration map", async () => {
   );
   assert.match(pageSource, /fetch\("\/api\/exploration\/regions"/);
   assert.match(pageSource, /item\.type === "REGION"/);
+  assert.match(pageSource, /Boolean\(item\.sessionId\)/);
   assert.match(pageSource, /region\.regionCode/);
   assert.match(pageSource, /travelRecordsByYear/);
   assert.match(listRoute, /ORDER BY selected_at DESC/);
