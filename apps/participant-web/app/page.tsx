@@ -4239,12 +4239,6 @@ export default function Home() {
       )}
       <nav>
         <button
-          className={activeTab === "home" ? "active" : ""}
-          onClick={() => setActiveTab("home")}
-        >
-          <span>⌂</span>홈
-        </button>
-        <button
           className={activeTab === "exploration" ? "active" : ""}
           onClick={() => {
             setMessage(null);
@@ -4260,6 +4254,12 @@ export default function Home() {
           onClick={() => setActiveTab("catalog")}
         >
           <span>▦</span>빙고
+        </button>
+        <button
+          className={activeTab === "home" ? "active" : ""}
+          onClick={() => setActiveTab("home")}
+        >
+          <span>⌂</span>홈
         </button>
         <button
           className={activeTab === "ranking" ? "active" : ""}

@@ -224,6 +224,26 @@ test("opens a functional participant menu and rejects stale GPS tracking", async
   assert.match(styles, /\.side-menu-panel/);
 });
 
+test("keeps home as the initial tab while placing it at the center of navigation", async () => {
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+  const cssSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+  assert.match(pageSource, /useState<[\s\S]*?>\("home"\)/);
+
+  const navigation = pageSource.match(/<nav>([\s\S]*?)<\/nav>/)?.[1] ?? "";
+  const labels = [...navigation.matchAll(/<span>[^<]*<\/span>(탐험|빙고|홈|랭킹|마이)/g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(labels, ["탐험", "빙고", "홈", "랭킹", "마이"]);
+  assert.match(cssSource, /\.region-ongoing small\s*{[^}]*color:\s*#ed7258/s);
+  assert.match(cssSource, /\.region-ongoing > span > i b\s*{[^}]*background:\s*#ed7258/s);
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);

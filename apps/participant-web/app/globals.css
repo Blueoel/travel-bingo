@@ -538,6 +538,12 @@ button {
   border-radius: inherit;
   background: #236c4d;
 }
+.region-ongoing small {
+  color: #ed7258;
+}
+.region-ongoing > span > i b {
+  background: #ed7258;
+}
 .region-ongoing { border-left: 5px solid #174c38; }
 .home-event {
   display: grid;
