@@ -458,9 +458,16 @@ function distanceBetween(
 }
 
 function trackingTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(safeSeconds / 3_600);
+  const minutes = Math.floor((safeSeconds % 3_600) / 60);
+  const remainder = safeSeconds % 60;
+  return hours > 0
+    ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
+
+const MAX_TRACKING_RESUME_AGE_MS = 24 * 60 * 60 * 1_000;
 
 function difficultyLabel(value?: number): Mission["difficulty"] {
   return value === 1
@@ -574,6 +581,7 @@ export default function Home() {
     null,
   );
   const [online, setOnline] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [nickname, setNickname] = useState("여행자");
   const [activeTab, setActiveTab] = useState<
     | "home"
@@ -1649,7 +1657,16 @@ export default function Home() {
         lastPosition?: { latitude: number; longitude: number } | null;
         active?: boolean;
       };
-      if (!saved.missionId || !saved.startedAt) return;
+      const trackingAge = Date.now() - Number(saved.startedAt);
+      if (
+        !saved.missionId ||
+        !Number.isFinite(saved.startedAt) ||
+        trackingAge < 0 ||
+        trackingAge > MAX_TRACKING_RESUME_AGE_MS
+      ) {
+        window.localStorage.removeItem("travel-bingo-active-gps");
+        return;
+      }
       trackingStartedAt.current = saved.startedAt;
       lastTrackingPosition.current = saved.lastPosition ?? null;
       setTrackingMissionId(saved.missionId);
@@ -2598,6 +2615,10 @@ export default function Home() {
   const timerReady = timerMission && timerTarget > 0 && timerRemaining === 0;
 
   nativeBackHandler.current = () => {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
     if (selected) {
       closeMission();
       return;
@@ -2839,7 +2860,13 @@ export default function Home() {
       {activeTab === "home" && (
         <section className="home-screen">
           <header className="home-topbar">
-            <button type="button" aria-label="메뉴">
+            <button
+              type="button"
+              aria-label="전체 메뉴"
+              aria-expanded={menuOpen}
+              aria-controls="participant-side-menu"
+              onClick={() => setMenuOpen(true)}
+            >
               ☰
             </button>
             <b>travel bingo</b>
@@ -4014,6 +4041,73 @@ export default function Home() {
             </>
           )}
         </section>
+      )}
+      {menuOpen && (
+        <div className="side-menu-backdrop" onClick={() => setMenuOpen(false)}>
+          <aside
+            id="participant-side-menu"
+            className="side-menu-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="전체 메뉴"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="side-menu-profile">
+              <span aria-hidden="true">{nickname.slice(0, 1)}</span>
+              <div>
+                <small>TRAVELER</small>
+                <b>{nickname}님</b>
+                <em>{points.toLocaleString()} Point</em>
+              </div>
+              <button type="button" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)}>×</button>
+            </header>
+
+            <div className="side-menu-scroll">
+              <section className="side-menu-group">
+                <small>나의 활동</small>
+                <button type="button" onClick={() => { setMenuOpen(false); setAnnouncementsOpen(true); }}>
+                  <span aria-hidden="true">♧</span><b>공지사항과 알림</b><i>›</i>
+                </button>
+                <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); setMyView("badges"); }}>
+                  <span aria-hidden="true">☆</span><b>획득한 배지</b><i>›</i>
+                </button>
+                <button type="button" onClick={() => { setMenuOpen(false); setFriendsOpen(true); void loadFriends(); }}>
+                  <span aria-hidden="true">♧</span><b>친구 관리</b><i>›</i>
+                </button>
+              </section>
+
+              <section className="side-menu-group side-menu-guides">
+                <small>이용 안내</small>
+                <details>
+                  <summary><span aria-hidden="true">?</span><b>Travel Bingo 이용 방법</b><i>⌄</i></summary>
+                  <p>매일 새로운 Daily 빙고에 도전하고, 여행지에서는 지역 빙고를 시작해보세요. 미션을 한 줄 완성할 때마다 포인트와 기록이 쌓입니다.</p>
+                </details>
+                <details>
+                  <summary><span aria-hidden="true">⌖</span><b>GPS·사진 인증 안내</b><i>⌄</i></summary>
+                  <p>GPS 미션은 야외에서 위치 권한을 허용해주세요. 사진에는 주변 사람의 얼굴이나 차량번호가 나오지 않도록 촬영해주세요.</p>
+                </details>
+                <details>
+                  <summary><span aria-hidden="true">◎</span><b>관광정보 활용 안내</b><i>⌄</i></summary>
+                  <p>추천 지역과 관광지 정보에는 한국관광공사 국문 관광정보·관광사진·연관 관광지 OpenAPI가 활용됩니다.</p>
+                </details>
+              </section>
+
+              <section className="side-menu-group">
+                <small>서비스</small>
+                <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); void openSettings(); }}>
+                  <span aria-hidden="true">⚙</span><b>계정 및 앱 설정</b><i>›</i>
+                </button>
+              </section>
+            </div>
+
+            <footer className="side-menu-footer">
+              <small>Travel Bingo · 테스트 서비스</small>
+              <button type="button" disabled={logoutPending} onClick={() => { setMenuOpen(false); void logout(); }}>
+                {logoutPending ? "로그아웃 중…" : "로그아웃"}
+              </button>
+            </footer>
+          </aside>
+        </div>
       )}
       {trackingMissionId && tracking.active && (
         <button

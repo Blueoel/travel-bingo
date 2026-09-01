@@ -211,6 +211,19 @@ test("loads only started region progress for the exploration map", async () => {
   assert.match(listRoute, /ORDER BY selected_at DESC/);
 });
 
+test("opens a functional participant menu and rejects stale GPS tracking", async () => {
+  const [pageSource, styles] = await Promise.all([
+    readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8"),
+    readFile(path.join(projectDirectory, "app", "globals.css"), "utf8"),
+  ]);
+  assert.match(pageSource, /aria-controls="participant-side-menu"/);
+  assert.match(pageSource, /Travel Bingo 이용 방법/);
+  assert.match(pageSource, /GPS·사진 인증 안내/);
+  assert.match(pageSource, /관광정보 활용 안내/);
+  assert.match(pageSource, /trackingAge > MAX_TRACKING_RESUME_AGE_MS/);
+  assert.match(styles, /\.side-menu-panel/);
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);
