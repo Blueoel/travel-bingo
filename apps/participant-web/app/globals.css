@@ -2279,6 +2279,56 @@ h1 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 7px;
 }
+.bingo-page-header {
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 2px 3px 0;
+}
+.bingo-page-header h1 {
+  margin-top: 3px;
+  font-size: 21px;
+}
+.bingo-page-header .eyebrow {
+  margin: 0;
+  color: #657e68;
+  font-size: 10px;
+}
+.bingo-share-top {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d6c9b1;
+  border-radius: 50%;
+  background: #fffdf7;
+  color: #315d48;
+  font-size: 20px;
+  cursor: pointer;
+}
+.bingo-summary {
+  margin: 0 4px 14px;
+}
+.bingo-summary .track {
+  height: 6px;
+  margin: 8px 0 0;
+}
+.bingo-notebook {
+  position: relative;
+  padding: 19px 14px 17px 24px;
+  border: 1px solid #c9b995;
+  border-radius: 13px 17px 12px 15px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 35px, #d8e4df50 36px),
+    #fffdf8;
+  box-shadow: 5px 6px 0 #ddcfb4;
+}
+.bingo-notebook::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 8px;
+  width: 8px;
+  background: radial-gradient(circle, #876e4d 0 2px, transparent 2.5px) center top / 8px 24px repeat-y;
+}
 .board-loading {
   min-height: 330px;
   display: grid;
@@ -2287,6 +2337,8 @@ h1 {
   font-size: 13px;
 }
 .board button {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   min-width: 0;
   aspect-ratio: 0.88;
@@ -2453,6 +2505,55 @@ nav button {
   align-items: center;
   white-space: nowrap;
 }
+.board-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.board button:has(.board-photo)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 35%, #10261cb8);
+}
+.board button:has(.board-photo) .mission-icon,
+.board button:has(.board-photo) b,
+.board button:has(.board-photo) small {
+  position: relative;
+  z-index: 1;
+}
+.board button:has(.board-photo) b,
+.board button:has(.board-photo) small {
+  color: #fff;
+  text-shadow: 0 1px 3px #10261c;
+}
+.bingo-share-card {
+  width: calc(100% - 22px);
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 38px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  margin: 22px auto 8px;
+  padding: 9px 13px;
+  border: 1px solid #d7c59c;
+  border-radius: 10px 14px 11px 13px;
+  background: #fff6d9;
+  color: #405b41;
+  text-align: left;
+  box-shadow: 3px 4px 0 #e2d6bc;
+  cursor: pointer;
+}
+.bingo-share-card span {
+  font-size: 25px;
+  text-align: center;
+}
+.bingo-share-card b { font-size: 13px; }
+.bingo-share-card i { font-size: 18px; font-style: normal; text-align: center; }
+.bingo-share-card:disabled,
+.bingo-share-top:disabled { opacity: 0.6; cursor: wait; }
 nav img {
   width: 28px;
   height: 28px;
@@ -3149,14 +3250,14 @@ nav .active img {
   visibility: hidden;
 }
 .auth-brand-showcase {
-  width: 190px;
-  height: 190px;
-  margin: -8px auto 2px;
+  width: 244px;
+  height: 210px;
+  margin: -10px auto 4px;
 }
 .auth-brand-showcase.register {
-  width: 132px;
-  height: 132px;
-  margin-top: -25px;
+  width: 164px;
+  height: 150px;
+  margin-top: -22px;
 }
 .auth-brand-showcase img {
   width: 100%;

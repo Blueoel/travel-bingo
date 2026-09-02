@@ -280,6 +280,18 @@ test("uses the cream brand background across participant screens", async () => {
   }
 });
 
+test("shows a simple shareable bingo board with completed photo cells", async () => {
+  const pageSource = await readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8");
+  const cssSource = await readFile(path.join(projectDirectory, "app", "globals.css"), "utf8");
+
+  assert.match(pageSource, /className="bingo-notebook"/);
+  assert.match(pageSource, /className="bingo-share-card"/);
+  assert.match(pageSource, /navigator\.share/);
+  assert.match(pageSource, /className="board-photo"/);
+  assert.match(pageSource, /saveBingoPhoto/);
+  assert.match(cssSource, /\.auth-brand-showcase \{[\s\S]*?width:\s*244px/);
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);

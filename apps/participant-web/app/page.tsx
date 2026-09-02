@@ -504,6 +504,52 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+const BINGO_PHOTO_DB = "travel-bingo-photos";
+
+function openBingoPhotoDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(BINGO_PHOTO_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("photos")) {
+        request.result.createObjectStore("photos");
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveBingoPhoto(key: string, file: File) {
+  const database = await openBingoPhotoDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction("photos", "readwrite");
+    transaction.objectStore("photos").put(file, key);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  database.close();
+}
+
+async function loadBingoPhoto(key: string): Promise<Blob | null> {
+  const database = await openBingoPhotoDatabase();
+  const photo = await new Promise<Blob | null>((resolve, reject) => {
+    const request = database.transaction("photos", "readonly").objectStore("photos").get(key);
+    request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : null);
+    request.onerror = () => reject(request.error);
+  });
+  database.close();
+  return photo;
+}
+
+function loadCanvasImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Image could not be loaded."));
+    image.src = source;
+  });
+}
+
 function remainingTime(endsAt: string, now: number): string {
   const remaining = Math.max(0, new Date(endsAt).getTime() - now);
   const days = Math.floor(remaining / 86_400_000);
@@ -662,6 +708,8 @@ export default function Home() {
     "DETAIL" | "REVIEWING" | "COMPLETE"
   >("DETAIL");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [bingoPhotos, setBingoPhotos] = useState<Record<string, string>>({});
+  const [sharingBingo, setSharingBingo] = useState(false);
   const [photoReviewState, setPhotoReviewState] = useState<
     "NONE" | "AVAILABLE" | "REQUESTING" | "PENDING"
   >("NONE");
@@ -713,6 +761,32 @@ export default function Home() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const pendingPhotoFile = useRef<File | null>(null);
+
+  const bingoPhotoKey = (missionId: string) =>
+    `${sessionId ?? "demo"}:${missionId}`;
+
+  useEffect(() => {
+    let disposed = false;
+    const urls: string[] = [];
+    void Promise.all(
+      items
+        .filter((item) => item.kind === "PHOTO" && item.done)
+        .map(async (item) => {
+          const photo = await loadBingoPhoto(bingoPhotoKey(item.id));
+          if (!photo) return null;
+          const url = URL.createObjectURL(photo);
+          urls.push(url);
+          return [item.id, url] as const;
+        }),
+    ).then((entries) => {
+      if (!disposed) setBingoPhotos(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, string]>));
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [sessionId, items.map((item) => `${item.id}:${item.done}`).join("|")]);
 
   const applySession = (session: DailySession) => {
     setSessionId(session.id);
@@ -2302,6 +2376,8 @@ export default function Home() {
 
   const verifyPhoto = async (file?: File) => {
     if (!selected || !file) return;
+    pendingPhotoFile.current = file;
+    void saveBingoPhoto(bingoPhotoKey(selected.id), file).catch(() => undefined);
     setMessage(null);
     setPhotoReviewState("NONE");
     setPhotoVerificationId(null);
@@ -2456,6 +2532,16 @@ export default function Home() {
     awardPoints = true,
   ) => {
     if (!selected) return;
+    const completedMissionId = selected.id;
+    const completedPhoto = pendingPhotoFile.current;
+    if (completedPhoto) {
+      const boardPhotoUrl = URL.createObjectURL(completedPhoto);
+      setBingoPhotos((current) => ({
+        ...current,
+        [completedMissionId]: boardPhotoUrl,
+      }));
+      pendingPhotoFile.current = null;
+    }
     const nextItems = items.map((item) =>
       item.id === selected.id ? { ...item, done: true } : item,
     );
@@ -2471,6 +2557,106 @@ export default function Home() {
     );
     setSelected({ ...selected, done: true });
     setPhotoStage("COMPLETE");
+  };
+
+  const shareBingoBoard = async () => {
+    if (sharingBingo) return;
+    setSharingBingo(true);
+    setMessage(null);
+    try {
+      await document.fonts?.ready;
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1350;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas unavailable");
+
+      context.fillStyle = "#f7f4ed";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#174c38";
+      context.font = '700 42px "KNPS Kkomi", sans-serif';
+      context.fillText(currentBingo.regionName ?? "오늘", 80, 95);
+      context.font = '700 66px "KNPS Kkomi", sans-serif';
+      context.fillText(currentBingo.title, 80, 170);
+      context.fillStyle = "#607068";
+      context.font = '500 34px "KNPS Kkomi", sans-serif';
+      context.fillText(`${completeCount} / 25 완료 · ${lineKeys.length}줄 빙고`, 80, 225);
+
+      context.fillStyle = "#fffdf8";
+      context.strokeStyle = "#c9b995";
+      context.lineWidth = 5;
+      context.beginPath();
+      context.roundRect(55, 275, 970, 970, 35);
+      context.fill();
+      context.stroke();
+
+      const gap = 13;
+      const cellSize = (900 - gap * 4) / 5;
+      for (const [index, item] of items.slice(0, 25).entries()) {
+        const x = 90 + (index % 5) * (cellSize + gap);
+        const y = 310 + Math.floor(index / 5) * (cellSize + gap);
+        context.save();
+        context.beginPath();
+        context.roundRect(x, y, cellSize, cellSize, 18);
+        context.clip();
+        const photoUrl = item.done ? bingoPhotos[item.id] : null;
+        if (photoUrl) {
+          try {
+            const image = await loadCanvasImage(photoUrl);
+            const scale = Math.max(cellSize / image.width, cellSize / image.height);
+            const width = image.width * scale;
+            const height = image.height * scale;
+            context.drawImage(image, x + (cellSize - width) / 2, y + (cellSize - height) / 2, width, height);
+            context.fillStyle = "#10261c35";
+            context.fillRect(x, y, cellSize, cellSize);
+          } catch {
+            context.fillStyle = "#e4eee3";
+            context.fillRect(x, y, cellSize, cellSize);
+          }
+        } else {
+          context.fillStyle = item.done ? "#e4eee3" : "#fffefa";
+          context.fillRect(x, y, cellSize, cellSize);
+        }
+        context.strokeStyle = item.done ? "#618968" : "#d8cdb8";
+        context.lineWidth = 3;
+        context.strokeRect(x + 1.5, y + 1.5, cellSize - 3, cellSize - 3);
+        context.fillStyle = photoUrl ? "#ffffff" : "#214934";
+        context.textAlign = "center";
+        context.font = '700 27px "KNPS Kkomi", sans-serif';
+        const label = item.title.length > 8 ? `${item.title.slice(0, 8)}…` : item.title;
+        context.fillText(label, x + cellSize / 2, y + cellSize - 25, cellSize - 18);
+        if (item.done) {
+          context.font = '700 54px "KNPS Kkomi", sans-serif';
+          context.fillText("✓", x + cellSize / 2, y + cellSize / 2 + 12);
+        }
+        context.restore();
+      }
+
+      context.fillStyle = "#174c38";
+      context.textAlign = "center";
+      context.font = '700 34px "KNPS Kkomi", sans-serif';
+      context.fillText("Travel Bingo · 나의 발견 기록", 540, 1310);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("Image export failed");
+      const file = new File([blob], `travel-bingo-${new Date().toISOString().slice(0, 10)}.png`, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: currentBingo.title, text: "나의 Travel Bingo 기록", files: [file] });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = file.name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setMessage("빙고판 이미지를 저장했어요.");
+      }
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        setMessage("빙고판 이미지를 만들지 못했어요. 잠시 후 다시 시도해주세요.");
+      }
+    } finally {
+      setSharingBingo(false);
+    }
   };
 
   const complete = async () => {
@@ -2729,7 +2915,7 @@ export default function Home() {
     <main className="app-shell">
       {activeTab === "bingo" && (
         <>
-      <header>
+      <header className="bingo-page-header">
         <div>
           <p className="eyebrow">
             {currentBingo.type === "DAILY"
@@ -2738,8 +2924,8 @@ export default function Home() {
           </p>
           <h1>{currentBingo.title}</h1>
         </div>
-        <button className="profile" aria-label="내 프로필">
-          {nickname.slice(0, 1)}
+        <button type="button" className="bingo-share-top" onClick={() => void shareBingoBoard()} disabled={sharingBingo} aria-label="빙고판 이미지 공유">
+          {sharingBingo ? "…" : "↗"}
         </button>
       </header>
       {!online && (
@@ -2759,52 +2945,23 @@ export default function Home() {
           체험 모드 · 로컬 API를 실행하면 실제 데이터로 전환돼요
         </div>
       )}
-      <section className="hero">
-        <div className="hero-copy">
-          <span className="pill">
-            {currentBingo.type === "DAILY"
-              ? "DAILY WALK"
-              : currentBingo.type === "EVENT"
-                ? "EVENT BINGO"
-                : "REGION BINGO"}
-          </span>
-          <h2>
-            {currentBingo.type === "DAILY" ? "천천히 걸으며" : currentBingo.title}
-            <br />
-            {currentBingo.type === "DAILY"
-              ? "오늘을 발견해요"
-              : "새로운 장소를 발견해요"}
-          </h2>
-          <p>
-            {currentBingo.type === "DAILY"
-              ? "매일 같은 미션, 나만의 새로운 배치"
-              : `${currentBingo.regionName ?? "여행지"}의 이야기를 빙고로 만나보세요`}
-          </p>
-        </div>
-        <div className="score">
-          <strong>{points}</strong>
-          <span>POINT</span>
-        </div>
-      </section>
-      <section className="progress-card">
+      <section className="bingo-summary">
         <div className="progress-heading">
           <div>
             <b>{completeCount}</b>
             <span> / 25 완료</span>
           </div>
-          <strong>{Math.round((completeCount / 25) * 100)}%</strong>
+          <strong>{lineKeys.length}줄 빙고</strong>
         </div>
         <div className="track">
           <i style={{ width: `${(completeCount / 25) * 100}%` }} />
         </div>
-        <p>
-          {lineKeys.length}줄 빙고 · <b>조금만 더!</b>
-        </p>
       </section>
-      {loading ? (
-        <div className="board-loading">오늘의 빙고를 준비하고 있어요…</div>
-      ) : (
-        <section className="board" aria-label="오늘의 5x5 빙고판">
+      <section className="bingo-notebook">
+        {loading ? (
+          <div className="board-loading">오늘의 빙고를 준비하고 있어요…</div>
+        ) : (
+          <section className="board" aria-label="오늘의 5x5 빙고판">
           {items.map((item) => (
             <button
               key={item.id}
@@ -2832,6 +2989,9 @@ export default function Home() {
                 }
               }}
             >
+              {item.done && item.kind === "PHOTO" && bingoPhotos[item.id] && (
+                <img className="board-photo" src={bingoPhotos[item.id]} alt="" />
+              )}
               <span className={`mission-icon ${item.kind.toLowerCase()}`}>
                 {item.done ? "✓" : item.reviewPending ? "…" : icon[item.kind]}
               </span>
@@ -2845,16 +3005,14 @@ export default function Home() {
               </small>
             </button>
           ))}
-        </section>
-      )}
-      <aside className="tip">
-        <span>✦</span>
-        <p>
-          <b>오늘의 산책 팁</b>
-          <br />
-          해가 지기 전 20분 산책은 기분 전환에 좋아요.
-        </p>
-      </aside>
+          </section>
+        )}
+      </section>
+      <button type="button" className="bingo-share-card" onClick={() => void shareBingoBoard()} disabled={sharingBingo}>
+        <span aria-hidden="true">♧</span>
+        <b>{sharingBingo ? "빙고판 만드는 중…" : "빙고판 공유하기"}</b>
+        <i aria-hidden="true">↗</i>
+      </button>
         </>
       )}
       {activeTab === "home" && (
