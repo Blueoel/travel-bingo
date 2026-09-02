@@ -2869,11 +2869,7 @@ export default function Home() {
             >
               ☰
             </button>
-            <img
-              className="home-brand-logo"
-              src="/brand/logo-symbol.svg"
-              alt="Travel Bingo"
-            />
+            <b>Travel Bingo</b>
             <button
               type="button"
               aria-label="알림"
@@ -2923,29 +2919,6 @@ export default function Home() {
             </div>
           </button>
 
-          {ongoingRegionBingo && (
-            <>
-              <div className="home-section-title home-section-title-compact">
-                <h2>진행 중인 여행</h2>
-                <button type="button" onClick={() => setActiveTab("catalog")}>전체 보기 ›</button>
-              </div>
-              <button
-                className="ongoing-bingo-card region-ongoing"
-                type="button"
-                onClick={() => void openCatalogBingo(ongoingRegionBingo)}
-              >
-                <div className="ongoing-art" aria-hidden="true">⌖</div>
-                <span>
-                  <small>REGION BINGO</small>
-                  <strong>{ongoingRegionBingo.title}</strong>
-                  <em>{ongoingRegionBingo.completedCellCount} / {ongoingRegionBingo.totalCellCount} 완료</em>
-                  <i><b style={{ width: `${ongoingRegionBingo.totalCellCount ? Math.round((ongoingRegionBingo.completedCellCount / ongoingRegionBingo.totalCellCount) * 100) : 0}%` }} /></i>
-                </span>
-                <b>›</b>
-              </button>
-            </>
-          )}
-
           <div className="home-section-title">
             <h2>추천 지역</h2>
             <button type="button" onClick={() => setActiveTab("regions")}>
@@ -2993,6 +2966,28 @@ export default function Home() {
                 </p>
               )}
           </div>
+          {ongoingRegionBingo && (
+            <>
+              <div className="home-section-title home-section-title-compact">
+                <h2>진행 중인 빙고</h2>
+                <button type="button" onClick={() => setActiveTab("catalog")}>전체 보기 ›</button>
+              </div>
+              <button
+                className="ongoing-bingo-card region-ongoing"
+                type="button"
+                onClick={() => void openCatalogBingo(ongoingRegionBingo)}
+              >
+                <div className="ongoing-art" aria-hidden="true">⌖</div>
+                <span>
+                  <small>REGION BINGO</small>
+                  <strong>{ongoingRegionBingo.title}</strong>
+                  <em>{ongoingRegionBingo.completedCellCount} / {ongoingRegionBingo.totalCellCount} 완료</em>
+                  <i><b style={{ width: `${ongoingRegionBingo.totalCellCount ? Math.round((ongoingRegionBingo.completedCellCount / ongoingRegionBingo.totalCellCount) * 100) : 0}%` }} /></i>
+                </span>
+                <b>›</b>
+              </button>
+            </>
+          )}
           {pendingRegionChallenge && (
             <div
               className="region-challenge-backdrop"

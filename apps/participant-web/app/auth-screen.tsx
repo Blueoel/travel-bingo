@@ -119,25 +119,8 @@ export function AuthScreen({
         ←
       </button>
 
-      <div className={`doodle-hero ${mode}`}>
-        <span className="doodle-cloud cloud-one">☁</span>
-        <span className="doodle-cloud cloud-two">☁</span>
-        <div className="doodle-map" aria-hidden="true">
-          <i className="map-fold fold-one" />
-          <i className="map-fold fold-two" />
-          <span className="map-tree">♧</span>
-          <span className="map-route">··⌁··⌁·</span>
-          <span className="map-heart">♡</span>
-          <span className="map-star">☆</span>
-          <span className="map-check">✓</span>
-        </div>
-        {mode === "register" && (
-          <div className="doodle-note" aria-hidden="true">
-            <span>Travel</span>
-            <span>Bingo</span>
-            <i>♡</i>
-          </div>
-        )}
+      <div className={`auth-brand-showcase ${mode}`}>
+        <img src="/brand/logo-symbol.svg" alt="Travel Bingo" />
       </div>
 
       <section className="auth-copy">

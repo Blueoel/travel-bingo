@@ -240,10 +240,26 @@ test("keeps home as the initial tab while placing it at the center of navigation
     (match) => match[1],
   );
   assert.deepEqual(labels, ["탐험", "빙고", "홈", "랭킹", "마이페이지"]);
-  assert.match(pageSource, /src="\/brand\/logo-symbol\.svg"/);
   assert.match(pageSource, /src="\/icons\/navigation\/home\.svg"/);
   assert.match(cssSource, /\.region-ongoing small\s*{[^}]*color:\s*#ed7258/s);
   assert.match(cssSource, /\.region-ongoing > span > i b\s*{[^}]*background:\s*#ed7258/s);
+});
+
+test("shows the brand symbol on authentication and keeps the home hierarchy compact", async () => {
+  const authSource = await readFile(
+    path.join(projectDirectory, "app", "auth-screen.tsx"),
+    "utf8",
+  );
+  const pageSource = await readFile(
+    path.join(projectDirectory, "app", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(authSource, /className={`auth-brand-showcase \$\{mode\}`}/);
+  assert.match(authSource, /src="\/brand\/logo-symbol\.svg"/);
+  assert.match(pageSource, /<b>Travel Bingo<\/b>/);
+  assert.doesNotMatch(pageSource, /className="home-brand-logo"/);
+  assert.ok(pageSource.indexOf("추천 지역") < pageSource.indexOf("진행 중인 빙고"));
 });
 
 async function render(pathname = "/") {
