@@ -120,22 +120,17 @@ export function AuthScreen({
       </button>
 
       <div className={`auth-brand-showcase ${mode}`}>
-        <img src="/brand/logo-text.svg" alt="Travel Bingo" />
+        <img
+          src={mode === "login" ? "/brand/logo-text.svg" : "/brand/logo-notext.svg"}
+          alt="Travel Bingo"
+        />
       </div>
 
-      <section className="auth-copy">
-        <h1>
-          {mode === "login" ? (
-            <>
-              산책에서 여행까지<span>🌿</span>
-            </>
-          ) : (
-            "Travel Bingo 시작하기"
-          )}
-        </h1>
-        {mode === "login" && <p>오늘도 작은 발견을 시작해보세요.</p>}
-        {mode === "register" && <i className="title-scribble" />}
-      </section>
+      {mode === "login" && (
+        <section className="auth-copy">
+          <p>오늘도 작은 발견을 시작해보세요.</p>
+        </section>
+      )}
 
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" && (
@@ -273,12 +268,6 @@ export function AuthScreen({
         </button>
       </p>
 
-      <div className="doodle-ground" aria-hidden="true">
-        <span className="hill" />
-        <span className="path" />
-        <i>✿</i>
-        <b>⌁</b>
-      </div>
     </main>
   );
 }

@@ -9,12 +9,24 @@
 }
 
 :root {
-  --ink: #10261c;
-  --green: #174c38;
-  --lime: #dff36c;
+  --deep-green: #2d4a3a;
+  --leaf-green: #7fa26b;
+  --yellow: #f2c94c;
+  --coral: #f28b82;
+  --sky-blue: #7db7d8;
+  --warm-brown: #a67c52;
   --cream: #f7f4ed;
+  --foot: #38423c;
+  --road: #358758;
+  --grass: #597444;
+  --title: #182f23;
+  --gray: #5a5a5a;
+  --flower: #ed7258;
+  --ink: var(--title);
+  --green: var(--deep-green);
+  --lime: var(--yellow);
   --app-bg: #f7f4ed;
-  --line: #deddd6;
+  --line: #a67c5266;
 }
 * {
   box-sizing: border-box;
@@ -3221,8 +3233,8 @@ nav .active img {
   width: min(100%, 480px);
   min-height: 100dvh;
   margin: auto;
-  padding: max(54px, env(safe-area-inset-top)) 28px
-    max(92px, env(safe-area-inset-bottom));
+  padding: max(44px, env(safe-area-inset-top)) 28px
+    max(34px, env(safe-area-inset-bottom));
   overflow: hidden;
   background:
     radial-gradient(circle at 14% 22%, #f2eadb55 0 1px, transparent 2px),
@@ -3233,7 +3245,7 @@ nav .active img {
     23px 21px,
     auto;
   box-shadow: 0 0 40px #5b4b2a1a;
-  color: #283126;
+  color: var(--title);
 }
 .auth-back {
   position: absolute;
@@ -3250,14 +3262,14 @@ nav .active img {
   visibility: hidden;
 }
 .auth-brand-showcase {
-  width: 244px;
-  height: 210px;
-  margin: -10px auto 4px;
+  width: min(100%, 350px);
+  height: 235px;
+  margin: -8px auto 2px;
 }
 .auth-brand-showcase.register {
-  width: 164px;
-  height: 150px;
-  margin-top: -22px;
+  width: 226px;
+  height: 174px;
+  margin: -18px auto 8px;
 }
 .auth-brand-showcase img {
   width: 100%;
@@ -3427,9 +3439,9 @@ nav .active img {
   font-size: 23px;
 }
 .auth-copy p {
-  margin-top: 5px;
-  color: #66645e;
-  font-size: 13px;
+  margin: 0 0 14px;
+  color: var(--gray);
+  font-size: 15px;
 }
 .title-scribble {
   display: block;
@@ -3442,28 +3454,28 @@ nav .active img {
 }
 .auth-form {
   display: grid;
-  gap: 9px;
-  margin-top: 25px;
+  gap: 11px;
+  margin-top: 10px;
 }
 .auth-form > label:not(.terms-check) {
   position: relative;
-  min-height: 58px;
+  min-height: 62px;
   display: flex;
   align-items: center;
-  border: 1px solid #ded5c7;
+  border: 1px solid #a67c5266;
   border-radius: 13px 15px 12px 14px;
   background: #fffefa;
   box-shadow: inset 0 0 16px #e9dfca15;
 }
 .auth-form input:not([type="checkbox"]) {
   width: 100%;
-  height: 56px;
+  height: 60px;
   padding: 0 46px 0 55px;
   border: 0;
   outline: 0;
   background: transparent;
-  color: #273127;
-  font-size: 15px;
+  color: var(--title);
+  font-size: 17px;
 }
 .auth-form input::placeholder {
   color: #a19c92;
@@ -3475,8 +3487,8 @@ nav .active img {
 .field-icon {
   position: absolute;
   left: 20px;
-  color: #424940;
-  font-size: 21px;
+  color: var(--deep-green);
+  font-size: 23px;
 }
 .password-toggle {
   position: absolute;
@@ -3492,8 +3504,8 @@ nav .active img {
   margin: 1px 2px 4px;
   border: 0;
   background: transparent;
-  color: #44653d;
-  font-size: 12px;
+  color: var(--road);
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -3502,7 +3514,7 @@ nav .active img {
   align-items: center;
   gap: 9px;
   margin: 8px 1px 5px;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 .terms-check input {
@@ -3535,15 +3547,15 @@ nav .active img {
   color: #3f6639;
 }
 .auth-submit {
-  min-height: 56px;
-  border: 1px solid #385632;
+  min-height: 60px;
+  border: 1px solid var(--deep-green);
   border-radius: 13px 15px 12px 14px;
   background:
     repeating-linear-gradient(165deg, #ffffff08 0 2px, transparent 2px 5px),
-    #557d4e;
+    var(--leaf-green);
   box-shadow: inset 0 0 17px #21371e25;
   color: #fff;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -3558,7 +3570,7 @@ nav .active img {
   gap: 12px;
   margin: 17px 0;
   color: #968e80;
-  font-size: 12px;
+  font-size: 14px;
 }
 .auth-divider:before,
 .auth-divider:after {
@@ -3578,12 +3590,12 @@ nav .active img {
   gap: 8px;
 }
 .social-actions button {
-  min-height: 49px;
-  border: 1px solid #ded5c7;
+  min-height: 53px;
+  border: 1px solid #a67c5266;
   border-radius: 13px;
   background: #fffefa;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
 }
 .social-actions b {
   margin-right: 10px;
@@ -3598,16 +3610,16 @@ nav .active img {
   z-index: 2;
   margin-top: 20px;
   text-align: center;
-  color: #5e5c57;
-  font-size: 13px;
+  color: var(--gray);
+  font-size: 15px;
 }
 .auth-switch button {
   margin-left: 8px;
   padding: 2px 1px;
   border: 0;
-  border-bottom: 2px solid #779059;
+  border-bottom: 2px solid var(--leaf-green);
   background: transparent;
-  color: #345b32;
+  color: var(--deep-green);
   font-weight: 800;
   cursor: pointer;
 }

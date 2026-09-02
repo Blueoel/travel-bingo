@@ -256,7 +256,9 @@ test("shows the brand symbol on authentication and keeps the home hierarchy comp
   );
 
   assert.match(authSource, /className={`auth-brand-showcase \$\{mode\}`}/);
-  assert.match(authSource, /src="\/brand\/logo-text\.svg"/);
+  assert.match(authSource, /mode === "login" \? "\/brand\/logo-text\.svg" : "\/brand\/logo-notext\.svg"/);
+  assert.doesNotMatch(authSource, /산책에서 여행까지/);
+  assert.doesNotMatch(authSource, /doodle-ground/);
   assert.match(pageSource, /<b>Travel Bingo<\/b>/);
   assert.doesNotMatch(pageSource, /className="home-brand-logo"/);
   assert.ok(pageSource.indexOf("추천 지역") < pageSource.indexOf("진행 중인 빙고"));
@@ -269,6 +271,12 @@ test("uses the cream brand background across participant screens", async () => {
   );
 
   assert.match(cssSource, /--app-bg:\s*#f7f4ed/);
+  assert.match(cssSource, /--deep-green:\s*#2d4a3a/);
+  assert.match(cssSource, /--leaf-green:\s*#7fa26b/);
+  assert.match(cssSource, /--yellow:\s*#f2c94c/);
+  assert.match(cssSource, /--coral:\s*#f28b82/);
+  assert.match(cssSource, /--sky-blue:\s*#7db7d8/);
+  assert.match(cssSource, /--warm-brown:\s*#a67c52/);
   for (const selector of [
     "body",
     ".app-shell",
