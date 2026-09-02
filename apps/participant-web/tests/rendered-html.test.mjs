@@ -262,6 +262,24 @@ test("shows the brand symbol on authentication and keeps the home hierarchy comp
   assert.ok(pageSource.indexOf("추천 지역") < pageSource.indexOf("진행 중인 빙고"));
 });
 
+test("uses the cream brand background across participant screens", async () => {
+  const cssSource = await readFile(
+    path.join(projectDirectory, "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(cssSource, /--app-bg:\s*#f7f4ed/);
+  for (const selector of [
+    "body",
+    ".app-shell",
+    ".region-directory-screen",
+    ".ranking-screen",
+  ]) {
+    const escaped = selector.replace(".", "\\.");
+    assert.match(cssSource, new RegExp(`${escaped}\\s*\\{[\\s\\S]*?background:[^;}]*var\\(--app-bg\\)`, "s"));
+  }
+});
+
 async function render(pathname = "/") {
   const serverPath = path.join(projectDirectory, "dist", "server", "index.js");
   const server = await import(pathToFileURL(serverPath).href);

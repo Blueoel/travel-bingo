@@ -4,7 +4,8 @@
   --ink: #10261c;
   --green: #174c38;
   --lime: #dff36c;
-  --cream: #f5f2e9;
+  --cream: #f7f4ed;
+  --app-bg: #f7f4ed;
   --line: #deddd6;
 }
 * {
@@ -18,7 +19,7 @@ body {
 }
 body {
   margin: 0;
-  background: #e9ece8;
+  background: var(--app-bg);
   color: var(--ink);
   font-family: Arial, "Noto Sans KR", sans-serif;
 }
@@ -32,7 +33,7 @@ button {
   min-height: 100vh;
   margin: auto;
   padding: 22px 18px 100px;
-  background: #fbfaf6;
+  background: var(--app-bg);
   box-shadow: 0 0 40px #26382c1c;
   overflow-x: clip;
 }
@@ -89,7 +90,7 @@ button {
   grid-template-rows: auto minmax(0, 1fr) auto;
   background:
     radial-gradient(circle at 16% 9%, #ddc9a829 0 1px, transparent 1.6px),
-    #fffdf8;
+    var(--app-bg);
   background-size: 18px 20px, auto;
   box-shadow: 16px 0 42px #0d241b38;
   animation: side-menu-enter 180ms ease-out;
@@ -434,7 +435,7 @@ button {
 .region-directory-screen {
   min-height: calc(100vh - 72px);
   padding: 24px 18px 34px;
-  background: radial-gradient(circle at 7px 7px, #eadfca 1px, transparent 1.4px) 0 0 / 18px 18px, #fffdf7;
+  background: radial-gradient(circle at 7px 7px, #eadfca 1px, transparent 1.4px) 0 0 / 18px 18px, var(--app-bg);
 }
 .region-directory-header { display: flex; align-items: center; gap: 13px; margin-bottom: 20px; }
 .region-directory-header > button {
@@ -697,7 +698,7 @@ button {
   background:
     radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 /
       18px 18px,
-    #faf7ef;
+    var(--app-bg);
 }
 .exploration-header {
   display: grid;
@@ -1362,7 +1363,7 @@ button {
   background:
     radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 /
       18px 18px,
-    #faf7ef;
+    var(--app-bg);
 }
 .catalog-header {
   display: grid;
@@ -1511,7 +1512,7 @@ button {
   z-index: 4;
   padding: 22px 18px 28px;
   overflow-y: auto;
-  background: #fbfaf6;
+  background: var(--app-bg);
 }
 .ranking-header {
   justify-content: center;
@@ -1684,7 +1685,7 @@ button {
   overflow-y: auto;
   background:
     radial-gradient(circle at 12% 20%, #eadfc933 0 1px, transparent 2px),
-    #fffdf8;
+    var(--app-bg);
   background-size:
     19px 21px,
     auto;
@@ -3113,7 +3114,7 @@ nav .active img {
   background:
     radial-gradient(circle at 14% 22%, #f2eadb55 0 1px, transparent 2px),
     radial-gradient(circle at 82% 68%, #d9d1bf33 0 1px, transparent 2px),
-    #fffdf8;
+    var(--app-bg);
   background-size:
     17px 19px,
     23px 21px,
