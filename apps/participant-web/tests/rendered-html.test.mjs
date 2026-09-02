@@ -259,6 +259,7 @@ test("shows the brand symbol on authentication and keeps the home hierarchy comp
   assert.match(authSource, /mode === "login" \? "\/brand\/logo-text\.svg" : "\/brand\/logo-notext\.svg"/);
   assert.doesNotMatch(authSource, /산책에서 여행까지/);
   assert.doesNotMatch(authSource, /doodle-ground/);
+  assert.match(authSource, /<h1><span>Travel Bingo<\/span> 시작하기<\/h1>/);
   assert.match(pageSource, /<b>Travel Bingo<\/b>/);
   assert.doesNotMatch(pageSource, /className="home-brand-logo"/);
   assert.ok(pageSource.indexOf("추천 지역") < pageSource.indexOf("진행 중인 빙고"));

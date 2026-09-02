@@ -131,6 +131,11 @@ export function AuthScreen({
           <p>오늘도 작은 발견을 시작해보세요.</p>
         </section>
       )}
+      {mode === "register" && (
+        <section className="auth-copy auth-register-title">
+          <h1><span>Travel Bingo</span> 시작하기</h1>
+        </section>
+      )}
 
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" && (

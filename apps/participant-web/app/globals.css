@@ -3443,6 +3443,28 @@ nav .active img {
   color: var(--gray);
   font-size: 15px;
 }
+.auth-register-title h1 {
+  margin: 0;
+  color: var(--title);
+  font-size: clamp(28px, 7vw, 34px);
+}
+.auth-register-title h1 span {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  font-size: inherit;
+}
+.auth-register-title h1 span::after {
+  content: "";
+  position: absolute;
+  right: 5%;
+  bottom: -8px;
+  left: 5%;
+  height: 7px;
+  border-top: 3px solid var(--yellow);
+  border-radius: 50%;
+  transform: rotate(-2deg);
+}
 .title-scribble {
   display: block;
   width: 92px;
