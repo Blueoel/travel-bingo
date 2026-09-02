@@ -120,7 +120,7 @@ export function AuthScreen({
       </button>
 
       <div className={`auth-brand-showcase ${mode}`}>
-        <img src="/brand/logo-symbol.svg" alt="Travel Bingo" />
+        <img src="/brand/logo-text.svg" alt="Travel Bingo" />
       </div>
 
       <section className="auth-copy">

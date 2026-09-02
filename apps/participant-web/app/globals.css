@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "KNPS Kkomi";
+  src: url("/fonts/KNPSKkomi.otf") format("opentype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --ink: #10261c;
   --green: #174c38;
@@ -21,7 +29,11 @@ body {
   margin: 0;
   background: var(--app-bg);
   color: var(--ink);
-  font-family: Arial, "Noto Sans KR", sans-serif;
+  font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif;
+}
+
+html[lang="ko"] body *:not(code):not(pre) {
+  font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif !important;
 }
 button {
   font: inherit;

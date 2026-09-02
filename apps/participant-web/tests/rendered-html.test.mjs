@@ -256,7 +256,7 @@ test("shows the brand symbol on authentication and keeps the home hierarchy comp
   );
 
   assert.match(authSource, /className={`auth-brand-showcase \$\{mode\}`}/);
-  assert.match(authSource, /src="\/brand\/logo-symbol\.svg"/);
+  assert.match(authSource, /src="\/brand\/logo-text\.svg"/);
   assert.match(pageSource, /<b>Travel Bingo<\/b>/);
   assert.doesNotMatch(pageSource, /className="home-brand-logo"/);
   assert.ok(pageSource.indexOf("추천 지역") < pageSource.indexOf("진행 중인 빙고"));
