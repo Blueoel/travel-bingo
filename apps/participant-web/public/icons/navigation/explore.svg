@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_03_ICONS" data-name="03_ICONS" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-width: .89px;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5 {
+        stroke: #2d4a3a;
+        stroke-linecap: round;
+      }
+
+      .cls-1, .cls-3, .cls-4, .cls-5 {
+        fill: none;
+        stroke-linejoin: round;
+      }
+
+      .cls-2 {
+        fill: #a7d28d;
+        stroke-miterlimit: 10;
+        stroke-width: .6px;
+      }
+
+      .cls-3 {
+        stroke-width: .81px;
+      }
+
+      .cls-4 {
+        stroke-width: .78px;
+      }
+
+      .cls-5 {
+        stroke-width: .72px;
+      }
+    </style>
+  </defs>
+  <circle class="cls-1" cx="24" cy="25.8" r="13.23"/>
+  <circle class="cls-5" cx="24" cy="25.8" r="10.61"/>
+  <line class="cls-5" x1="24.01" y1="16.18" x2="24.01" y2="17.58"/>
+  <line class="cls-5" x1="15.15" y1="25.83" x2="16.7" y2="25.83"/>
+  <line class="cls-5" x1="31.79" y1="25.9" x2="33.27" y2="25.9"/>
+  <line class="cls-5" x1="24.01" y1="34" x2="24.01" y2="35.32"/>
+  <g>
+    <path class="cls-3" d="M25.17,23.78c.69.4,1.1,1.11,1.16,1.85l1.54-6.5-4.88,4.56c.67-.32,1.49-.32,2.18.08Z"/>
+    <path class="cls-3" d="M25.01,27.9c-.67.32-1.49.32-2.18-.08s-1.1-1.11-1.16-1.85l-1.54,6.5,4.88-4.56Z"/>
+    <circle class="cls-4" cx="23.99" cy="25.81" r="2.33"/>
+  </g>
+  <path class="cls-2" d="M31.74,14.38l.71-1.22s3.22,1.5,4.11-1.39c0,0-1.88-1.58-4.21,1.18,0,0,2.02-2.62-.18-3.98,0,0-1.52,1.32.08,3.85l-1.01,1.36.51.19Z"/>
+</svg>

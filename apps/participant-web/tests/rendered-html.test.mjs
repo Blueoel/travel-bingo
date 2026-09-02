@@ -236,10 +236,12 @@ test("keeps home as the initial tab while placing it at the center of navigation
   assert.match(pageSource, /useState<[\s\S]*?>\("home"\)/);
 
   const navigation = pageSource.match(/<nav>([\s\S]*?)<\/nav>/)?.[1] ?? "";
-  const labels = [...navigation.matchAll(/<span>[^<]*<\/span>(탐험|빙고|홈|랭킹|마이)/g)].map(
+  const labels = [...navigation.matchAll(/aria-hidden="true" \/>(탐험|빙고|홈|랭킹|마이페이지)/g)].map(
     (match) => match[1],
   );
-  assert.deepEqual(labels, ["탐험", "빙고", "홈", "랭킹", "마이"]);
+  assert.deepEqual(labels, ["탐험", "빙고", "홈", "랭킹", "마이페이지"]);
+  assert.match(pageSource, /src="\/brand\/logo-symbol\.svg"/);
+  assert.match(pageSource, /src="\/icons\/navigation\/home\.svg"/);
   assert.match(cssSource, /\.region-ongoing small\s*{[^}]*color:\s*#ed7258/s);
   assert.match(cssSource, /\.region-ongoing > span > i b\s*{[^}]*background:\s*#ed7258/s);
 });

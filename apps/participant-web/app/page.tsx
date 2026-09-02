@@ -2869,7 +2869,11 @@ export default function Home() {
             >
               ☰
             </button>
-            <b>travel bingo</b>
+            <img
+              className="home-brand-logo"
+              src="/brand/logo-symbol.svg"
+              alt="Travel Bingo"
+            />
             <button
               type="button"
               aria-label="알림"
@@ -4245,7 +4249,7 @@ export default function Home() {
             setActiveTab("exploration");
           }}
         >
-          <span>♧</span>탐험
+          <img src="/icons/navigation/explore.svg" alt="" aria-hidden="true" />탐험
         </button>
         <button
           className={
@@ -4253,25 +4257,25 @@ export default function Home() {
           }
           onClick={() => setActiveTab("catalog")}
         >
-          <span>▦</span>빙고
+          <img src="/icons/navigation/bingo.svg" alt="" aria-hidden="true" />빙고
         </button>
         <button
           className={activeTab === "home" ? "active" : ""}
           onClick={() => setActiveTab("home")}
         >
-          <span>⌂</span>홈
+          <img src="/icons/navigation/home.svg" alt="" aria-hidden="true" />홈
         </button>
         <button
           className={activeTab === "ranking" ? "active" : ""}
           onClick={() => setActiveTab("ranking")}
         >
-          <span>☆</span>랭킹
+          <img src="/icons/navigation/ranking.svg" alt="" aria-hidden="true" />랭킹
         </button>
         <button
           className={activeTab === "my" ? "active" : ""}
           onClick={() => setActiveTab("my")}
         >
-          <span>○</span>마이
+          <img src="/icons/navigation/my.svg" alt="" aria-hidden="true" />마이페이지
         </button>
       </nav>
       {message && !selected && (

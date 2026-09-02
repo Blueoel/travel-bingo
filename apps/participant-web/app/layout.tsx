@@ -13,8 +13,8 @@ export const metadata: Metadata = {
     title: "Travel Bingo",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/brand/logo-symbol.svg",
+    shortcut: "/brand/logo-symbol.svg",
   },
 };
 
