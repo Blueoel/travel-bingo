@@ -3257,19 +3257,19 @@ nav .active img {
 .auth-brand-showcase {
   width: min(100%, 420px);
   height: 300px;
-  margin: -32px auto -26px;
+  margin: -28px auto 55px;
 }
 .auth-brand-showcase.register {
   width: min(100%, 420px);
   height: 300px;
-  margin: -32px auto -26px;
+  margin: -28px auto 55px;
 }
 .auth-brand-showcase img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: contain;
-  transform: scale(1.5);
+  transform: scale(1.35);
 }
 .doodle-hero {
   position: relative;
