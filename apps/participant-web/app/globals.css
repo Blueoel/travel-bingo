@@ -46,6 +46,19 @@ body {
   font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif;
 }
 
+html[lang="ko"] body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+input,
+textarea,
+code,
+pre {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
 html[lang="ko"] body *:not(code):not(pre) {
   font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif !important;
 }
@@ -2402,8 +2415,8 @@ h1 {
   overflow: hidden;
   font-size: 9.5px;
   line-height: 1.2;
-  overflow-wrap: anywhere;
-  word-break: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;
   letter-spacing: -0.4px;
   text-align: center;
   -webkit-box-orient: vertical;

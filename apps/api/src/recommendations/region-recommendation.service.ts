@@ -396,17 +396,26 @@ export class RegionRecommendationService {
     center: Coordinates,
   ): Promise<KtoItem | null> {
     const items = await this.fetchKtoAttractions(center, 12);
-    return (
-      items.find(
-        (candidate) =>
-          candidate.title &&
-          candidate.mapx &&
-          candidate.mapy &&
-          (candidate.firstimage || candidate.firstimage2),
-      ) ??
-      items.find(
+    const withImages = items.filter(
+      (candidate) =>
+        candidate.title &&
+        candidate.mapx &&
+        candidate.mapy &&
+        (candidate.firstimage || candidate.firstimage2),
+    );
+    const candidates = withImages.length
+      ? withImages
+      : items.filter(
         (candidate) => candidate.title && candidate.mapx && candidate.mapy,
-      ) ??
+      );
+    if (!candidates.length) return null;
+
+    const rotationWindow = Math.floor(Date.now() / 60_000);
+    const regionSeed =
+      Math.round(center.latitude * 1_000) +
+      Math.round(center.longitude * 1_000);
+    return (
+      candidates[Math.abs(rotationWindow + regionSeed) % candidates.length] ??
       null
     );
   }

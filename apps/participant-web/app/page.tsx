@@ -1615,6 +1615,9 @@ export default function Home() {
       (groups[year] ??= []).push(record);
       return groups;
     }, {});
+  const myBingoCatalog = bingoCatalog.filter(
+    (item) => item.type !== "REGION" || item.state !== "AVAILABLE",
+  );
   const availableRegionRecommendations = regionRecommendations
     .flatMap((region) => {
       const bingo = bingoCatalog.find(
@@ -1741,8 +1744,8 @@ export default function Home() {
   const loadRegionRecommendations = async (coordinates?: {
     latitude: number;
     longitude: number;
-  }) => {
-    setRegionRecommendationsLoading(true);
+  }, silent = false) => {
+    if (!silent) setRegionRecommendationsLoading(true);
     try {
       const query = new URLSearchParams({ limit: "10" });
       if (coordinates) {
@@ -1755,15 +1758,20 @@ export default function Home() {
         (await response.json()) as RegionRecommendation[],
       );
     } catch {
-      setRegionRecommendations([]);
+      if (!silent) setRegionRecommendations([]);
     } finally {
-      setRegionRecommendationsLoading(false);
+      if (!silent) setRegionRecommendationsLoading(false);
     }
   };
 
   useEffect(() => {
     if (authStatus !== "authenticated") return;
     void loadRegionRecommendations();
+    const timer = window.setInterval(
+      () => void loadRegionRecommendations(undefined, true),
+      60_000,
+    );
+    return () => window.clearInterval(timer);
   }, [authStatus]);
 
   useEffect(() => {
@@ -3082,7 +3090,17 @@ export default function Home() {
                 });
                 setAnswer("");
                 setPhotoStage("DETAIL");
-                setPhotoPreview(null);
+                setPhotoPreview(
+                  item.kind === "PHOTO" ? bingoPhotos[item.id] ?? null : null,
+                );
+                if (item.kind === "PHOTO" && !bingoPhotos[item.id]) {
+                  void loadBingoPhoto(bingoPhotoKey(item.id)).then((photo) => {
+                    if (!photo) return;
+                    const url = URL.createObjectURL(photo);
+                    setBingoPhotos((current) => ({ ...current, [item.id]: url }));
+                    setPhotoPreview(url);
+                  });
+                }
                 setPhotoReviewState(item.reviewPending ? "PENDING" : "NONE");
                 setPhotoVerificationId(null);
                 setCompositePhotos([]);
@@ -3875,13 +3893,13 @@ export default function Home() {
           </p>
           {bingoCatalogLoading ? (
             <p className="catalog-state">빙고 노트를 펼치고 있어요…</p>
-          ) : bingoCatalog.length === 0 ? (
+          ) : myBingoCatalog.length === 0 ? (
             <p className="catalog-state">
-              지금 참여할 수 있는 빙고가 아직 없어요.
+              진행 중이거나 완료한 빙고가 아직 없어요.
             </p>
           ) : (
             <div className="catalog-list">
-              {bingoCatalog.map((bingo) => {
+              {myBingoCatalog.map((bingo) => {
                 const percent =
                   bingo.totalCellCount > 0
                     ? Math.round(
