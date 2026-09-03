@@ -2639,7 +2639,31 @@ export default function Home() {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("Image export failed");
       const file = new File([blob], `travel-bingo-${new Date().toISOString().slice(0, 10)}.png`, { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+          import("@capacitor/filesystem"),
+          import("@capacitor/share"),
+        ]);
+        const imageDataUrl = await readAsDataUrl(file);
+        const path = `shared/${file.name}`;
+        const saved = await Filesystem.writeFile({
+          path,
+          data: imageDataUrl.split(",")[1],
+          directory: Directory.Cache,
+          recursive: true,
+        });
+        try {
+          await Share.share({
+            title: currentBingo.title,
+            text: "나의 Travel Bingo 기록",
+            files: [saved.uri],
+            dialogTitle: "빙고판 공유하기",
+          });
+        } finally {
+          void Filesystem.deleteFile({ path, directory: Directory.Cache }).catch(() => undefined);
+        }
+      } else if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: currentBingo.title, text: "나의 Travel Bingo 기록", files: [file] });
       } else {
         const url = URL.createObjectURL(blob);

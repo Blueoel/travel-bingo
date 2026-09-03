@@ -148,6 +148,12 @@ importers:
       '@capacitor/core':
         specifier: ^8.0.0
         version: 8.5.0
+      '@capacitor/filesystem':
+        specifier: 8.0.0
+        version: 8.0.0(@capacitor/core@8.5.0)
+      '@capacitor/share':
+        specifier: 8.0.0
+        version: 8.0.0(@capacitor/core@8.5.0)
     devDependencies:
       '@capacitor/cli':
         specifier: ^8.0.0
@@ -164,6 +170,12 @@ importers:
       '@capacitor/core':
         specifier: ^8.0.0
         version: 8.5.0
+      '@capacitor/filesystem':
+        specifier: 8.0.0
+        version: 8.0.0(@capacitor/core@8.5.0)
+      '@capacitor/share':
+        specifier: 8.0.0
+        version: 8.0.0(@capacitor/core@8.5.0)
       '@zxing/browser':
         specifier: ^0.2.1
         version: 0.2.1(@zxing/library@0.23.0)
@@ -352,6 +364,19 @@ packages:
 
   '@capacitor/core@8.5.0':
     resolution: {integrity: sha512-Ca4krtqH1hothjtBIwf2J2TW7IhYq1ujp8QeItTiJohNsqij8ja2DYYH3DU0l8RmxCWaBAFTGA2TgOgOMCSNsQ==}
+
+  '@capacitor/filesystem@8.0.0':
+    resolution: {integrity: sha512-RRGNLW9xEqvVVHGyGlfS4Oy0R3Na+bEefwZElKbex22S9eZr5cg8wc750BPPVwbcv5lf5fJymkY8x8y6UwKPyg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/share@8.0.0':
+    resolution: {integrity: sha512-VU+xT4LFwr4keIC0UKDqGQVAiNlAHwoTMQg8wVVSxtn/k32VOvvtqFfu63qnXr40WKytZWrxJfVESvRjd761yg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/synapse@1.0.4':
+    resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
 
   '@cloudflare/kv-asset-handler@0.5.0':
     resolution: {integrity: sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg==}
@@ -5566,6 +5591,17 @@ snapshots:
   '@capacitor/core@8.5.0':
     dependencies:
       tslib: 2.8.1
+
+  '@capacitor/filesystem@8.0.0(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
+      '@capacitor/synapse': 1.0.4
+
+  '@capacitor/share@8.0.0(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
+
+  '@capacitor/synapse@1.0.4': {}
 
   '@cloudflare/kv-asset-handler@0.5.0': {}
 

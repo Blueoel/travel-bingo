@@ -296,9 +296,12 @@ test("shows a simple shareable bingo board with completed photo cells", async ()
   assert.match(pageSource, /className="bingo-notebook"/);
   assert.match(pageSource, /className="bingo-share-card"/);
   assert.match(pageSource, /navigator\.share/);
+  assert.match(pageSource, /Capacitor\.isNativePlatform\(\)/);
+  assert.match(pageSource, /Share\.share/);
+  assert.match(pageSource, /Filesystem\.writeFile/);
   assert.match(pageSource, /className="board-photo"/);
   assert.match(pageSource, /saveBingoPhoto/);
-  assert.match(cssSource, /\.auth-brand-showcase \{[\s\S]*?width:\s*244px/);
+  assert.match(cssSource, /\.auth-brand-showcase \{[\s\S]*?width:\s*min\(100%,\s*350px\)/);
 });
 
 async function render(pathname = "/") {
