@@ -301,7 +301,9 @@ test("shows a simple shareable bingo board with completed photo cells", async ()
   assert.match(pageSource, /Filesystem\.writeFile/);
   assert.match(pageSource, /className="board-photo"/);
   assert.match(pageSource, /saveBingoPhoto/);
-  assert.match(cssSource, /\.auth-brand-showcase \{[\s\S]*?width:\s*min\(100%,\s*350px\)/);
+  assert.match(cssSource, /\.auth-brand-showcase \{[\s\S]*?width:\s*min\(100%,\s*420px\)/);
+  assert.match(cssSource, /\.auth-brand-showcase img \{[\s\S]*?transform:\s*scale\(1\.5\)/);
+  assert.match(cssSource, /\.auth-shell \{[\s\S]*?background:\s*var\(--cream\)/);
 });
 
 async function render(pathname = "/") {
