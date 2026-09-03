@@ -83,7 +83,7 @@ describeWithDatabase("AuthService integration", () => {
     const registered = await service.register({ name: "처음이름", email, password: "first-password" });
     createdUserIds.push(registered.user.id);
 
-    const updated = await service.updateNickname(registered.user.id, "새로운이름");
+    const updated = await service.updateProfile(registered.user.id, { nickname: "새로운이름" });
     expect(updated.nickname).toBe("새로운이름");
 
     const secondarySession = await service.login({ email, password: "first-password" });

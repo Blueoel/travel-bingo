@@ -93,11 +93,11 @@ export class AuthController {
 
   @Patch("profile")
   async updateProfile(
-    @Body() body: { nickname?: string },
+    @Body() body: { nickname?: string; avatarDataUrl?: string | null },
     @Headers("cookie") cookieHeader: string | undefined,
   ): Promise<{ readonly user: { readonly id: string; readonly nickname: string; readonly email: string | null; readonly role: "USER" | "ADMIN" } }> {
     const userId = await this.authService.requireUserId(cookieHeader);
-    return { user: await this.authService.updateNickname(userId, body.nickname) };
+    return { user: await this.authService.updateProfile(userId, body) };
   }
 
   @Patch("password")

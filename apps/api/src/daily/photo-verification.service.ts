@@ -79,9 +79,11 @@ export class PhotoVerificationService {
       });
     }
 
-    const model = process.env.GEMINI_VISION_MODEL ?? "gemini-3.5-flash-lite";
+    const model = process.env.GEMINI_VISION_MODEL ?? "gemini-2.5-flash-lite";
     const image = splitImageDataUrl(command.imageDataUrl);
-    const response = await fetch(
+    let response: Response;
+    try {
+      response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
@@ -134,18 +136,35 @@ export class PhotoVerificationService {
         }),
         signal: AbortSignal.timeout(25_000),
       },
-    );
-    if (!response.ok) {
-      throw new BadGatewayException(
-        "The photo AI provider could not complete the review.",
       );
+    } catch {
+      return providerReviewFallback(model);
+    }
+    if (!response.ok) {
+      return providerReviewFallback(model);
     }
     const payload = (await response.json()) as unknown;
-    return enforceApprovalPolicy(
-      parseAnalysis(extractGeminiText(payload), model),
-      verificationPolicy,
-    );
+    try {
+      return enforceApprovalPolicy(
+        parseAnalysis(extractGeminiText(payload), model),
+        verificationPolicy,
+      );
+    } catch {
+      return providerReviewFallback(model);
+    }
   }
+}
+
+function providerReviewFallback(model: string): PhotoAnalysis {
+  return {
+    decision: "NEEDS_REVIEW",
+    targetVisible: false,
+    confidence: 0,
+    evidence: [],
+    failureReasons: ["AI 자동 판정을 완료하지 못했습니다."],
+    retryGuide: "사진은 관리자 검수 대기로 접수됩니다.",
+    model,
+  };
 }
 
 function requiresAiJudgement(

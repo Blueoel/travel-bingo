@@ -42,7 +42,7 @@ export class AuthService {
       data: {
         nickname: `여행자 ${suffix}`,
       },
-      select: { id: true, nickname: true, email: true, role: true },
+      select: { id: true, nickname: true, email: true, role: true, avatarDataUrl: true },
     });
     return this.createSession(user);
   }
@@ -81,7 +81,7 @@ export class AuthService {
         email,
         passwordHash: await hashPassword(password),
       },
-      select: { id: true, nickname: true, email: true, role: true },
+      select: { id: true, nickname: true, email: true, role: true, avatarDataUrl: true },
     });
     return this.createSession(user);
   }
@@ -109,6 +109,7 @@ export class AuthService {
             role: true,
             status: true,
             passwordHash: true,
+            avatarDataUrl: true,
           },
         })
       : null;
@@ -126,6 +127,7 @@ export class AuthService {
       nickname: account.nickname,
       email,
       role: account.role,
+      avatarDataUrl: account.avatarDataUrl,
     });
   }
 
@@ -146,7 +148,7 @@ export class AuthService {
       },
       include: {
         user: {
-          select: { id: true, nickname: true, email: true, role: true },
+          select: { id: true, nickname: true, email: true, role: true, avatarDataUrl: true },
         },
       },
     });
@@ -220,20 +222,27 @@ export class AuthService {
     });
   }
 
-  async updateNickname(userId: string, value?: string): Promise<{
+  async updateProfile(userId: string, input: { nickname?: string; avatarDataUrl?: string | null }): Promise<{
     readonly id: string;
     readonly nickname: string;
     readonly email: string | null;
     readonly role: "USER" | "ADMIN";
   }> {
-    const nickname = value?.trim();
+    const nickname = input.nickname?.trim();
     if (!nickname || nickname.length > 40) {
       throw new BadRequestException("닉네임은 1~40자로 입력해주세요.");
     }
+    const avatarDataUrl = input.avatarDataUrl;
+    if (avatarDataUrl !== undefined && avatarDataUrl !== null && !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(avatarDataUrl)) {
+      throw new BadRequestException("프로필 사진 형식이 올바르지 않습니다.");
+    }
+    if (avatarDataUrl && avatarDataUrl.length > 350_000) {
+      throw new BadRequestException("프로필 사진 용량이 너무 큽니다.");
+    }
     return this.database.user.update({
       where: { id: userId },
-      data: { nickname },
-      select: { id: true, nickname: true, email: true, role: true },
+      data: { nickname, ...(avatarDataUrl !== undefined ? { avatarDataUrl } : {}) },
+      select: { id: true, nickname: true, email: true, role: true, avatarDataUrl: true },
     });
   }
 
@@ -296,6 +305,7 @@ export class AuthService {
     readonly nickname: string;
     readonly email: string | null;
     readonly role: "USER" | "ADMIN";
+    readonly avatarDataUrl?: string | null;
   }): Promise<{ readonly token: string; readonly user: typeof user }> {
     const token = randomBytes(32).toString("base64url");
     await this.database.authSession.create({

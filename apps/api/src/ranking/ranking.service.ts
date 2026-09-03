@@ -61,19 +61,20 @@ export class RankingService {
         role: "USER",
         status: "ACTIVE",
       },
-      select: { id: true, nickname: true },
+      select: { id: true, nickname: true, avatarDataUrl: true },
     });
-    const nicknameById = new Map(users.map((user) => [user.id, user.nickname]));
+    const userById = new Map(users.map((user) => [user.id, user]));
     const sorted = grouped
       .map((entry) => ({
         userId: entry.userId,
-        nickname: nicknameById.get(entry.userId),
+        nickname: userById.get(entry.userId)?.nickname,
+        avatarDataUrl: userById.get(entry.userId)?.avatarDataUrl ?? null,
         points: entry._sum.points ?? 0,
       }))
       .filter(
         (
           entry,
-        ): entry is { userId: string; nickname: string; points: number } =>
+        ): entry is { userId: string; nickname: string; avatarDataUrl: string | null; points: number } =>
           Boolean(entry.nickname) && entry.points > 0,
       )
       .sort((left, right) =>
@@ -94,13 +95,14 @@ export class RankingService {
       (await this.database.user
         .findUnique({
           where: { id: userId },
-          select: { id: true, nickname: true },
+          select: { id: true, nickname: true, avatarDataUrl: true },
         })
         .then((user) =>
           user
             ? {
                 userId: user.id,
                 nickname: user.nickname,
+                avatarDataUrl: user.avatarDataUrl,
                 points: 0,
                 rank: entries.length + 1,
               }

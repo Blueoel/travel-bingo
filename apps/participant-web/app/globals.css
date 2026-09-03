@@ -1486,7 +1486,7 @@ button {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #769b69;
+  background: var(--flower);
 }
 .catalog-card-action {
   color: #5c7658;
@@ -3957,3 +3957,30 @@ nav .active img {
   font-weight: 900;
 }
 .region-cancel-dialog button:disabled { opacity: 0.55; }
+
+/* Profile and ranking avatars */
+.rank-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.my-settings-button {
+  position: absolute; right: 0; width: 38px; height: 38px; border: 0;
+  background: transparent; color: var(--deep-green); font-size: 19px;
+}
+.my-avatar { position: relative; padding: 0; overflow: visible; cursor: pointer; }
+.my-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.my-avatar i {
+  position: absolute; right: -4px; bottom: -3px; width: 20px; height: 20px;
+  display: grid; place-items: center; border: 2px solid var(--cream); border-radius: 50%;
+  background: var(--deep-green); color: #fff; font-family: sans-serif; font-size: 10px; font-style: normal;
+}
+.my-travel-note-summary {
+  width: 100%; min-height: 116px; display: grid; grid-template-columns: 74px 1fr auto;
+  align-items: center; gap: 10px; margin-top: 13px; padding: 14px;
+  border: 1px solid #dcd3c2; border-radius: 18px; background: #fffefa;
+  color: var(--deep-green); text-align: left;
+}
+.my-travel-note-summary > span:first-child { display: grid; gap: 4px; }
+.my-travel-note-summary small { color: #756f64; font-size: 10px; }
+.my-travel-note-summary strong { font-size: 20px; }
+.my-travel-note-summary > b { align-self: start; color: #718567; font-size: 10px; }
+.my-travel-stamps { display: grid; grid-template-columns: repeat(2, 40px); gap: 5px; }
+.my-travel-stamps img, .my-travel-stamps i { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.my-travel-stamps i { display: grid; place-items: center; background: #eef1d8; font-style: normal; }

@@ -132,6 +132,7 @@ type RankingEntry = {
   nickname: string;
   points: number;
   rank: number;
+  avatarDataUrl?: string | null;
 };
 type RankingResult = {
   entries: RankingEntry[];
@@ -146,6 +147,7 @@ type AccountUser = {
   nickname: string;
   email: string | null;
   role: "USER" | "ADMIN";
+  avatarDataUrl?: string | null;
 };
 type Announcement = {
   id: string;
@@ -504,6 +506,23 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+async function optimizeImage(file: File, maxSide = 1600, quality = 0.82): Promise<{ file: File; dataUrl: string }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image canvas is unavailable.");
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Image conversion failed.")), "image/jpeg", quality),
+  );
+  const optimized = new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "photo"}.jpg`, { type: "image/jpeg" });
+  return { file: optimized, dataUrl: await readAsDataUrl(optimized) };
+}
+
 const BINGO_PHOTO_DB = "travel-bingo-photos";
 
 function openBingoPhotoDatabase(): Promise<IDBDatabase> {
@@ -612,6 +631,7 @@ export default function Home() {
   const [badgeQueue, setBadgeQueue] = useState<Badge[]>([]);
   const [badgeCelebration, setBadgeCelebration] = useState<Badge | null>(null);
   const [profileNickname, setProfileNickname] = useState("");
+  const profilePhotoInput = useRef<HTMLInputElement>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
@@ -2404,17 +2424,24 @@ export default function Home() {
 
   const verifyPhoto = async (file?: File) => {
     if (!selected || !file) return;
-    pendingPhotoFile.current = file;
-    void saveBingoPhoto(bingoPhotoKey(selected.id), file).catch(() => undefined);
     setMessage(null);
     setPhotoReviewState("NONE");
     setPhotoVerificationId(null);
-    const preview = URL.createObjectURL(file);
-    setPhotoPreview(preview);
     setPhotoStage("REVIEWING");
+    let prepared: { file: File; dataUrl: string };
+    try {
+      prepared = await optimizeImage(file);
+      pendingPhotoFile.current = prepared.file;
+      void saveBingoPhoto(bingoPhotoKey(selected.id), prepared.file).catch(() => undefined);
+      setPhotoPreview(URL.createObjectURL(prepared.file));
+    } catch {
+      setPhotoStage("DETAIL");
+      setMessage("사진을 불러오지 못했어요. JPG, PNG 또는 WebP 사진을 선택해주세요.");
+      return;
+    }
     if (demoMode || !sessionId) {
       try {
-        const imageDataUrl = await readAsDataUrl(file);
+        const imageDataUrl = prepared.dataUrl;
         const response = await fetch("/api/photo-verify", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -2465,7 +2492,7 @@ export default function Home() {
       return;
     }
     try {
-      const imageDataUrl = await readAsDataUrl(file);
+      const imageDataUrl = prepared.dataUrl;
       const response = await apiFetch(
         `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
         {
@@ -2499,7 +2526,7 @@ export default function Home() {
         setMessage(
           pending
             ? "사진이 관리자 검수 대기 목록에 접수됐어요. 결과는 검수 후 반영됩니다."
-            : friendlyError(result.reasonCode ?? result.code),
+            : result.message || friendlyError(result.reasonCode ?? result.code),
         );
         return;
       }
@@ -2585,6 +2612,35 @@ export default function Home() {
     );
     setSelected({ ...selected, done: true });
     setPhotoStage("COMPLETE");
+  };
+
+  const changeProfilePhoto = async (file?: File) => {
+    if (!file || !account) return;
+    setSettingsSaving(true);
+    setSettingsStatus(null);
+    try {
+      const image = await optimizeImage(file, 320, 0.8);
+      const response = await apiFetch("/auth/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nickname: account.nickname, avatarDataUrl: image.dataUrl }),
+      });
+      const result = (await response.json()) as { user?: AccountUser; message?: string };
+      if (!response.ok || !result.user) throw new Error(result.message ?? "프로필 사진을 저장하지 못했어요.");
+      const updatedUser = result.user;
+      setAccount(updatedUser);
+      setRanking((current) => ({
+        ...current,
+        entries: current.entries.map((entry) => entry.userId === updatedUser.id ? { ...entry, avatarDataUrl: updatedUser.avatarDataUrl } : entry),
+        me: current.me?.userId === updatedUser.id ? { ...current.me, avatarDataUrl: updatedUser.avatarDataUrl } : current.me,
+      }));
+      setSettingsStatus("프로필 사진을 변경했어요.");
+    } catch (error) {
+      setSettingsStatus(error instanceof Error ? error.message : "프로필 사진을 저장하지 못했어요.");
+    } finally {
+      setSettingsSaving(false);
+      if (profilePhotoInput.current) profilePhotoInput.current.value = "";
+    }
   };
 
   const shareBingoBoard = async () => {
@@ -3960,7 +4016,7 @@ export default function Home() {
             <div className="my-rank-card">
               <strong>{ranking.me.rank}</strong>
               <span className="rank-avatar">
-                {ranking.me.nickname.slice(0, 1)}
+                {ranking.me.avatarDataUrl ? <img src={ranking.me.avatarDataUrl} alt="" /> : ranking.me.nickname.slice(0, 1)}
               </span>
               <b>{ranking.me.nickname}</b>
               <span>{ranking.me.points.toLocaleString()} P</span>
@@ -3978,7 +4034,7 @@ export default function Home() {
                     : entry.rank}
                 </strong>
                 <span className="rank-avatar">
-                  {entry.nickname.slice(0, 1)}
+                  {entry.avatarDataUrl ? <img src={entry.avatarDataUrl} alt="" /> : entry.nickname.slice(0, 1)}
                 </span>
                 <b>
                   {entry.nickname}
@@ -4010,7 +4066,8 @@ export default function Home() {
                 ←
               </button>
             )}
-            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "settings" ? "설정" : "마이"}</h1>
+            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "settings" ? "설정" : "Travel Bingo"}</h1>
+            {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}>⚙</button>}
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -4161,15 +4218,22 @@ export default function Home() {
           ) : (
             <>
           <div className="my-profile-card">
-            <span className="my-avatar">
-              {(account?.nickname ?? nickname).slice(0, 1)}
-            </span>
+            <button className="my-avatar" type="button" aria-label="프로필 사진 변경" onClick={() => profilePhotoInput.current?.click()}>
+              {account?.avatarDataUrl ? <img src={account.avatarDataUrl} alt="현재 프로필" /> : (account?.nickname ?? nickname).slice(0, 1)}
+              <i aria-hidden="true">✎</i>
+            </button>
+            <input ref={profilePhotoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => void changeProfilePhoto(event.target.files?.[0])} />
             <div>
               <h2>{account?.nickname ?? nickname}</h2>
-              <p>{account?.email ?? "체험 계정"}</p>
+              <p>Lv. {Math.max(1, Math.floor((badgeSummary?.totals.completedMissions ?? completeCount) / 10) + 1)}</p>
             </div>
-            <span className="level-badge">산책자</span>
+            <span className="level-badge">사진 변경</span>
           </div>
+          <button className="my-travel-note-summary" type="button" onClick={() => setMyView("travel-note")}>
+            <span><small>여행 노트</small><strong>{new Date().getFullYear()}</strong></span>
+            <span className="my-travel-stamps" aria-hidden="true">{explorationRecords.slice(0, 4).map((record) => record.photoUrl ? <img key={record.regionCode} src={record.photoUrl} alt="" /> : <i key={record.regionCode}>⌖</i>)}</span>
+            <b>더 보기 ›</b>
+          </button>
           <div className="my-stats">
             <div>
               <b>{(badgeSummary?.totals.points ?? points).toLocaleString()}</b>
