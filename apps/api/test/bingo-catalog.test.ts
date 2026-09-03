@@ -131,6 +131,45 @@ function boardMissionIds(board: { cells: readonly { mission: unknown }[] }) {
 }
 
 describe("BingoCatalogService", () => {
+  it("abandons an active region session and reverses its awarded points", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const create = vi.fn().mockResolvedValue({});
+    const database = {
+      bingoSession: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "region-session",
+          userId: "user-1",
+          status: "ACTIVE",
+          totalPoints: 70,
+          template: { type: "REGION" },
+        }),
+      },
+      $transaction: vi.fn(async (operation: (transaction: unknown) => Promise<void>) =>
+        operation({
+          bingoSession: { update },
+          pointLedger: { create },
+        }),
+      ),
+    };
+
+    await new BingoCatalogService(database as never).cancelRegionSession(
+      "user-1",
+      "region-session",
+    );
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "region-session" },
+      data: { status: "ABANDONED" },
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sessionId: "region-session",
+        reason: "SESSION_CANCELLED",
+        points: -70,
+      }),
+    });
+  });
+
   it("lists ongoing sessions before available active-region templates", async () => {
     const database = {
       bingoSession: {

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -43,6 +44,19 @@ export class BingoCatalogController {
       await this.auth.requireUserId(cookieHeader, userId),
       sessionId,
     );
+  }
+
+  @Delete("sessions/:sessionId")
+  async cancelSession(
+    @Param("sessionId") sessionId: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ): Promise<{ readonly success: true }> {
+    await this.catalog.cancelRegionSession(
+      await this.auth.requireUserId(cookieHeader, userId),
+      sessionId,
+    );
+    return { success: true };
   }
 
   @Post(":templateId/sessions")

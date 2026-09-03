@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -68,6 +69,7 @@ export class BingoCatalogService {
       this.database.bingoSession.findMany({
         where: {
           userId,
+          status: { not: "ABANDONED" },
           OR: [
             { template: { type: { not: "DAILY" } } },
             {
@@ -162,6 +164,39 @@ export class BingoCatalogService {
     return toBoardResult(session);
   }
 
+  async cancelRegionSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.database.bingoSession.findFirst({
+      where: { id: sessionId, userId },
+      include: { template: { select: { type: true } } },
+    });
+    if (!session) throw new NotFoundException("빙고 진행 기록을 찾을 수 없습니다.");
+    if (normalizeType(session.template.type) !== "REGION") {
+      throw new BadRequestException("지역 여행 빙고만 취소할 수 있습니다.");
+    }
+    if (session.status !== "ACTIVE") {
+      throw new BadRequestException("진행 중인 지역 빙고만 취소할 수 있습니다.");
+    }
+
+    await this.database.$transaction(async (transaction) => {
+      await transaction.bingoSession.update({
+        where: { id: session.id },
+        data: { status: "ABANDONED" },
+      });
+      if (session.totalPoints > 0) {
+        await transaction.pointLedger.create({
+          data: {
+            userId,
+            sessionId: session.id,
+            referenceType: "BINGO_SESSION",
+            referenceId: session.id,
+            reason: "SESSION_CANCELLED",
+            points: -session.totalPoints,
+          },
+        });
+      }
+    });
+  }
+
   async createOrGetSession(input: {
     readonly userId: string;
     readonly templateId: string;
@@ -170,7 +205,11 @@ export class BingoCatalogService {
   }): Promise<BingoBoardResult> {
     const now = input.now ?? new Date();
     const existing = await this.database.bingoSession.findFirst({
-      where: { userId: input.userId, templateId: input.templateId },
+      where: {
+        userId: input.userId,
+        templateId: input.templateId,
+        status: { not: "ABANDONED" },
+      },
       include: boardSessionInclude,
       orderBy: { updatedAt: "desc" },
     });
@@ -268,7 +307,11 @@ export class BingoCatalogService {
     } catch (error) {
       if (!isUniqueConstraintError(error)) throw error;
       const concurrent = await this.database.bingoSession.findFirst({
-        where: { userId: input.userId, templateId: input.templateId },
+        where: {
+          userId: input.userId,
+          templateId: input.templateId,
+          status: { not: "ABANDONED" },
+        },
         include: boardSessionInclude,
         orderBy: { updatedAt: "desc" },
       });

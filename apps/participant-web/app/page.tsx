@@ -682,6 +682,8 @@ export default function Home() {
   } | null>(null);
   const [bingoCatalog, setBingoCatalog] = useState<BingoCatalogItem[]>([]);
   const [bingoCatalogLoading, setBingoCatalogLoading] = useState(false);
+  const [cancelRegionStep, setCancelRegionStep] = useState<0 | 1 | 2>(0);
+  const [cancelRegionPending, setCancelRegionPending] = useState(false);
   const [regionDirectory, setRegionDirectory] = useState<RegionDirectoryItem[]>([]);
   const [regionDirectoryLoading, setRegionDirectoryLoading] = useState(false);
   const [regionSearch, setRegionSearch] = useState("");
@@ -1192,6 +1194,32 @@ export default function Home() {
     const response = await apiFetch(`/bingos/sessions/${sessionId}`);
     if (!response.ok) throw new Error("Bingo session unavailable");
     applySession((await response.json()) as DailySession);
+  };
+
+  const cancelCurrentRegionBingo = async () => {
+    if (!sessionId || currentBingo.type !== "REGION" || cancelRegionPending) return;
+    setCancelRegionPending(true);
+    try {
+      const response = await apiFetch(`/bingos/sessions/${sessionId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => ({})) as { message?: string };
+      if (!response.ok) throw new Error(payload.message ?? "여행 빙고를 취소하지 못했어요.");
+      setCancelRegionStep(0);
+      setSelected(null);
+      await loadDaily(true);
+      const catalogResponse = await apiFetch("/bingos");
+      if (catalogResponse.ok) {
+        const catalogPayload = await catalogResponse.json() as { items: BingoCatalogItem[] };
+        setBingoCatalog(catalogPayload.items);
+      }
+      setActiveTab("catalog");
+      setMessage("지역 여행 빙고를 취소하고 진행 기록을 초기화했어요.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "여행 빙고를 취소하지 못했어요.");
+    } finally {
+      setCancelRegionPending(false);
+    }
   };
 
   useEffect(() => {
@@ -2948,9 +2976,6 @@ export default function Home() {
           </p>
           <h1>{currentBingo.title}</h1>
         </div>
-        <button type="button" className="bingo-share-top" onClick={() => void shareBingoBoard()} disabled={sharingBingo} aria-label="빙고판 이미지 공유">
-          {sharingBingo ? "…" : "↗"}
-        </button>
       </header>
       {!online && (
         <div className="offline-banner">
@@ -3037,6 +3062,11 @@ export default function Home() {
         <b>{sharingBingo ? "빙고판 만드는 중…" : "빙고판 공유하기"}</b>
         <i aria-hidden="true">↗</i>
       </button>
+      {currentBingo.type === "REGION" && sessionId && (
+        <button type="button" className="region-bingo-cancel" onClick={() => setCancelRegionStep(1)}>
+          이 여행 빙고 취소하기
+        </button>
+      )}
         </>
       )}
       {activeTab === "home" && (
@@ -4471,9 +4501,11 @@ export default function Home() {
             className={`mission-sheet ${selected.kind === "PHOTO" ? "photo-sheet" : ""} ${selected.interactionType ? "journal-sheet" : ""}`}
             onClick={(event) => event.stopPropagation()}
           >
-            <button className="close" onClick={closeMission}>
-              ×
-            </button>
+            <header className="mission-detail-header">
+              <button className="close" onClick={closeMission} aria-label="미션 상세 닫기">←</button>
+              <b>미션 상세</b>
+              <span aria-hidden="true">♡</span>
+            </header>
             {selected.kind === "PHOTO" && photoStage === "COMPLETE" ? (
               <div className="mission-complete">
                 <p className="sheet-kicker">미션 완료</p>
@@ -4495,9 +4527,7 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <p className="sheet-kicker">
-                  미션 상세 {selected.kind === "PHOTO" ? "(사진 인증)" : ""}
-                </p>
+                <div className="mission-visual-card">
                 {photoPreview ? (
                   <div className="photo-preview">
                     <img src={photoPreview} alt="선택한 인증 사진 미리보기" />
@@ -4516,6 +4546,8 @@ export default function Home() {
                     {selected.done ? "✓" : icon[selected.kind]}
                   </span>
                 )}
+                </div>
+                <span className="mission-type-chip">{selected.verificationLabel ?? selected.kind.replace("_", " ")}</span>
                 <h2>{selected.title}</h2>
                 <p className="description">{selected.description}</p>
                 <div className="detail-list">
@@ -4912,6 +4944,32 @@ export default function Home() {
                 )}
               </>
             )}
+          </section>
+        </div>
+      )}
+      {cancelRegionStep > 0 && (
+        <div className="modal-backdrop region-cancel-backdrop" onClick={() => !cancelRegionPending && setCancelRegionStep(0)}>
+          <section className="region-cancel-dialog" role="dialog" aria-modal="true" aria-labelledby="region-cancel-title" onClick={(event) => event.stopPropagation()}>
+            <span className="region-cancel-icon" aria-hidden="true">!</span>
+            <p>{cancelRegionStep === 1 ? "여행 빙고 취소" : "최종 확인"}</p>
+            <h2 id="region-cancel-title">
+              {cancelRegionStep === 1 ? "이 여행 빙고를 취소할까요?" : "정말 취소할까요?"}
+            </h2>
+            <p className="region-cancel-warning">
+              {cancelRegionStep === 1
+                ? `${currentBingo.regionName ?? "해당 지역"} 빙고판과 지금까지의 미션 진행 기록이 모두 초기화됩니다.`
+                : "초기화된 진행 기록은 복구할 수 없으며, 획득한 점수도 함께 되돌아갑니다."}
+            </p>
+            <div>
+              <button type="button" className="secondary" onClick={() => setCancelRegionStep(0)} disabled={cancelRegionPending}>계속 도전하기</button>
+              {cancelRegionStep === 1 ? (
+                <button type="button" className="danger" onClick={() => setCancelRegionStep(2)}>취소 계속하기</button>
+              ) : (
+                <button type="button" className="danger" onClick={() => void cancelCurrentRegionBingo()} disabled={cancelRegionPending}>
+                  {cancelRegionPending ? "취소하는 중…" : "빙고 취소하기"}
+                </button>
+              )}
+            </div>
           </section>
         </div>
       )}
