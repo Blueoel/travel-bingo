@@ -1,13 +1,14 @@
 import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 
 import { AppModule } from "./app.module.js";
 import { readApiEnvironment } from "./config/environment.js";
 
 async function bootstrap(): Promise<void> {
   const environment = readApiEnvironment();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Photo evidence is sent as a base64 data URL. Keep this slightly above the
   // verifier's 8 MB binary limit because base64 adds roughly 33% overhead.
