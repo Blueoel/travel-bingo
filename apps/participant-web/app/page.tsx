@@ -722,6 +722,9 @@ export default function Home() {
   >([]);
   const [regionRecommendationsLoading, setRegionRecommendationsLoading] =
     useState(false);
+  const [regionImageFailures, setRegionImageFailures] = useState<
+    Record<string, boolean>
+  >({});
   const [pendingRegionChallenge, setPendingRegionChallenge] = useState<{
     region: RegionRecommendation;
     bingo: BingoCatalogItem;
@@ -1615,6 +1618,14 @@ export default function Home() {
       (groups[year] ??= []).push(record);
       return groups;
     }, {});
+  const travelSummaryRecords = explorationRecords
+    .filter((record) => record.lineCount > 0 || record.photoUrl)
+    .sort((left, right) =>
+      (right.selectedAt ?? "").localeCompare(left.selectedAt ?? ""),
+    );
+  const latestTravelPhoto = travelSummaryRecords.find(
+    (record) => record.photoUrl,
+  );
   const myBingoCatalog = bingoCatalog.filter(
     (item) => item.type !== "REGION" || item.state !== "AVAILABLE",
   );
@@ -3218,19 +3229,22 @@ export default function Home() {
                 key={region.id}
                 onClick={() => setPendingRegionChallenge({ region, bingo })}
               >
-                <span
-                  className={region.attraction?.imageUrl ? "region-image" : ""}
-                  style={
-                    region.attraction?.imageUrl
-                      ? {
-                          backgroundImage: `url("${region.attraction.imageUrl}")`,
-                        }
-                      : undefined
-                  }
-                >
-                  {region.attraction?.imageUrl
-                    ? ""
-                    : ["🏯", "🌊", "🏡"][index % 3]}
+                <span className="region-card-visual">
+                  {region.attraction?.imageUrl && !regionImageFailures[region.attraction.imageUrl] ? (
+                    <img
+                      src={region.attraction.imageUrl}
+                      alt={`${region.attraction.title} 관광지`}
+                      referrerPolicy="no-referrer"
+                      onError={() =>
+                        setRegionImageFailures((current) => ({
+                          ...current,
+                          [region.attraction!.imageUrl!]: true,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <i aria-hidden="true">{["🏯", "🌊", "🏡"][index % 3]}</i>
+                  )}
                 </span>
                 <b>{region.name}</b>
                 <small>
@@ -4249,7 +4263,17 @@ export default function Home() {
           </div>
           <button className="my-travel-note-summary" type="button" onClick={() => setMyView("travel-note")}>
             <span><small>여행 노트</small><strong>{new Date().getFullYear()}</strong></span>
-            <span className="my-travel-stamps" aria-hidden="true">{explorationRecords.slice(0, 4).map((record) => record.photoUrl ? <img key={record.regionCode} src={record.photoUrl} alt="" /> : <i key={record.regionCode}>⌖</i>)}</span>
+            <span className="my-travel-preview">
+              {latestTravelPhoto?.photoUrl ? (
+                <img src={latestTravelPhoto.photoUrl} alt={`${latestTravelPhoto.regionName} 여행 대표 사진`} />
+              ) : (
+                <i aria-hidden="true">▧</i>
+              )}
+              <span>
+                <strong>방문한 지역 {travelSummaryRecords.length}곳</strong>
+                <small>대표 사진 {travelSummaryRecords.filter((record) => record.photoUrl).length}장</small>
+              </span>
+            </span>
             <b>더 보기 ›</b>
           </button>
           <div className="my-stats">

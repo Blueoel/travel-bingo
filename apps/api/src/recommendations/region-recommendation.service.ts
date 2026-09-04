@@ -245,7 +245,9 @@ export class RegionRecommendationService {
             ? {
                 title: kto.title ?? region.name,
                 address: kto.addr1 ?? null,
-                imageUrl: kto.firstimage || kto.firstimage2 || null,
+                imageUrl: normalizeImageUrl(
+                  kto.firstimage || kto.firstimage2 || null,
+                ),
                 latitude: Number(kto.mapy) || center.latitude,
                 longitude: Number(kto.mapx) || center.longitude,
                 source: "KTO" as const,
@@ -254,7 +256,7 @@ export class RegionRecommendationService {
               ? {
                   title: saved.title,
                   address: saved.address,
-                  imageUrl: saved.imageUrl,
+                  imageUrl: normalizeImageUrl(saved.imageUrl),
                   latitude: Number(saved.latitude),
                   longitude: Number(saved.longitude),
                   source: "DATABASE" as const,
@@ -312,7 +314,9 @@ export class RegionRecommendationService {
               contentTypeId: item.contenttypeid ?? null,
               title: item.title!,
               address: item.addr1 ?? null,
-              imageUrl: item.firstimage || item.firstimage2 || null,
+              imageUrl: normalizeImageUrl(
+                item.firstimage || item.firstimage2 || null,
+              ),
               latitude: Number(item.mapy),
               longitude: Number(item.mapx),
               source: "KTO" as const,
@@ -344,7 +348,7 @@ export class RegionRecommendationService {
             contentTypeId: place.contentType,
             title: place.title,
             address: place.address,
-            imageUrl: place.imageUrl,
+            imageUrl: normalizeImageUrl(place.imageUrl),
             latitude: Number(place.latitude),
             longitude: Number(place.longitude),
             source: "DATABASE" as const,
@@ -576,7 +580,7 @@ export class RegionRecommendationService {
 
     return {
       ...recommendation,
-      imageUrl: photo.galWebImageUrl,
+      imageUrl: normalizeImageUrl(photo.galWebImageUrl),
       photoCredit: photo.galPhotographer
         ? `한국관광공사 포토코리아 · ${photo.galPhotographer}`
         : "한국관광공사 포토코리아",
@@ -759,6 +763,15 @@ export function normalizeAttractionName(value: unknown): string {
 
 export function normalizeRegionName(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("ko").replace(/\s+/g, "");
+}
+
+function normalizeImageUrl(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  if (normalized.startsWith("http://")) {
+    return `https://${normalized.slice("http://".length)}`;
+  }
+  return normalized;
 }
 
 function isMetropolitanRegion(name: string): boolean {
