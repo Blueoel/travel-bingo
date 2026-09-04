@@ -2919,7 +2919,7 @@ nav .active img {
   display: grid;
   gap: 10px;
   margin: 20px 0;
-  padding: 22px 18px 14px 28px;
+  padding: 20px 18px 14px;
   border: 1px solid #d8c7a8;
   background:
     repeating-linear-gradient(
@@ -2930,19 +2930,16 @@ nav .active img {
     #fffaf0;
   box-shadow: 5px 6px 0 #eadfcd;
   text-align: left;
-  transform: rotate(-0.3deg);
+  transform: none;
 }
 .journal-paper:before {
-  content: "◦\\A◦\\A◦\\A◦\\A◦";
-  white-space: pre;
-  position: absolute;
-  left: -7px;
-  top: 13px;
-  color: #9b8662;
-  font-size: 23px;
-  line-height: 28px;
+  content: none;
 }
 .journal-paper label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin: 0 0 4px;
   color: #344a33;
   font-family: "Segoe Print", "Comic Sans MS", cursive;
   font-size: 17px;
