@@ -2583,19 +2583,25 @@ nav .active img {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  min-height: 0;
+  overflow: hidden;
 }
 .mission-sheet {
+  box-sizing: border-box;
   width: min(100%, 480px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: #fffdf8;
   border-radius: 26px 26px 0 0;
-  padding: 28px 24px 30px;
+  padding: 28px 24px calc(30px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   position: relative;
   animation: up 0.25s ease;
 }
 .photo-sheet {
-  max-height: 92dvh;
-  overflow-y: auto;
   padding-top: 22px;
 }
 .sheet-kicker {
