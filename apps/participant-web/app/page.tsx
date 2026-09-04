@@ -250,6 +250,23 @@ type MemoryPhoto = {
 const API_BASE = "/api/backend";
 const apiFetch = (path: string, init?: RequestInit) =>
   fetch(`${API_BASE}${path}`, { ...init, credentials: "include" });
+const SESSION_HINT_KEY = "travel-bingo-session-known";
+
+async function fetchCurrentUserWithWakeRetry(): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await apiFetch("/auth/me");
+      lastResponse = response;
+      if (response.status !== 503) return response;
+    } catch {
+      // Render 무료 서버가 다시 깨어나는 동안 잠시 기다린 뒤 재시도합니다.
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 1_200 * (attempt + 1)));
+  }
+  if (lastResponse) return lastResponse;
+  throw new Error("Authentication unavailable");
+}
 const demoRanking: RankingEntry[] = [
   { userId: "demo-1", nickname: "산책왕", points: 1980, rank: 1 },
   { userId: "demo-2", nickname: "걷는감자", points: 1850, rank: 2 },
@@ -780,6 +797,7 @@ export default function Home() {
   const qrScannerControls = useRef<IScannerControls | null>(null);
   const trackingWatchId = useRef<number | null>(null);
   const trackingStartedAt = useRef<number | null>(null);
+  const autoTrackingSubmission = useRef(false);
   const nativeBackHandler = useRef<() => void>(() => undefined);
   const lastNativeBackPressAt = useRef(0);
   const lastTrackingPosition = useRef<{
@@ -833,8 +851,9 @@ export default function Home() {
 
   const loadDaily = async (preserveAuthenticated = false) => {
     try {
-      const authResponse = await apiFetch("/auth/me");
+      const authResponse = await fetchCurrentUserWithWakeRetry();
       if (authResponse.status === 401) {
+        window.localStorage.removeItem(SESSION_HINT_KEY);
         if (preserveAuthenticated) {
           setAuthStatus("authenticated");
           setDemoMode(true);
@@ -851,6 +870,7 @@ export default function Home() {
       setNickname(auth.user.nickname);
       setAccount(auth.user);
       setAuthStatus("authenticated");
+      window.localStorage.setItem(SESSION_HINT_KEY, "1");
 
       let response = await apiFetch("/daily-sessions/today");
       if (response.status === 404) {
@@ -870,8 +890,11 @@ export default function Home() {
       applySession((await response.json()) as DailySession);
       setDemoMode(false);
     } catch {
+      const hasKnownSession = window.localStorage.getItem(SESSION_HINT_KEY) === "1";
       setAuthStatus((current) =>
-        current === "checking" ? "unauthenticated" : "authenticated",
+        current === "authenticated" || hasKnownSession
+          ? "authenticated"
+          : "unauthenticated",
       );
       setDemoMode(true);
       const basePoints = demoMissions
@@ -1183,6 +1206,7 @@ export default function Home() {
     setNickname(user.nickname);
     setLoading(true);
     setAuthStatus("authenticated");
+    window.localStorage.setItem(SESSION_HINT_KEY, "1");
     await loadDaily(true);
   };
 
@@ -1927,6 +1951,7 @@ export default function Home() {
     setNewPasswordConfirm("");
     setWithdrawPassword("");
     setSettingsStatus(null);
+    window.localStorage.removeItem(SESSION_HINT_KEY);
   };
 
   const logout = async () => {
@@ -2037,6 +2062,7 @@ export default function Home() {
     });
     setTrackingMissionId(null);
     setTrackingSessionId(null);
+    autoTrackingSubmission.current = false;
     window.localStorage.removeItem("travel-bingo-active-gps");
   };
 
@@ -2398,6 +2424,7 @@ export default function Home() {
       setItems(nextItems);
       setLineKeys(nextLineKeys);
       setPoints((current) => current + selected.points);
+      window.alert(`${selected.title} 미션을 달성했어요! 빙고판에 성공 표시를 반영했습니다.`);
       setSelected(null);
       resetTracking();
       return;
@@ -2434,6 +2461,7 @@ export default function Home() {
       resetTracking();
       await reloadCurrentBingo();
       await syncEarnedBadges();
+      window.alert(`${selected.title} 미션을 달성했어요! 빙고판에 성공 표시를 반영했습니다.`);
     } catch {
       setMessage("GPS 기록을 서버에 전송하지 못했어요. 다시 시도해주세요.");
     } finally {
@@ -2914,6 +2942,27 @@ export default function Home() {
     trackingTarget > 0
       ? Math.min(100, Math.round((trackingCurrent / trackingTarget) * 100))
       : 0;
+
+  useEffect(() => {
+    if (!selected || selected.done || selected.kind !== "WALK_DISTANCE") return;
+    if (!tracking.active) startTracking();
+  }, [selected?.id, selected?.done, selected?.kind]);
+
+  useEffect(() => {
+    if (
+      !selected ||
+      selected.done ||
+      selected.kind !== "WALK_DISTANCE" ||
+      !trackingBelongsToSelected ||
+      !tracking.active ||
+      !trackingReady ||
+      autoTrackingSubmission.current
+    ) return;
+    autoTrackingSubmission.current = true;
+    void submitTracking().finally(() => {
+      autoTrackingSubmission.current = false;
+    });
+  }, [selected?.id, selected?.done, selected?.kind, trackingBelongsToSelected, tracking.active, trackingReady]);
   const recordMission = selected?.interactionType === "TEXT";
   const timerMission = selected?.interactionType === "TIMER";
   const qrMission = selected?.kind === "QR_SCAN";
@@ -4988,7 +5037,13 @@ export default function Home() {
                       )
                     ) : trackingMission ? (
                       <div className="tracking-actions">
-                        {trackingBelongsToSelected && tracking.active ? (
+                        {selected.kind === "WALK_DISTANCE" ? (
+                          <p className="auto-tracking-note" role="status">
+                            {trackingReady
+                              ? "목표 거리를 달성해 자동으로 인증하고 있어요."
+                              : "미션을 연 순간부터 GPS 거리를 자동으로 기록해요."}
+                          </p>
+                        ) : trackingBelongsToSelected && tracking.active ? (
                           <button
                             className="secondary"
                             onClick={stopTracking}
@@ -5011,19 +5066,19 @@ export default function Home() {
                               : "GPS 기록 시작하기"}
                           </button>
                         )}
-                        <button
-                          className="primary"
-                          onClick={submitTracking}
-                          disabled={
-                            selected.done || submitting || !trackingReady
-                          }
-                        >
-                          {submitting
-                            ? "인증하고 있어요…"
-                            : trackingReady
-                              ? "미션 인증 완료하기"
-                              : "목표 달성 후 인증 가능"}
-                        </button>
+                        {selected.kind !== "WALK_DISTANCE" && (
+                          <button
+                            className="primary"
+                            onClick={submitTracking}
+                            disabled={selected.done || submitting || !trackingReady}
+                          >
+                            {submitting
+                              ? "인증하고 있어요…"
+                              : trackingReady
+                                ? "미션 인증 완료하기"
+                                : "목표 달성 후 인증 가능"}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <button
