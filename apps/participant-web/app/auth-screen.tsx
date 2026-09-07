@@ -239,30 +239,6 @@ export function AuthScreen({
         </button>
       </form>
 
-      {mode === "login" && (
-        <>
-          <div className="auth-divider">
-            <span>또는</span>
-          </div>
-          <div className="social-actions">
-            <button
-              type="button"
-              onClick={() => setMessage("Apple 로그인은 곧 연결할 예정이에요.")}
-            >
-              <b>●</b> Apple로 계속하기
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setMessage("Google 로그인은 곧 연결할 예정이에요.")
-              }
-            >
-              <b className="google-mark">G</b> Google로 계속하기
-            </button>
-          </div>
-        </>
-      )}
-
       <p className="auth-switch">
         {mode === "login" ? "계정이 없으신가요?" : "이미 계정이 있으신가요?"}
         <button
