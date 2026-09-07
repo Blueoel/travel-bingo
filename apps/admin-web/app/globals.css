@@ -1603,10 +1603,15 @@ textarea {
 }
 .reportAdminList footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 14px;
 }
+.reportAdminList footer textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #d8ded8; border-radius: 9px; font: inherit; line-height: 1.5; resize: vertical; }
+.reportAdminList .adminReply { margin-top: 12px; padding: 11px; border-radius: 10px; background: #edf5eb; }
+.reportAdminList .adminReply b { color: #416344; font-size: 12px; }
+.reportAdminList .adminReply p { min-height: 0; margin: 5px 0 0; }
 @media (max-width: 560px) {
   .qrMissionModal {
     padding: 24px 18px;

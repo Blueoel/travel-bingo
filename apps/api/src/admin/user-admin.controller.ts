@@ -69,8 +69,8 @@ export class UserAdminController {
   }
 
   @Patch("reports/:id")
-  async resolveReport(@Headers("cookie") cookie: string | undefined, @Headers("x-user-id") developmentUserId: string | undefined, @Param("id") id: string, @Body() body: { status?: "RESOLVED" | "DISMISSED" }): Promise<unknown> {
+  async resolveReport(@Headers("cookie") cookie: string | undefined, @Headers("x-user-id") developmentUserId: string | undefined, @Param("id") id: string, @Body() body: { status?: "RESOLVED" | "DISMISSED"; adminReply?: string }): Promise<unknown> {
     await this.auth.requireAdminId(cookie, developmentUserId);
-    return this.users.resolveReport(id, body.status ?? "RESOLVED");
+    return this.users.resolveReport(id, body.status ?? "RESOLVED", body.adminReply);
   }
 }

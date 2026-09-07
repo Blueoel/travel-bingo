@@ -188,7 +188,11 @@ export class UserAdminService {
     });
   }
 
-  async resolveReport(id: string, status: "RESOLVED" | "DISMISSED"): Promise<unknown> {
-    return this.database.userReport.update({ where: { id }, data: { status, resolvedAt: new Date() } });
+  async resolveReport(id: string, status: "RESOLVED" | "DISMISSED", adminReply?: string): Promise<unknown> {
+    const reply = adminReply?.trim().slice(0, 1000) || undefined;
+    return this.database.userReport.update({
+      where: { id },
+      data: { status, resolvedAt: new Date(), ...(reply ? { adminReply: reply, respondedAt: new Date() } : {}) },
+    });
   }
 }

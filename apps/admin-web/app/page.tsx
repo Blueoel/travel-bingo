@@ -93,8 +93,11 @@ type UserSummary = {
 };
 type UserReport = {
   id: string;
+  type: "USER_REPORT" | "INQUIRY";
+  subject: string | null;
   reason: string;
   detail: string | null;
+  adminReply: string | null;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
   createdAt: string;
   reporter: { nickname: string; email: string | null };
@@ -103,7 +106,7 @@ type UserReport = {
     nickname: string;
     email: string | null;
     status: string;
-  };
+  } | null;
 };
 type Announcement = {
   id: string;
@@ -372,6 +375,7 @@ export default function AdminPage() {
   const [missionQrHistoryLoading, setMissionQrHistoryLoading] = useState(false);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [reports, setReports] = useState<UserReport[]>([]);
+  const [reportReplies, setReportReplies] = useState<Record<string, string>>({});
   const [reportStatus, setReportStatus] = useState<
     "OPEN" | "RESOLVED" | "DISMISSED"
   >("OPEN");
@@ -959,12 +963,12 @@ export default function AdminPage() {
   useEffect(() => {
     if (view === "reports") void loadReports();
   }, [view, reportStatus]);
-  async function resolveReport(id: string, status: "RESOLVED" | "DISMISSED") {
+  async function resolveReport(id: string, status: "RESOLVED" | "DISMISSED", adminReply?: string) {
     const result = await fetch(`${API}/admin/users/reports/${id}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "content-type": "application/json", "x-user-id": ADMIN },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, adminReply }),
     });
     if (!result.ok) return setError("신고 상태를 변경하지 못했습니다.");
     setNotice(
@@ -975,6 +979,7 @@ export default function AdminPage() {
     await loadReports();
   }
   async function suspendReportedUser(report: UserReport) {
+    if (!report.reported) return;
     if (
       !window.confirm(
         `${report.reported.nickname} 계정의 이용을 정지하고 신고를 처리 완료할까요?`,
@@ -1441,7 +1446,7 @@ export default function AdminPage() {
             className={view === "reports" ? "selected" : ""}
             onClick={() => setView("reports")}
           >
-            사용자 신고
+            신고·문의
           </button>
           <button
             className={view === "badges" ? "selected" : ""}
@@ -1484,7 +1489,7 @@ export default function AdminPage() {
                         : view === "badges"
                           ? "배지 관리"
                           : view === "reports"
-                            ? "사용자 신고"
+                            ? "신고·문의"
                             : view === "settlements"
                               ? "랭킹 정산"
                               : view === "diagnostics"
@@ -1505,7 +1510,7 @@ export default function AdminPage() {
                         : view === "badges"
                           ? "배지 획득 조건과 참가자 앱 표시 순서를 관리합니다."
                           : view === "reports"
-                            ? "참가자가 접수한 신고를 확인하고 처리합니다."
+                            ? "참가자가 접수한 신고와 문의를 확인하고 답변합니다."
                             : view === "settlements"
                               ? "일간·주간·월간 전체 랭킹의 보상 지급 결과와 오류를 확인합니다."
                               : view === "diagnostics"
@@ -3321,9 +3326,9 @@ export default function AdminPage() {
           <section className="reportAdmin">
             <div className="catalogHead">
               <div>
-                <h2>사용자 신고</h2>
+                <h2>신고·문의 관리</h2>
                 <p>
-                  신고자와 대상, 접수 사유를 확인하고 처리 상태를 기록합니다.
+                  사용자 신고를 처리하고 문의에는 앱에서 확인할 수 있는 답변을 남깁니다.
                 </p>
               </div>
               <select
@@ -3342,12 +3347,12 @@ export default function AdminPage() {
                 reports.map((report) => (
                   <article key={report.id}>
                     <header>
-                      <mark>{report.reason}</mark>
+                        <mark>{report.type === "INQUIRY" ? `문의 · ${report.reason}` : report.reason}</mark>
                       <time>
                         {new Date(report.createdAt).toLocaleString("ko-KR")}
                       </time>
                     </header>
-                    <h3>{report.reported.nickname} 신고</h3>
+                    <h3>{report.type === "INQUIRY" ? (report.subject || "제목 없는 문의") : `${report.reported?.nickname ?? "알 수 없는 사용자"} 신고`}</h3>
                     <p>{report.detail || "상세 내용 없음"}</p>
                     <dl>
                       <div>
@@ -3356,15 +3361,12 @@ export default function AdminPage() {
                           {report.reporter.nickname} · {report.reporter.email}
                         </dd>
                       </div>
-                      <div>
-                        <dt>신고 대상</dt>
-                        <dd>
-                          {report.reported.nickname} · {report.reported.email}
-                        </dd>
-                      </div>
+                      {report.reported && <div><dt>신고 대상</dt><dd>{report.reported.nickname} · {report.reported.email}</dd></div>}
                     </dl>
+                    {report.adminReply && <div className="adminReply"><b>관리자 답변</b><p>{report.adminReply}</p></div>}
                     {reportStatus === "OPEN" && (
                       <footer>
+                        {report.type === "INQUIRY" && <textarea value={reportReplies[report.id] ?? ""} maxLength={1000} rows={3} onChange={(event) => setReportReplies((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="사용자에게 보여줄 답변을 입력하세요." />}
                         <button
                           className="secondary"
                           onClick={() =>
@@ -3376,12 +3378,13 @@ export default function AdminPage() {
                         <button
                           className="secondary"
                           onClick={() =>
-                            void resolveReport(report.id, "RESOLVED")
+                            void resolveReport(report.id, "RESOLVED", reportReplies[report.id])
                           }
+                          disabled={report.type === "INQUIRY" && !(reportReplies[report.id] ?? "").trim()}
                         >
-                          처리 완료
+                          {report.type === "INQUIRY" ? "답변 후 완료" : "처리 완료"}
                         </button>
-                        {report.reported.status === "ACTIVE" && (
+                        {report.reported?.status === "ACTIVE" && (
                           <button
                             className="primary"
                             onClick={() => void suspendReportedUser(report)}

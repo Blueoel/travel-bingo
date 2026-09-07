@@ -193,6 +193,16 @@ type RankingRewardNotice = {
   awardedAt: string;
   isRead: boolean;
 };
+type SupportRequest = {
+  id: string;
+  reason: string;
+  subject: string | null;
+  detail: string | null;
+  adminReply: string | null;
+  status: "OPEN" | "RESOLVED" | "DISMISSED";
+  createdAt: string;
+  respondedAt: string | null;
+};
 type RegionRecommendation = {
   id: string;
   name: string;
@@ -638,6 +648,12 @@ export default function Home() {
   const [reportTarget, setReportTarget] = useState<FriendProfile | null>(null);
   const [reportReason, setReportReason] = useState("부적절한 닉네임");
   const [reportDetail, setReportDetail] = useState("");
+  const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
+  const [supportCategory, setSupportCategory] = useState("앱 이용 문의");
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportDetail, setSupportDetail] = useState("");
+  const [supportStatus, setSupportStatus] = useState<string | null>(null);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [badgeSummary, setBadgeSummary] = useState<BadgeSummary | null>(null);
   const [badgeNotifications, setBadgeNotifications] = useState<BadgeNotification[]>([]);
@@ -675,7 +691,7 @@ export default function Home() {
     | "ranking"
     | "my"
   >("home");
-  const [myView, setMyView] = useState<"main" | "travel-note" | "badges" | "rewards" | "settings">("main");
+  const [myView, setMyView] = useState<"main" | "travel-note" | "badges" | "rewards" | "support" | "settings">("main");
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
@@ -1241,6 +1257,39 @@ export default function Home() {
     const response = await apiFetch(`/bingos/sessions/${sessionId}`);
     if (!response.ok) throw new Error("Bingo session unavailable");
     applySession((await response.json()) as DailySession);
+  };
+  const loadSupportRequests = async () => {
+    const response = await apiFetch("/support");
+    if (response.ok) setSupportRequests(await response.json());
+  };
+  const openSupport = async () => {
+    setMyView("support");
+    setSupportStatus(null);
+    await loadSupportRequests();
+  };
+  const submitSupportRequest = async () => {
+    if (supportSubject.trim().length < 2 || supportDetail.trim().length < 5) {
+      setSupportStatus("제목과 문의 내용을 조금 더 자세히 입력해주세요.");
+      return;
+    }
+    setSupportSubmitting(true);
+    setSupportStatus(null);
+    try {
+      const response = await apiFetch("/support", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ category: supportCategory, subject: supportSubject, detail: supportDetail }),
+      });
+      if (!response.ok) throw new Error("신고·문의를 접수하지 못했어요.");
+      setSupportSubject("");
+      setSupportDetail("");
+      setSupportStatus("접수되었습니다. 관리자가 확인 후 이 화면에 답변을 남겨드려요.");
+      await loadSupportRequests();
+    } catch (error) {
+      setSupportStatus(error instanceof Error ? error.message : "신고·문의를 접수하지 못했어요.");
+    } finally {
+      setSupportSubmitting(false);
+    }
   };
 
   const cancelCurrentRegionBingo = async () => {
@@ -4147,7 +4196,7 @@ export default function Home() {
                 ←
               </button>
             )}
-            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "settings" ? "설정" : "Travel Bingo"}</h1>
+            <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "support" ? "신고·문의" : myView === "settings" ? "설정" : "Travel Bingo"}</h1>
             {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}>⚙</button>}
           </header>
           {myView === "travel-note" ? (
@@ -4275,6 +4324,28 @@ export default function Home() {
                 )) : <p className="ranking-reward-empty">아직 받은 랭킹 보상이 없어요.<br />매일 새로운 빙고에 도전해보세요.</p>}
               </div>
             </div>
+          ) : myView === "support" ? (
+            <div className="support-view">
+              <section className="support-form-card">
+                <small>HELP & REPORT</small>
+                <h2>무엇을 도와드릴까요?</h2>
+                <p>앱 오류, 이용 문의, 불편 신고를 남기면 관리자가 확인해요.</p>
+                <label>유형<select value={supportCategory} onChange={(event) => setSupportCategory(event.target.value)}><option>앱 이용 문의</option><option>오류 신고</option><option>미션·포인트 문의</option><option>개인정보·계정 문의</option><option>기타 문의</option></select></label>
+                <label>제목<input value={supportSubject} maxLength={100} onChange={(event) => setSupportSubject(event.target.value)} placeholder="문의 제목" /></label>
+                <label>내용<textarea value={supportDetail} maxLength={500} rows={6} onChange={(event) => setSupportDetail(event.target.value)} placeholder="발생한 상황이나 궁금한 내용을 적어주세요." /></label>
+                <small className="support-count">{supportDetail.length} / 500자</small>
+                <button type="button" disabled={supportSubmitting || supportSubject.trim().length < 2 || supportDetail.trim().length < 5} onClick={() => void submitSupportRequest()}>{supportSubmitting ? "접수 중…" : "신고·문의 접수"}</button>
+                {supportStatus && <p className="support-status" role="status">{supportStatus}</p>}
+              </section>
+              <section className="support-history">
+                <h2>내 문의 내역</h2>
+                {supportRequests.length ? supportRequests.map((request) => <article key={request.id}>
+                  <header><span>{request.reason}</span><time>{new Date(request.createdAt).toLocaleDateString("ko-KR")}</time></header>
+                  <h3>{request.subject}</h3><p>{request.detail}</p>
+                  <div className={request.adminReply ? "answered" : "waiting"}><b>{request.adminReply ? "관리자 답변" : "처리 상태"}</b><p>{request.adminReply ?? (request.status === "OPEN" ? "확인 중입니다." : "처리가 완료되었습니다.")}</p></div>
+                </article>) : <p className="support-empty">아직 접수한 문의가 없어요.</p>}
+              </section>
+            </div>
           ) : myView === "settings" ? (
             <div className="settings-view">
               <section className="account-settings-card">
@@ -4383,6 +4454,11 @@ export default function Home() {
             <button type="button" onClick={() => setMyView("rewards")}>
               <span>♕</span>
               랭킹 보상 이력
+              <b>›</b>
+            </button>
+            <button type="button" onClick={() => void openSupport()}>
+              <span>✎</span>
+              신고·문의
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openSettings()}>

@@ -98,6 +98,11 @@ enum UserReportStatus {
   DISMISSED
 }
 
+enum UserReportType {
+  USER_REPORT
+  INQUIRY
+}
+
 model User {
   id               String                 @id @default(uuid()) @db.Uuid
   role             UserRole               @default(USER)
@@ -159,16 +164,21 @@ model UserBlock {
 model UserReport {
   id         String           @id @default(uuid()) @db.Uuid
   reporterId String           @db.Uuid
-  reportedId String           @db.Uuid
+  reportedId String?          @db.Uuid
+  type       UserReportType   @default(USER_REPORT)
+  subject    String?          @db.VarChar(100)
   reason     String           @db.VarChar(40)
   detail     String?          @db.VarChar(500)
+  adminReply String?          @db.VarChar(1000)
   status     UserReportStatus @default(OPEN)
   createdAt  DateTime         @default(now()) @db.Timestamptz(3)
   resolvedAt DateTime?        @db.Timestamptz(3)
+  respondedAt DateTime?       @db.Timestamptz(3)
   reporter   User             @relation("UserReportCreator", fields: [reporterId], references: [id], onDelete: Cascade)
-  reported   User             @relation("UserReportTarget", fields: [reportedId], references: [id], onDelete: Cascade)
+  reported   User?            @relation("UserReportTarget", fields: [reportedId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+  @@index([type, status, createdAt])
   @@index([reportedId, status])
 }
 

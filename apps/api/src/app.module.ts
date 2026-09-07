@@ -11,6 +11,7 @@ import { FriendsModule } from "./friends/friends.module.js";
 import { RankingModule } from "./ranking/ranking.module.js";
 import { QrModule } from "./qr/qr.module.js";
 import { RecommendationsModule } from "./recommendations/recommendations.module.js";
+import { SupportModule } from "./support/support.module.js";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RecommendationsModule } from "./recommendations/recommendations.module.
     RankingModule,
     QrModule,
     RecommendationsModule,
+    SupportModule,
   ],
 })
 export class AppModule {}
