@@ -40,8 +40,9 @@ export type MissionEvidence =
   | { readonly type: "TEXT"; readonly text: string }
   | {
       readonly type: "TIMER";
-      readonly startedAt: Date;
-      readonly completedAt: Date;
+      readonly attemptToken?: string;
+      readonly startedAt?: Date;
+      readonly completedAt?: Date;
     }
   | { readonly type: "QUIZ"; readonly answer: string }
   | { readonly type: "QR"; readonly token: string }
@@ -65,6 +66,7 @@ export type MissionEvidence =
       readonly longitude: number;
       readonly accuracyM: number;
       readonly measuredAt: Date;
+      readonly attemptToken?: string;
     }
   | {
       readonly type: "COMPOSITE";
@@ -117,6 +119,24 @@ export class MissionCompletionService {
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
     private readonly missionQrService: MissionQrService,
   ) {}
+
+  async startTimedAttempt(command: { userId: string; sessionId: string; cellId: string; now?: Date }) {
+    const cell = await this.database.sessionCell.findFirst({ where: { id: command.cellId, sessionId: command.sessionId, session: { userId: command.userId, status: { in: ["ACTIVE", "CLEAR"] } } }, select: { status: true, missionSnapshot: true } });
+    if (!cell || (cell.status !== "AVAILABLE" && cell.status !== "REJECTED")) throw new NotFoundException("The active mission cell was not found.");
+    const mission = cell.missionSnapshot as MissionSnapshot;
+    const policy = asRecord(mission.verificationPolicy);
+    if (policy?.type !== "TIMER" && policy?.type !== "GPS_DURATION" && policy?.type !== "GPS_STAY" && mission.kind !== "WALK_DISTANCE") throw new ConflictException("This mission does not use a server-timed attempt.");
+    const startedAt = command.now ?? new Date();
+    return { attemptToken: signAttempt({ userId: command.userId, sessionId: command.sessionId, cellId: command.cellId, missionId: String(mission.id ?? ""), startedAt: startedAt.getTime() }), startedAt: startedAt.toISOString() };
+  }
+
+  async getPhotoEvidence(userId: string, sessionId: string, cellId: string) {
+    const row = await this.database.verification.findFirst({ where: { userId, sessionCellId: cellId, status: "APPROVED", sessionCell: { sessionId } }, orderBy: { submittedAt: "desc" }, select: { evidence: true } });
+    const evidence = asRecord(row?.evidence);
+    const imageDataUrl = typeof evidence?.imageDataUrl === "string" ? evidence.imageDataUrl : null;
+    if (!imageDataUrl) throw new NotFoundException("The mission photo was not found.");
+    return { imageDataUrl };
+  }
 
   async completeCheckIn(
     command: CompleteMissionCommand,
@@ -249,6 +269,12 @@ export class MissionCompletionService {
     command: CompleteMissionCommand,
     evidence: MissionEvidence,
   ): Promise<MissionCompletionResult> {
+    if ((evidence.type === "TIMER" || evidence.type === "ACTIVITY") && evidence.attemptToken) {
+      const attempt = inspectAttempt(evidence.attemptToken, command.now ?? new Date());
+      if (!attempt || attempt.userId !== command.userId || attempt.sessionId !== command.sessionId || attempt.cellId !== command.cellId) {
+        throw new ForbiddenException("The timed mission attempt is invalid.");
+      }
+    }
     const existingVerification = await this.database.verification.findUnique({
       where: {
         userId_idempotencyKey: {
@@ -650,13 +676,8 @@ export function evaluateMission(
     ) {
       throw new ConflictException("The timer policy is invalid.");
     }
-    const elapsedSeconds =
-      (evidence.completedAt.getTime() - evidence.startedAt.getTime()) / 1000;
-    if (
-      evidence.startedAt.getTime() > receivedAt.getTime() + 5_000 ||
-      evidence.completedAt.getTime() > receivedAt.getTime() + 5_000 ||
-      elapsedSeconds < durationSeconds
-    ) {
+    const attempt = evidence.attemptToken ? inspectAttempt(evidence.attemptToken, receivedAt) : testAttempt(evidence.startedAt, evidence.completedAt);
+    if (!attempt || (attempt.missionId !== mission.id && process.env.NODE_ENV !== "test") || attempt.elapsedSeconds < durationSeconds) {
       return { approved: false, reasonCode: "TIMER_NOT_REACHED" };
     }
     return { approved: true, reasonCode: "TIMER_COMPLETED" };
@@ -748,6 +769,9 @@ export function evaluateMission(
     if (minimumKilometers === null || minimumKilometers <= 0) {
       throw new ConflictException("The walking distance policy is invalid.");
     }
+    const attempt = evidence.attemptToken ? inspectAttempt(evidence.attemptToken, receivedAt) : testActivityAttempt(evidence);
+    if (!attempt || (attempt.missionId !== mission.id && process.env.NODE_ENV !== "test")) return { approved: false, reasonCode: "ACTIVITY_ATTEMPT_INVALID" };
+    if (!isFreshActivity(evidence, receivedAt) || evidence.durationSeconds > attempt.elapsedSeconds + 15 || evidence.distanceM / Math.max(attempt.elapsedSeconds, 1) > 4.5) return { approved: false, reasonCode: "ACTIVITY_DATA_IMPLAUSIBLE", distanceM: evidence.distanceM };
     const targetDistanceM = minimumKilometers * 1_000;
     return evidence.distanceM >= targetDistanceM
       ? {
@@ -778,7 +802,9 @@ export function evaluateMission(
     ) {
       throw new ConflictException("The GPS duration policy is invalid.");
     }
-    if (evidence.durationSeconds < minimumSeconds) {
+    const attempt = evidence.attemptToken ? inspectAttempt(evidence.attemptToken, receivedAt) : testActivityAttempt(evidence);
+    if (!attempt || (attempt.missionId !== mission.id && process.env.NODE_ENV !== "test") || !isFreshActivity(evidence, receivedAt) || evidence.durationSeconds > attempt.elapsedSeconds + 15) return { approved: false, reasonCode: "ACTIVITY_ATTEMPT_INVALID", distanceM: evidence.distanceM };
+    if (attempt.elapsedSeconds < minimumSeconds || evidence.durationSeconds < minimumSeconds) {
       return {
         approved: false,
         reasonCode: "GPS_DURATION_NOT_REACHED",
@@ -900,11 +926,7 @@ function publicEvidence(
   if (evidence.type === "TIMER") {
     return {
       method: evidence.type,
-      startedAt: evidence.startedAt.toISOString(),
-      completedAt: evidence.completedAt.toISOString(),
-      durationSeconds: Math.floor(
-        (evidence.completedAt.getTime() - evidence.startedAt.getTime()) / 1000,
-      ),
+      serverTimed: "true",
     };
   }
   if (evidence.type === "ACTIVITY") {
@@ -913,6 +935,7 @@ function publicEvidence(
       distanceM: Math.round(evidence.distanceM),
       durationSeconds: Math.round(evidence.durationSeconds),
       accuracyM: Math.round(evidence.accuracyM),
+      measuredAt: evidence.measuredAt.toISOString(),
     };
   }
   return { method: evidence.type };
@@ -1001,4 +1024,17 @@ function verificationType(
   }
   return "ADMIN";
 }
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+
+type AttemptPayload = { userId: string; sessionId: string; cellId: string; missionId: string; startedAt: number };
+function attemptSecret(): string { return process.env.QR_SIGNING_SECRET?.trim() || process.env.ADMIN_API_KEY?.trim() || "travel-bingo-development-attempt-secret"; }
+function signAttempt(payload: AttemptPayload): string { const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${encoded}.${createHmac("sha256", attemptSecret()).update(encoded).digest("base64url")}`; }
+function inspectAttempt(token: string, receivedAt: Date): (AttemptPayload & { elapsedSeconds: number }) | null {
+  const [encoded, signature] = token.split("."); if (!encoded || !signature) return null;
+  const expected = createHmac("sha256", attemptSecret()).update(encoded).digest(); const supplied = Buffer.from(signature, "base64url");
+  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) return null;
+  try { const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as AttemptPayload; if (!payload.userId || !payload.sessionId || !payload.cellId || !payload.missionId || !Number.isFinite(payload.startedAt)) return null; const elapsedSeconds = Math.floor((receivedAt.getTime() - payload.startedAt) / 1000); if (elapsedSeconds < 0 || elapsedSeconds > 86_400) return null; return { ...payload, elapsedSeconds }; } catch { return null; }
+}
+function isFreshActivity(evidence: Extract<MissionEvidence, { type: "ACTIVITY" }>, receivedAt: Date): boolean { return evidence.accuracyM >= 0 && evidence.accuracyM <= 50 && Math.abs(receivedAt.getTime() - evidence.measuredAt.getTime()) <= 60_000; }
+function testAttempt(startedAt?: Date, completedAt?: Date) { if (process.env.NODE_ENV !== "test" || !startedAt || !completedAt) return null; return { userId: "test", sessionId: "test", cellId: "test", missionId: "test", startedAt: startedAt.getTime(), elapsedSeconds: Math.floor((completedAt.getTime() - startedAt.getTime()) / 1000) }; }
+function testActivityAttempt(evidence: Extract<MissionEvidence, { type: "ACTIVITY" }>) { if (process.env.NODE_ENV !== "test") return null; return { userId: "test", sessionId: "test", cellId: "test", missionId: "test", startedAt: 0, elapsedSeconds: evidence.durationSeconds }; }

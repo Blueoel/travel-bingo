@@ -146,6 +146,26 @@ export class DailySessionController {
     return this.missionCompletionService.verify(command, parseEvidence(body));
   }
 
+  @Post(":sessionId/cells/:cellId/attempts")
+  async startAttempt(
+    @Param("sessionId") sessionId: string,
+    @Param("cellId") cellId: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ) {
+    return this.missionCompletionService.startTimedAttempt({ userId: await this.authService.requireUserId(cookieHeader, userId), sessionId, cellId });
+  }
+
+  @Get(":sessionId/cells/:cellId/photo")
+  async getPhoto(
+    @Param("sessionId") sessionId: string,
+    @Param("cellId") cellId: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+  ) {
+    return this.missionCompletionService.getPhotoEvidence(await this.authService.requireUserId(cookieHeader, userId), sessionId, cellId);
+  }
+
   @Post(":sessionId/cells/:cellId/photo-review-request")
   async requestPhotoReview(
     @Param("sessionId") sessionId: string,
@@ -208,17 +228,9 @@ function parseEvidence(body: unknown): MissionEvidence {
   }
   if (
     input.type === "TIMER" &&
-    typeof input.startedAt === "string" &&
-    typeof input.completedAt === "string"
+    typeof input.attemptToken === "string"
   ) {
-    const startedAt = new Date(input.startedAt);
-    const completedAt = new Date(input.completedAt);
-    if (
-      !Number.isNaN(startedAt.getTime()) &&
-      !Number.isNaN(completedAt.getTime())
-    ) {
-      return { type: "TIMER", startedAt, completedAt };
-    }
+    return { type: "TIMER", attemptToken: input.attemptToken };
   }
   if (
     input.type === "GPS" &&
@@ -245,7 +257,8 @@ function parseEvidence(body: unknown): MissionEvidence {
     typeof input.latitude === "number" &&
     typeof input.longitude === "number" &&
     typeof input.accuracyM === "number" &&
-    typeof input.measuredAt === "string"
+    typeof input.measuredAt === "string" &&
+    typeof input.attemptToken === "string"
   ) {
     const measuredAt = new Date(input.measuredAt);
     if (
@@ -261,6 +274,7 @@ function parseEvidence(body: unknown): MissionEvidence {
         longitude: input.longitude,
         accuracyM: input.accuracyM,
         measuredAt,
+        attemptToken: input.attemptToken,
       };
     }
   }

@@ -631,6 +631,7 @@ export default function Home() {
   const [qrToken, setQrToken] = useState("");
   const [qrScanning, setQrScanning] = useState(false);
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(null);
+  const [timerAttemptToken, setTimerAttemptToken] = useState<string | null>(null);
   const [timerNow, setTimerNow] = useState(Date.now());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -744,8 +745,8 @@ export default function Home() {
   const [rankingScope, setRankingScope] = useState<RankingScope>("ALL");
   const [rankingRegionCode, setRankingRegionCode] = useState("");
   const [ranking, setRanking] = useState<RankingResult>({
-    entries: demoRanking,
-    me: { userId: "me", nickname: "선", points: 420, rank: 18 },
+    entries: [],
+    me: null,
     endsAt: null,
   });
   const [rankingLoading, setRankingLoading] = useState(false);
@@ -813,6 +814,7 @@ export default function Home() {
   const qrScannerControls = useRef<IScannerControls | null>(null);
   const trackingWatchId = useRef<number | null>(null);
   const trackingStartedAt = useRef<number | null>(null);
+  const trackingAttemptToken = useRef<string | null>(null);
   const autoTrackingSubmission = useRef(false);
   const nativeBackHandler = useRef<() => void>(() => undefined);
   const lastNativeBackPressAt = useRef(0);
@@ -833,10 +835,14 @@ export default function Home() {
         .filter((item) => item.kind === "PHOTO" && item.done)
         .map(async (item) => {
           const photo = await loadBingoPhoto(bingoPhotoKey(item.id));
-          if (!photo) return null;
-          const url = URL.createObjectURL(photo);
-          urls.push(url);
-          return [item.id, url] as const;
+          if (photo) {
+            const url = URL.createObjectURL(photo); urls.push(url); return [item.id, url] as const;
+          }
+          if (!sessionId) return null;
+          const response = await apiFetch(`/daily-sessions/${sessionId}/cells/${item.id}/photo`);
+          if (!response.ok) return null;
+          const payload = (await response.json()) as { imageDataUrl?: string };
+          return payload.imageDataUrl ? [item.id, payload.imageDataUrl] as const : null;
         }),
     ).then((entries) => {
       if (!disposed) setBingoPhotos(Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, string]>));
@@ -912,28 +918,8 @@ export default function Home() {
           ? "authenticated"
           : "unauthenticated",
       );
-      setDemoMode(true);
-      const basePoints = demoMissions
-        .filter((item) => item.done)
-        .reduce((sum, item) => sum + item.points, 0);
-      try {
-        const progressResponse = await fetch("/api/photo-progress");
-        if (!progressResponse.ok) throw new Error("Photo progress unavailable");
-        const progress = (await progressResponse.json()) as {
-          missionIds: string[];
-          totalPoints: number;
-        };
-        const completedPhotoIds = new Set(progress.missionIds);
-        setItems(
-          demoMissions.map((item) =>
-            completedPhotoIds.has(item.id) ? { ...item, done: true } : item,
-          ),
-        );
-        setPoints(basePoints + progress.totalPoints);
-      } catch {
-        setItems(demoMissions);
-        setPoints(basePoints);
-      }
+      setDemoMode(false);
+      setMessage("서버에 연결하지 못해 데이터를 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
@@ -1379,9 +1365,10 @@ export default function Home() {
       })
       .catch(() => {
         setRanking({
-          entries: demoRanking,
-          me: { userId: "me", nickname, points: 420, rank: 18 },
+          entries: [],
+          me: null,
           endsAt: null,
+          available: false,
         });
       })
       .finally(() => setRankingLoading(false));
@@ -1870,6 +1857,7 @@ export default function Home() {
         latest?: typeof tracking.latest;
         lastPosition?: { latitude: number; longitude: number } | null;
         active?: boolean;
+        attemptToken?: string;
       };
       const trackingAge = Date.now() - Number(saved.startedAt);
       if (
@@ -1882,6 +1870,8 @@ export default function Home() {
         return;
       }
       trackingStartedAt.current = saved.startedAt;
+      trackingAttemptToken.current = saved.attemptToken ?? null;
+      if (!trackingAttemptToken.current) { window.localStorage.removeItem("travel-bingo-active-gps"); return; }
       lastTrackingPosition.current = saved.lastPosition ?? null;
       setTrackingMissionId(saved.missionId);
       setTrackingSessionId(saved.sessionId ?? null);
@@ -1918,6 +1908,7 @@ export default function Home() {
         latest: tracking.latest,
         lastPosition: lastTrackingPosition.current,
         active: tracking.active,
+        attemptToken: trackingAttemptToken.current,
       }),
     );
   }, [
@@ -1957,10 +1948,11 @@ export default function Home() {
   useEffect(() => {
     if (!selected || selected.interactionType !== "TIMER") {
       setTimerStartedAt(null);
+      setTimerAttemptToken(null);
       return;
     }
-    const storageKey = `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`;
-    setTimerStartedAt(window.localStorage.getItem(storageKey));
+    setTimerStartedAt(null);
+    setTimerAttemptToken(null);
     setTimerNow(Date.now());
   }, [selected, sessionId]);
 
@@ -2102,6 +2094,7 @@ export default function Home() {
   const resetTracking = () => {
     stopTracking();
     trackingStartedAt.current = null;
+    trackingAttemptToken.current = null;
     lastTrackingPosition.current = null;
     setTracking({
       active: false,
@@ -2282,16 +2275,14 @@ export default function Home() {
     }
   };
 
-  const startMissionTimer = () => {
-    if (!selected || selected.interactionType !== "TIMER") return;
-    const startedAt = new Date().toISOString();
-    window.localStorage.setItem(
-      `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`,
-      startedAt,
-    );
-    setTimerStartedAt(startedAt);
-    setTimerNow(Date.now());
-    setMessage(null);
+  const startMissionTimer = async () => {
+    if (!selected || selected.interactionType !== "TIMER" || !sessionId) return;
+    try {
+      const response = await apiFetch(`/daily-sessions/${sessionId}/cells/${selected.id}/attempts`, { method: "POST" });
+      if (!response.ok) throw new Error("attempt start failed");
+      const attempt = (await response.json()) as { attemptToken: string; startedAt: string };
+      setTimerAttemptToken(attempt.attemptToken); setTimerStartedAt(attempt.startedAt); setTimerNow(Date.now()); setMessage(null);
+    } catch { setMessage("타이머를 시작하지 못했어요. 연결 상태를 확인해주세요."); }
   };
 
   const submitRecordMission = async () => {
@@ -2307,7 +2298,7 @@ export default function Home() {
     }
     if (
       selected.interactionType === "TIMER" &&
-      (!timerStartedAt || timerElapsed < timerTarget)
+      (!timerStartedAt || !timerAttemptToken || timerElapsed < timerTarget)
     ) {
       setMessage("목표 시간이 끝난 뒤 인증할 수 있어요.");
       return;
@@ -2338,8 +2329,7 @@ export default function Home() {
           ? { type: "TEXT", text: trimmedText }
           : {
               type: "TIMER",
-              startedAt: timerStartedAt,
-              completedAt: new Date().toISOString(),
+              attemptToken: timerAttemptToken,
             };
       const response = await apiFetch(
         `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
@@ -2416,7 +2406,7 @@ export default function Home() {
     );
   };
 
-  const startTracking = () => {
+  const startTracking = async () => {
     if (!selected || !navigator.geolocation) {
       setMessage("이 기기에서는 GPS 기록을 사용할 수 없어요.");
       return;
@@ -2431,8 +2421,16 @@ export default function Home() {
       );
       return;
     }
+    if (!sessionId) { setMessage("서버 연결 후 GPS 미션을 시작할 수 있어요."); return; }
     setMessage(null);
-    trackingStartedAt.current = Date.now();
+    let attempt: { attemptToken: string; startedAt: string };
+    try {
+      const response = await apiFetch(`/daily-sessions/${sessionId}/cells/${selected.id}/attempts`, { method: "POST" });
+      if (!response.ok) throw new Error("attempt start failed");
+      attempt = (await response.json()) as { attemptToken: string; startedAt: string };
+    } catch { setMessage("GPS 기록을 시작하지 못했어요. 다시 시도해주세요."); return; }
+    trackingAttemptToken.current = attempt.attemptToken;
+    trackingStartedAt.current = new Date(attempt.startedAt).getTime();
     lastTrackingPosition.current = null;
     setTrackingMissionId(selected.id);
     setTrackingSessionId(sessionId);
@@ -2493,6 +2491,7 @@ export default function Home() {
             distanceM: tracking.distanceM,
             durationSeconds: tracking.elapsedSeconds,
             ...tracking.latest,
+            attemptToken: trackingAttemptToken.current,
           }),
         },
       );
@@ -4173,6 +4172,10 @@ export default function Home() {
                 <span>{entry.points.toLocaleString()} P</span>
               </div>
             ))}
+            {!rankingLoading &&
+              ranking.available === false && (
+              <p className="ranking-empty">랭킹 정보를 불러오지 못했어요.<br />연결 상태를 확인한 뒤 다시 열어주세요.</p>
+            )}
             {!rankingLoading &&
               ranking.available !== false &&
               ranking.entries.length === 0 && (
