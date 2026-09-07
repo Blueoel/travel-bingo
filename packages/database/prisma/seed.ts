@@ -1120,21 +1120,27 @@ async function seed(): Promise<void> {
   for (const mission of yeoncheonMissionSeed) {
     const id = yeoncheonMissionId(mission.order);
     const placeId = mission.placeTitle ? yeoncheonPlaceIds.get(mission.placeTitle) ?? null : null;
+    const hasVerifiablePlace = mission.kind !== "PLACE_VISIT" || placeId !== null;
+    const effectiveKind = hasVerifiablePlace ? mission.kind : "COMPOSITE";
+    const effectiveStatus = hasVerifiablePlace ? mission.status : "NEEDS_REVIEW";
+    const effectivePolicy = hasVerifiablePlace
+      ? mission.verificationPolicy
+      : { type: "MANUAL", intendedVerification: "GPS", reason: "장소 좌표 확인 필요" };
     const missionData = {
       placeId,
-      kind: mission.kind,
+      kind: effectiveKind,
       scope: "REGION" as const,
       title: mission.title,
       description: mission.description,
       category: mission.category,
-      verificationPolicy: mission.verificationPolicy,
+      verificationPolicy: effectivePolicy,
       targetValue: mission.targetValue,
       targetUnit: mission.targetUnit,
-      radiusM: mission.kind === "PLACE_VISIT" ? 150 : null,
+      radiusM: effectiveKind === "PLACE_VISIT" ? 150 : null,
       points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
       difficulty: mission.difficulty,
       similarityGroup: mission.similarityGroup,
-      status: mission.status,
+      status: effectiveStatus,
     };
     await database.mission.upsert({
       where: { id },
@@ -1146,7 +1152,7 @@ async function seed(): Promise<void> {
       update: {},
       create: { missionId: id, regionId: yeoncheonRegion.id },
     });
-    if (mission.status === "ACTIVE") activeYeoncheonMissionIds.push(id);
+    if (effectiveStatus === "ACTIVE") activeYeoncheonMissionIds.push(id);
   }
 
   await database.bingoTheme.upsert({
