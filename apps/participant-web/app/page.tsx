@@ -37,6 +37,7 @@ type Mission = {
   interactionType?: "TEXT" | "TIMER";
   timerSeconds?: number | null;
   textMaxLength?: number | null;
+  quizChoices?: string[];
   compositeRequirements?: Array<{
     type: "GPS" | "PHOTO" | "TEXT" | "ACTIVITY";
     count: number;
@@ -75,6 +76,7 @@ type DailySession = {
       interactionType?: "TEXT" | "TIMER";
       timerSeconds?: number | null;
       textMaxLength?: number | null;
+      quizChoices?: string[];
       compositeRequirements?: Mission["compositeRequirements"];
       radiusM?: number | null;
       place?: {
@@ -117,6 +119,7 @@ function toMission(cell: SessionCell): Mission {
     interactionType: cell.mission.interactionType,
     timerSeconds: cell.mission.timerSeconds ?? null,
     textMaxLength: cell.mission.textMaxLength ?? null,
+    quizChoices: cell.mission.quizChoices,
     compositeRequirements: cell.mission.compositeRequirements,
     radiusM: cell.mission.radiusM ?? null,
     place: cell.mission.place ?? null,
@@ -2119,6 +2122,7 @@ export default function Home() {
     setPhotoStage("DETAIL");
     setPhotoReviewState("NONE");
     setPhotoVerificationId(null);
+    setAnswer("");
     setTextRecord("");
     setCompositePhotos([]);
     setSelected(null);
@@ -4859,12 +4863,30 @@ export default function Home() {
                   )}
                 </div>
                 {selected.kind === "QUIZ" && !selected.done && (
-                  <input
-                    className="answer-input"
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    placeholder="정답을 입력해주세요"
-                  />
+                  selected.quizChoices?.length ? (
+                    <fieldset className="quiz-choices">
+                      <legend>정답을 하나 선택해주세요</legend>
+                      {selected.quizChoices.map((choice) => (
+                        <label key={choice} className={answer === choice ? "selected" : ""}>
+                          <input
+                            type="radio"
+                            name={`quiz-${selected.id}`}
+                            value={choice}
+                            checked={answer === choice}
+                            onChange={(event) => setAnswer(event.target.value)}
+                          />
+                          <span>{choice}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    <input
+                      className="answer-input"
+                      value={answer}
+                      onChange={(event) => setAnswer(event.target.value)}
+                      placeholder="정답을 입력해주세요"
+                    />
+                  )
                 )}
                 {qrMission && !selected.done && (
                   <div className="qr-verification-panel">

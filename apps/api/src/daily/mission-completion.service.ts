@@ -689,10 +689,16 @@ export function evaluateMission(
     if (typeof answerHash !== "string") {
       throw new ConflictException("The quiz answer policy is invalid.");
     }
-    const submittedHash = createHash("sha256")
-      .update(normalizeAnswer(evidence.answer))
-      .digest("hex");
-    return submittedHash === answerHash
+    const submittedAnswers = [
+      normalizeAnswer(evidence.answer),
+      normalizeAnswer(evidence.answer.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/u, "")),
+    ];
+    const submittedHashes = new Set(
+      submittedAnswers.map((answer) =>
+        createHash("sha256").update(answer).digest("hex"),
+      ),
+    );
+    return submittedHashes.has(answerHash)
       ? { approved: true, reasonCode: "QUIZ_CORRECT" }
       : { approved: false, reasonCode: "QUIZ_INCORRECT" };
   }

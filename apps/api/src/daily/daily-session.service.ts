@@ -354,6 +354,11 @@ function toPublicMission(snapshot: unknown): unknown {
               typeof item.maxLength === "number" ? item.maxLength : undefined,
           }))
       : undefined;
+  const quizChoices =
+    policy?.type === "QUIZ"
+      ? toQuizChoices(policy.choices) ??
+        LEGACY_QUIZ_CHOICES[String(publicMission.title ?? "")]
+      : undefined;
   return {
     ...publicMission,
     ...(interactionType ? { interactionType } : {}),
@@ -367,5 +372,50 @@ function toPublicMission(snapshot: unknown): unknown {
     ...(compositeRequirements
       ? { compositeRequirements }
       : {}),
+    ...(quizChoices?.length ? { quizChoices } : {}),
   };
+}
+
+const LEGACY_QUIZ_CHOICES: Record<string, string[]> = {
+  "주먹 속의 돌": [
+    "①뼈바늘",
+    "②주먹도끼",
+    "③빗살무늬토기",
+    "④가락바퀴",
+  ],
+  "신라의 마침표": [
+    "①46대",
+    "②49대",
+    "③54대",
+    "④56대",
+  ],
+  "급수탑 키재기": ["①12m", "②18m", "③23m", "④31m"],
+  "왜 베개일까?": [
+    "①색이 하얘서",
+    "②베개처럼 둥근 형태",
+    "③부드러워서",
+    "④밤에 형성돼서",
+  ],
+  "다시 세운 교육": [
+    "①1955년",
+    "②1965년",
+    "③1977년",
+    "④1981년",
+  ],
+};
+
+function toQuizChoices(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const choices = value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return choices.length >= 2 ? choices : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  const choices = value
+    .split(/(?=[①②③④⑤⑥⑦⑧⑨⑩])/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return choices.length >= 2 ? choices : undefined;
 }

@@ -52,7 +52,8 @@ export const yeoncheonMissionSeed = [
     "kind": "QUIZ",
     "verificationPolicy": {
       "type": "QUIZ",
-      "answerHash": "99d458a71d83b177d204530c15b8e10fb17201099a1ba7385f478622445553f9"
+      "answerHash": "99d458a71d83b177d204530c15b8e10fb17201099a1ba7385f478622445553f9",
+      "choices": ["①뼈바늘", "②주먹도끼", "③빗살무늬토기", "④가락바퀴"]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -326,7 +327,8 @@ export const yeoncheonMissionSeed = [
     "kind": "QUIZ",
     "verificationPolicy": {
       "type": "QUIZ",
-      "answerHash": "8a03993d15c75b2404a4abc12b61b28637bdb4f49a99fa7304aed1e9c9299994"
+      "answerHash": "8a03993d15c75b2404a4abc12b61b28637bdb4f49a99fa7304aed1e9c9299994",
+      "choices": ["①46대", "②49대", "③54대", "④56대"]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -489,7 +491,8 @@ export const yeoncheonMissionSeed = [
     "kind": "QUIZ",
     "verificationPolicy": {
       "type": "QUIZ",
-      "answerHash": "c922fcca281c16fec540e9bd2686513c5cd9b60c93880b678f6d0099f02efd17"
+      "answerHash": "c922fcca281c16fec540e9bd2686513c5cd9b60c93880b678f6d0099f02efd17",
+      "choices": ["①12m", "②18m", "③23m", "④31m"]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -634,7 +637,8 @@ export const yeoncheonMissionSeed = [
     "kind": "QUIZ",
     "verificationPolicy": {
       "type": "QUIZ",
-      "answerHash": "6df08c89e594601a3e9f90cfb23e06b149e4143960b6aff0715fc3fb5b77877b"
+      "answerHash": "6df08c89e594601a3e9f90cfb23e06b149e4143960b6aff0715fc3fb5b77877b",
+      "choices": ["①색이 하얘서", "②베개처럼 둥근 형태", "③부드러워서", "④밤에 형성돼서"]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -886,7 +890,8 @@ export const yeoncheonMissionSeed = [
     "kind": "QUIZ",
     "verificationPolicy": {
       "type": "QUIZ",
-      "answerHash": "57b0cf7d52806d1e119bd725d3c49a35bca32e0866fee957c5b64f95ebb73339"
+      "answerHash": "57b0cf7d52806d1e119bd725d3c49a35bca32e0866fee957c5b64f95ebb73339",
+      "choices": ["①1955년", "②1965년", "③1977년", "④1981년"]
     },
     "targetValue": null,
     "targetUnit": null,
