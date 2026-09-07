@@ -1203,7 +1203,6 @@ async function seed(): Promise<void> {
       templateId: yeoncheonTemplateId,
       position,
       missionId,
-      isFree: false,
     })),
   });
 
