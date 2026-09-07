@@ -2055,6 +2055,11 @@ button {
 .blocked-user-list button { padding: 7px 9px; border: 1px solid #d2c8b8; border-radius: 8px; background: #fff; color: #766e63; font-size: 10px; font-weight: 700; }
 .settings-note { padding: 8px 5px; text-align: center; }
 .settings-view { padding-bottom: 90px; }
+.permission-settings-card ul { display: grid; gap: 10px; margin: 14px 0; padding: 0; list-style: none; }
+.permission-settings-card li { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: start; color: #667064; font-size: 12px; line-height: 1.5; }
+.permission-settings-card li b { color: var(--deep-green); }
+.legal-settings-card div { display: grid; margin-top: 12px; border-top: 1px solid #e5ded1; }
+.legal-settings-card a { display: flex; justify-content: space-between; padding: 12px 2px; border-bottom: 1px solid #e5ded1; color: var(--deep-green); font-size: 13px; font-weight: 800; text-decoration: none; }
 .support-view { display: grid; gap: 14px; padding-bottom: 90px; }
 .support-view > section { padding: 18px; border: 1px solid #ded6c7; border-radius: 18px; background: #fffefa; }
 .support-form-card > small { color: #6d855f; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
@@ -3899,6 +3904,12 @@ nav .active img {
     font-size: 24px;
   }
 }
+.terms-check a { color: var(--deep-green); font-weight: 800; text-underline-offset: 3px; }
+.auth-permission-guide { margin: 22px 0 max(18px, env(safe-area-inset-bottom)); padding: 14px 16px; border: 1px solid #ded6c7; border-radius: 15px; background: #fffefa; color: #667064; font-size: 11px; line-height: 1.5; }
+.auth-permission-guide > strong { display: block; margin-bottom: 7px; color: var(--deep-green); font-size: 13px; }
+.auth-permission-guide p { display: grid; grid-template-columns: 48px 1fr; margin: 5px 0; }
+.auth-permission-guide p b { color: #496f48; }
+.auth-permission-guide small { display: block; margin-top: 8px; color: #8b857a; line-height: 1.5; }
 
 /* Mission detail and region cancellation */
 .mission-detail-header {

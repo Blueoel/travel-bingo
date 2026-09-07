@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { userMessage } from "./user-message";
 
 type AuthMode = "login" | "register";
 
@@ -98,11 +99,7 @@ export function AuthScreen({
       await onAuthenticated(result.user);
     } catch (error) {
       setMessageKind("error");
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "서버와 연결하지 못했어요. 잠시 후 다시 시도해주세요.",
-      );
+      setMessage(userMessage(error, "서버와 연결하지 못했어요. 잠시 후 다시 시도해주세요."));
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +216,7 @@ export function AuthScreen({
               onChange={(event) => setAgreed(event.target.checked)}
             />
             <span>
-              <u>이용약관</u> 및 <u>개인정보 수집·이용</u>에 동의합니다.
+              <a href="/terms" target="_blank" rel="noreferrer">이용약관</a> 및 <a href="/privacy" target="_blank" rel="noreferrer">개인정보처리방침</a>에 동의합니다.
             </span>
           </label>
         )}
@@ -248,6 +245,14 @@ export function AuthScreen({
           {mode === "login" ? "회원가입" : "로그인"}
         </button>
       </p>
+
+      <section className="auth-permission-guide" aria-label="앱 권한 사용 안내">
+        <strong>권한 사용 안내</strong>
+        <p><b>카메라</b> QR 코드 확인과 현장 사진 촬영에 사용해요.</p>
+        <p><b>사진</b> 미션 인증 사진 선택과 프로필 사진 설정에 사용해요.</p>
+        <p><b>위치</b> 주변 지역 추천과 장소·거리 미션 인증에 사용해요.</p>
+        <small>각 권한은 해당 기능을 사용할 때만 요청하며, 거부하면 관련 기능이 제한될 수 있어요.</small>
+      </section>
 
     </main>
   );

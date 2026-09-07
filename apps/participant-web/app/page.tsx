@@ -10,6 +10,7 @@ import {
 import type { IScannerControls } from "@zxing/browser";
 
 import { AuthScreen } from "./auth-screen";
+import { userMessage } from "./user-message";
 
 type MissionKind =
   | "CHECK_IN"
@@ -1156,7 +1157,7 @@ export default function Home() {
       setProfileNickname(payload.user.nickname);
       setSettingsStatus("닉네임을 변경했어요.");
     } catch (error) {
-      setSettingsStatus(error instanceof Error ? error.message : "닉네임을 변경하지 못했어요.");
+      setSettingsStatus(userMessage(error, "닉네임을 변경하지 못했어요."));
     } finally { setSettingsSaving(false); }
   };
   const savePassword = async () => {
@@ -1173,7 +1174,7 @@ export default function Home() {
       window.alert("비밀번호를 변경했어요. 새 비밀번호로 다시 로그인해주세요.");
       clearAuthenticatedState();
     } catch (error) {
-      setSettingsStatus(error instanceof Error ? error.message : "비밀번호를 변경하지 못했어요.");
+      setSettingsStatus(userMessage(error, "비밀번호를 변경하지 못했어요."));
     } finally { setSettingsSaving(false); }
   };
   const withdrawAccount = async () => {
@@ -1187,7 +1188,7 @@ export default function Home() {
       if (!response.ok) throw new Error(payload.message ?? "회원 탈퇴를 처리하지 못했어요.");
       clearAuthenticatedState();
     } catch (error) {
-      setSettingsStatus(error instanceof Error ? error.message : "회원 탈퇴를 처리하지 못했어요.");
+      setSettingsStatus(userMessage(error, "회원 탈퇴를 처리하지 못했어요."));
     } finally { setSettingsSaving(false); }
   };
 
@@ -1272,7 +1273,7 @@ export default function Home() {
       setSupportStatus("접수되었습니다. 관리자가 확인 후 이 화면에 답변을 남겨드려요.");
       await loadSupportRequests();
     } catch (error) {
-      setSupportStatus(error instanceof Error ? error.message : "신고·문의를 접수하지 못했어요.");
+      setSupportStatus(userMessage(error, "신고·문의를 접수하지 못했어요."));
     } finally {
       setSupportSubmitting(false);
     }
@@ -1298,7 +1299,7 @@ export default function Home() {
       setActiveTab("catalog");
       setMessage("지역 여행 빙고를 취소하고 진행 기록을 초기화했어요.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "여행 빙고를 취소하지 못했어요.");
+      setMessage(userMessage(error, "여행 빙고를 취소하지 못했어요."));
     } finally {
       setCancelRegionPending(false);
     }
@@ -2731,7 +2732,7 @@ export default function Home() {
       }));
       setSettingsStatus("프로필 사진을 변경했어요.");
     } catch (error) {
-      setSettingsStatus(error instanceof Error ? error.message : "프로필 사진을 저장하지 못했어요.");
+      setSettingsStatus(userMessage(error, "프로필 사진을 저장하지 못했어요."));
     } finally {
       setSettingsSaving(false);
       if (profilePhotoInput.current) profilePhotoInput.current.value = "";
@@ -4368,6 +4369,20 @@ export default function Home() {
                 {blockedUsers.length ? blockedUsers.map((block) => <div key={block.id}><span>{block.blocked.nickname.slice(0, 1)}</span><div><b>{block.blocked.nickname}</b><small>{new Date(block.createdAt).toLocaleDateString("ko-KR")} 차단</small></div><button type="button" onClick={() => void unblockUser(block)}>차단 해제</button></div>) : <p className="friend-empty">차단한 사용자가 없어요.</p>}
               </div>
               <p className="settings-note">차단을 해제해도 이전 친구 관계는 자동으로 복구되지 않습니다.</p>
+              <section className="permission-settings-card">
+                <small>APP PERMISSIONS</small><h2>앱 권한 안내</h2>
+                <ul>
+                  <li><b>카메라</b><span>QR 코드 확인과 현장 사진 촬영</span></li>
+                  <li><b>사진</b><span>미션 인증 사진 선택과 프로필 사진 설정</span></li>
+                  <li><b>위치</b><span>주변 지역 추천과 장소·거리 미션 인증</span></li>
+                </ul>
+                <p>권한은 기능을 사용할 때만 요청하며 휴대전화 설정에서 언제든 변경할 수 있어요.</p>
+              </section>
+              <section className="legal-settings-card">
+                <small>LEGAL</small><h2>약관 및 개인정보</h2>
+                <p>서비스 이용 기준과 개인정보 처리 내용을 확인할 수 있어요.</p>
+                <div><a href="/terms" target="_blank" rel="noreferrer">이용약관 보기 <span>›</span></a><a href="/privacy" target="_blank" rel="noreferrer">개인정보처리방침 보기 <span>›</span></a></div>
+              </section>
               {account?.email && <section className="withdraw-card"><small>ACCOUNT WITHDRAWAL</small><h2>회원 탈퇴</h2><p>탈퇴하면 모든 기기에서 로그아웃되고 개인정보가 익명화됩니다.</p><label>탈퇴 확인 비밀번호<input type="password" value={withdrawPassword} maxLength={128} autoComplete="current-password" placeholder="현재 비밀번호" onChange={(event) => setWithdrawPassword(event.target.value)} /></label><button type="button" disabled={settingsSaving || !withdrawPassword} onClick={() => void withdrawAccount()}>회원 탈퇴</button></section>}
             </div>
           ) : (

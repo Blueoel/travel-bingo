@@ -5,10 +5,12 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 
 import { AppModule } from "./app.module.js";
 import { readApiEnvironment } from "./config/environment.js";
+import { KoreanHttpExceptionFilter } from "./common/korean-http-exception.filter.js";
 
 async function bootstrap(): Promise<void> {
   const environment = readApiEnvironment();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useGlobalFilters(new KoreanHttpExceptionFilter());
 
   // Photo evidence is sent as a base64 data URL. Keep this slightly above the
   // verifier's 8 MB binary limit because base64 adds roughly 33% overhead.
