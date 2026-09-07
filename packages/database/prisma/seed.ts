@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { createDatabaseClient } from "../src/client.js";
 import { gongjuMissionSeed } from "./gongju-missions.js";
+import { yeoncheonMissionSeed } from "./yeoncheon-missions.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -22,9 +23,20 @@ const ids = {
 };
 
 const gongjuRegionId = "20000000-0000-4000-8000-000000000002";
+const yeoncheonRegionId = "20000000-0000-4000-8000-000000000003";
+const yeoncheonThemeId = "30000000-0000-4000-8000-000000000003";
+const yeoncheonTemplateId = "40000000-0000-4000-8000-000000000003";
 
 function gongjuMissionId(order: number): string {
   return `90000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function yeoncheonMissionId(order: number): string {
+  return `91000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function yeoncheonPlaceId(order: number): string {
+  return `92000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
 }
 
 const places = [
@@ -1053,6 +1065,142 @@ async function seed(): Promise<void> {
       create: { missionId: id, regionId: gongjuRegion.id },
     });
   }
+
+  const yeoncheonRegion = await database.region.upsert({
+    where: { administrativeCode: "41800" },
+    update: {
+      name: "경기도 연천군",
+      centerLatitude: 38.0964,
+      centerLongitude: 127.0748,
+      populationDeclineFlag: true,
+      status: "ACTIVE",
+    },
+    create: {
+      id: yeoncheonRegionId,
+      name: "경기도 연천군",
+      administrativeCode: "41800",
+      centerLatitude: 38.0964,
+      centerLongitude: 127.0748,
+      populationDeclineFlag: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const yeoncheonPlaceIds = new Map<string, string>();
+  for (const mission of yeoncheonMissionSeed) {
+    if (!mission.placeTitle || mission.latitude === null || mission.longitude === null) continue;
+    if (yeoncheonPlaceIds.has(mission.placeTitle)) continue;
+    const placeId = yeoncheonPlaceId(mission.order);
+    yeoncheonPlaceIds.set(mission.placeTitle, placeId);
+    await database.place.upsert({
+      where: { id: placeId },
+      update: {
+        regionId: yeoncheonRegion.id,
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+        status: "ACTIVE",
+      },
+      create: {
+        id: placeId,
+        regionId: yeoncheonRegion.id,
+        source: "YEONCHEON_MISSION_CATALOG",
+        externalContentId: `yeoncheon-${mission.order}`,
+        contentType: "TOURIST_SPOT",
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+      },
+    });
+  }
+
+  const activeYeoncheonMissionIds: string[] = [];
+  for (const mission of yeoncheonMissionSeed) {
+    const id = yeoncheonMissionId(mission.order);
+    const placeId = mission.placeTitle ? yeoncheonPlaceIds.get(mission.placeTitle) ?? null : null;
+    const missionData = {
+      placeId,
+      kind: mission.kind,
+      scope: "REGION" as const,
+      title: mission.title,
+      description: mission.description,
+      category: mission.category,
+      verificationPolicy: mission.verificationPolicy,
+      targetValue: mission.targetValue,
+      targetUnit: mission.targetUnit,
+      radiusM: mission.kind === "PLACE_VISIT" ? 150 : null,
+      points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
+      difficulty: mission.difficulty,
+      similarityGroup: mission.similarityGroup,
+      status: mission.status,
+    };
+    await database.mission.upsert({
+      where: { id },
+      update: missionData,
+      create: { id, ...missionData },
+    });
+    await database.missionRegion.upsert({
+      where: { missionId_regionId: { missionId: id, regionId: yeoncheonRegion.id } },
+      update: {},
+      create: { missionId: id, regionId: yeoncheonRegion.id },
+    });
+    if (mission.status === "ACTIVE") activeYeoncheonMissionIds.push(id);
+  }
+
+  await database.bingoTheme.upsert({
+    where: { id: yeoncheonThemeId },
+    update: {
+      regionId: yeoncheonRegion.id,
+      name: "연천 여행 빙고",
+      category: "REGION",
+      isRequiredForRegionCompletion: true,
+      status: "ACTIVE",
+      displayOrder: 3,
+    },
+    create: {
+      id: yeoncheonThemeId,
+      regionId: yeoncheonRegion.id,
+      name: "연천 여행 빙고",
+      category: "REGION",
+      isRequiredForRegionCompletion: true,
+      status: "ACTIVE",
+      displayOrder: 3,
+    },
+  });
+  await database.bingoTemplate.upsert({
+    where: { id: yeoncheonTemplateId },
+    update: {
+      regionId: yeoncheonRegion.id,
+      themeId: yeoncheonThemeId,
+      title: "경기도 연천군 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      publishedAt: new Date("2026-09-07T00:00:00.000Z"),
+    },
+    create: {
+      id: yeoncheonTemplateId,
+      regionId: yeoncheonRegion.id,
+      themeId: yeoncheonThemeId,
+      title: "경기도 연천군 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      version: 1,
+      startsAt: new Date("2026-09-07T00:00:00.000Z"),
+      publishedAt: new Date("2026-09-07T00:00:00.000Z"),
+    },
+  });
+  await database.templateCell.deleteMany({ where: { templateId: yeoncheonTemplateId } });
+  await database.templateCell.createMany({
+    data: activeYeoncheonMissionIds.slice(0, 25).map((missionId, position) => ({
+      templateId: yeoncheonTemplateId,
+      position,
+      missionId,
+      isFree: false,
+    })),
+  });
+
   await database.bingoTheme.upsert({
     where: { id: ids.theme },
     update: { name: "Daily 산책 빙고", status: "ACTIVE" },

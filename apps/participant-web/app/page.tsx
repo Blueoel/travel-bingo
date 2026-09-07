@@ -3271,7 +3271,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              ♧{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || photoReviewNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + photoReviewNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
+              <img src="/icons/ui/notification.svg" alt="" />{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || photoReviewNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + photoReviewNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3473,7 +3473,7 @@ export default function Home() {
             </div>
           </header>
           <label className="region-search-box">
-            <span aria-hidden="true">⌕</span>
+            <img src="/icons/ui/search.svg" alt="" />
             <input
               type="search"
               value={regionSearch}
@@ -4201,7 +4201,7 @@ export default function Home() {
               </button>
             )}
             <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "support" ? "신고·문의" : myView === "settings" ? "설정" : "Travel Bingo"}</h1>
-            {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}>⚙</button>}
+            {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}><img src="/icons/ui/settings.svg" alt="" /></button>}
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -4390,7 +4390,7 @@ export default function Home() {
           <div className="my-profile-card">
             <button className="my-avatar" type="button" aria-label="프로필 사진 변경" onClick={() => profilePhotoInput.current?.click()}>
               {account?.avatarDataUrl ? <img src={account.avatarDataUrl} alt="현재 프로필" /> : (account?.nickname ?? nickname).slice(0, 1)}
-              <i aria-hidden="true">✎</i>
+              <i aria-hidden="true"><img src="/icons/ui/pencil.svg" alt="" /></i>
             </button>
             <input ref={profilePhotoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => void changeProfilePhoto(event.target.files?.[0])} />
             <div>
@@ -4441,7 +4441,7 @@ export default function Home() {
                 void loadFriends();
               }}
             >
-              <span>♧</span>
+              <span><img src="/icons/ui/notification.svg" alt="" /></span>
               <span className="my-menu-title">
                 친구 관리
                 {friends.some(
@@ -4465,7 +4465,7 @@ export default function Home() {
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openBadges()}>
-              <span>♧</span>
+              <span><img src="/icons/ui/achievement.svg" alt="" /></span>
               획득 배지
               <b>›</b>
             </button>
@@ -4475,12 +4475,12 @@ export default function Home() {
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openSupport()}>
-              <span>✎</span>
+              <span><img src="/icons/ui/pencil.svg" alt="" /></span>
               신고·문의
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openSettings()}>
-              <span>⚙</span>
+              <span><img src="/icons/ui/settings.svg" alt="" /></span>
               설정
               <b>›</b>
             </button>
@@ -4753,7 +4753,7 @@ export default function Home() {
             <header className="mission-detail-header">
               <button className="close" onClick={closeMission} aria-label="미션 상세 닫기">←</button>
               <b>미션 상세</b>
-              <span aria-hidden="true">♡</span>
+              <span aria-hidden="true"><img src="/icons/ui/heart.svg" alt="" /></span>
             </header>
             {selected.kind === "PHOTO" && photoStage === "COMPLETE" ? (
               <div className="mission-complete">
