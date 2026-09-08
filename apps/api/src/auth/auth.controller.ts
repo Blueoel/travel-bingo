@@ -75,6 +75,25 @@ export class AuthController {
     return { user };
   }
 
+  @Post("password-reset/request")
+  async requestPasswordReset(
+    @Body() body: { email?: string },
+  ): Promise<{ readonly success: true; readonly message: string }> {
+    await this.authService.requestPasswordReset(body.email);
+    return {
+      success: true,
+      message: "가입된 이메일이라면 비밀번호 재설정 안내를 보내드렸어요.",
+    };
+  }
+
+  @Post("password-reset/confirm")
+  async confirmPasswordReset(
+    @Body() body: { token?: string; newPassword?: string },
+  ): Promise<{ readonly success: true }> {
+    await this.authService.confirmPasswordReset(body.token, body.newPassword);
+    return { success: true };
+  }
+
   @Get("me")
   async me(@Headers("cookie") cookieHeader: string | undefined): Promise<{
     readonly user: {

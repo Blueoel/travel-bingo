@@ -12,6 +12,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import type { DatabaseClient } from "@travel-bingo/database";
@@ -20,6 +21,7 @@ import { DATABASE_CLIENT } from "../database/database.module.js";
 
 export const AUTH_COOKIE_NAME = "travel_bingo_session";
 export const AUTH_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_MAX_AGE_MS = 30 * 60 * 1000;
 const scrypt = promisify(scryptCallback);
 
 @Injectable()
@@ -129,6 +131,81 @@ export class AuthService {
       role: account.role,
       avatarDataUrl: account.avatarDataUrl,
     });
+  }
+
+  async requestPasswordReset(rawEmail?: string): Promise<void> {
+    const email = normalizeEmail(rawEmail);
+    if (!email || !email.includes("@")) {
+      throw new BadRequestException("올바른 이메일 주소를 입력해주세요.");
+    }
+    const account = await this.database.user.findFirst({
+      where: { email, status: "ACTIVE", passwordHash: { not: null } },
+      select: { id: true, nickname: true, email: true },
+    });
+    if (!account?.email) return;
+
+    const recent = await this.database.passwordResetToken.findFirst({
+      where: {
+        userId: account.id,
+        usedAt: null,
+        createdAt: { gt: new Date(Date.now() - 60_000) },
+      },
+      select: { id: true },
+    });
+    if (recent) return;
+
+    const token = randomBytes(32).toString("base64url");
+    const record = await this.database.passwordResetToken.create({
+      data: {
+        userId: account.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_MAX_AGE_MS),
+      },
+      select: { id: true },
+    });
+    try {
+      await sendPasswordResetEmail(account.email, account.nickname, token);
+    } catch (error) {
+      await this.database.passwordResetToken.delete({ where: { id: record.id } });
+      if (error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException("재설정 메일을 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+    }
+  }
+
+  async confirmPasswordReset(token?: string, newPassword?: string): Promise<void> {
+    if (!token || token.length < 32) {
+      throw new BadRequestException("비밀번호 재설정 링크가 올바르지 않아요.");
+    }
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException("새 비밀번호는 8자 이상이어야 합니다.");
+    }
+    const record = await this.database.passwordResetToken.findFirst({
+      where: {
+        tokenHash: hashToken(token),
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+        user: { status: "ACTIVE" },
+      },
+      select: { id: true, userId: true, user: { select: { passwordHash: true } } },
+    });
+    if (!record?.user.passwordHash) {
+      throw new BadRequestException("재설정 링크가 만료되었거나 이미 사용되었어요.");
+    }
+    if (await verifyPassword(newPassword, record.user.passwordHash)) {
+      throw new BadRequestException("기존 비밀번호와 다른 비밀번호를 입력해주세요.");
+    }
+    const passwordHash = await hashPassword(newPassword);
+    await this.database.$transaction([
+      this.database.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+      this.database.passwordResetToken.updateMany({
+        where: { userId: record.userId, usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+      this.database.authSession.updateMany({
+        where: { userId: record.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
   }
 
   async getUser(cookieHeader: string | undefined): Promise<{
@@ -371,4 +448,29 @@ function readCookie(
     }
   }
   return null;
+}
+
+async function sendPasswordResetEmail(email: string, nickname: string, token: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.PASSWORD_RESET_FROM?.trim();
+  const publicUrl = (process.env.PASSWORD_RESET_URL ?? "https://travel-bingo-walk.blueo03.chatgpt.site").trim();
+  if (!apiKey || !from) {
+    throw new ServiceUnavailableException("비밀번호 재설정 메일 서비스가 준비되지 않았어요.");
+  }
+  const resetUrl = new URL(publicUrl);
+  resetUrl.searchParams.set("resetToken", token);
+  const safeNickname = nickname.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character] ?? character);
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: "Travel Bingo 비밀번호 재설정",
+      html: `<div style="font-family:sans-serif;line-height:1.7;color:#203c2d"><h2>비밀번호를 다시 설정해주세요</h2><p>${safeNickname}님, 아래 버튼을 눌러 새 비밀번호를 설정할 수 있어요.</p><p><a href="${resetUrl.toString()}" style="display:inline-block;padding:12px 18px;border-radius:12px;background:#174c38;color:#fff;text-decoration:none">비밀번호 재설정</a></p><p>이 링크는 30분 동안 한 번만 사용할 수 있어요. 요청하지 않았다면 이 메일을 무시해주세요.</p></div>`,
+    }),
+  });
+  if (!response.ok) throw new Error(`Resend rejected password reset email: ${response.status}`);
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { userMessage } from "./user-message";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "forgot" | "reset";
 
 const API_BASE = "/api/backend";
 
@@ -17,7 +17,11 @@ export function AuthScreen({
     role?: "USER" | "ADMIN";
   }) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("resetToken")
+      ? "reset"
+      : "login",
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +44,7 @@ export function AuthScreen({
     event.preventDefault();
     setMessage(null);
     setMessageKind("error");
-    if (mode === "register" && password !== passwordConfirm) {
+    if ((mode === "register" || mode === "reset") && password !== passwordConfirm) {
       setMessage("비밀번호가 서로 일치하지 않아요.");
       return;
     }
@@ -50,6 +54,35 @@ export function AuthScreen({
     }
     setSubmitting(true);
     try {
+      if (mode === "forgot") {
+        const response = await fetch(`${API_BASE}/auth/password-reset/request`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const result = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) throw new Error(result?.message ?? "재설정 메일을 보내지 못했어요.");
+        setMessageKind("success");
+        setMessage(result?.message ?? "가입된 이메일이라면 비밀번호 재설정 안내를 보내드렸어요.");
+        return;
+      }
+      if (mode === "reset") {
+        const token = new URLSearchParams(window.location.search).get("resetToken");
+        const response = await fetch(`${API_BASE}/auth/password-reset/confirm`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, newPassword: password }),
+        });
+        const result = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) throw new Error(result?.message ?? "비밀번호를 재설정하지 못했어요.");
+        window.history.replaceState({}, "", window.location.pathname);
+        setPassword("");
+        setPasswordConfirm("");
+        setMode("login");
+        setMessageKind("success");
+        setMessage("비밀번호를 변경했어요. 새 비밀번호로 로그인해주세요.");
+        return;
+      }
       const response = await fetch(
         `${API_BASE}/auth/${mode === "login" ? "login" : "register"}`,
         {
@@ -133,6 +166,18 @@ export function AuthScreen({
           <h1><span>Travel Bingo</span> 시작하기</h1>
         </section>
       )}
+      {mode === "forgot" && (
+        <section className="auth-copy auth-register-title">
+          <h1>비밀번호 찾기</h1>
+          <p>가입한 이메일로 재설정 링크를 보내드려요.</p>
+        </section>
+      )}
+      {mode === "reset" && (
+        <section className="auth-copy auth-register-title">
+          <h1>새 비밀번호 설정</h1>
+          <p>8자 이상의 새 비밀번호를 입력해주세요.</p>
+        </section>
+      )}
 
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" && (
@@ -148,7 +193,7 @@ export function AuthScreen({
             />
           </label>
         )}
-        <label>
+        {(mode === "login" || mode === "register" || mode === "forgot") && <label>
           <span className="field-icon"><img src="/icons/ui/mail.svg" alt="" /></span>
           <input
             type="email"
@@ -158,8 +203,8 @@ export function AuthScreen({
             autoComplete="email"
             required
           />
-        </label>
-        <label>
+        </label>}
+        {(mode === "login" || mode === "register" || mode === "reset") && <label>
           <span className="field-icon"><img src="/icons/ui/key.svg" alt="" /></span>
           <input
             type={showPassword ? "text" : "password"}
@@ -180,8 +225,8 @@ export function AuthScreen({
           >
             {showPassword ? "◉" : "◎"}
           </button>
-        </label>
-        {mode === "register" && (
+        </label>}
+        {(mode === "register" || mode === "reset") && (
           <label>
             <span className="field-icon"><img src="/icons/ui/key.svg" alt="" /></span>
             <input
@@ -200,15 +245,11 @@ export function AuthScreen({
           <button
             type="button"
             className="forgot-password"
-            onClick={() =>
-              setMessage(
-                "비밀번호 찾기는 이메일 발송 기능과 함께 연결할 예정이에요.",
-              )
-            }
+            onClick={() => switchMode("forgot")}
           >
             비밀번호 찾기
           </button>
-        ) : (
+        ) : mode === "register" ? (
           <label className="terms-check">
             <input
               type="checkbox"
@@ -219,7 +260,7 @@ export function AuthScreen({
               <a href="/terms" target="_blank" rel="noreferrer">이용약관</a> 및 <a href="/privacy" target="_blank" rel="noreferrer">개인정보처리방침</a>에 동의합니다.
             </span>
           </label>
-        )}
+        ) : null}
 
         {message && (
           <p className={`auth-message ${messageKind}`} role="alert">
@@ -232,12 +273,16 @@ export function AuthScreen({
             ? "잠시만 기다려주세요…"
             : mode === "login"
               ? "로그인"
-              : "회원가입"}
+              : mode === "register"
+                ? "회원가입"
+                : mode === "forgot"
+                  ? "재설정 메일 보내기"
+                  : "비밀번호 변경"}
         </button>
       </form>
 
       <p className="auth-switch">
-        {mode === "login" ? "계정이 없으신가요?" : "이미 계정이 있으신가요?"}
+        {mode === "login" ? "계정이 없으신가요?" : mode === "register" ? "이미 계정이 있으신가요?" : "로그인 화면으로 돌아갈까요?"}
         <button
           type="button"
           onClick={() => switchMode(mode === "login" ? "register" : "login")}

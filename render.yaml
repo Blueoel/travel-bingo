@@ -17,3 +17,9 @@ services:
         value: https://travel-bingo-walk.blueo03.chatgpt.site
       - key: DATABASE_URL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PASSWORD_RESET_FROM
+        sync: false
+      - key: PASSWORD_RESET_URL
+        value: https://travel-bingo-walk.blueo03.chatgpt.site
