@@ -2919,7 +2919,8 @@ nav .active img {
   height: 66px;
   margin: 3px auto 14px;
   font-size: 30px;
-  background: #e9eee9;
+  background: transparent;
+  border-radius: 0;
 }
 .mission-sheet h2 {
   font-size: 24px;
@@ -2965,8 +2966,8 @@ nav .active img {
   background: var(--cream);
 }
 .large-icon img {
-  width: 42px;
-  height: 42px;
+  width: 66px;
+  height: 66px;
   object-fit: contain;
 }
 .completion-medal img {
@@ -2975,8 +2976,8 @@ nav .active img {
   object-fit: contain;
 }
 .journal-sheet .large-icon {
-  border: 1px solid #ddd2bd;
-  background: #f7f1e5;
+  border: 0;
+  background: transparent;
   color: #44643b;
 }
 .journal-paper {
@@ -3970,7 +3971,13 @@ nav .active img {
   height: 98px;
   margin: 0;
   font-size: 42px;
-  background: #f1eee5;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.mission-visual-card .large-icon img {
+  width: 98px;
+  height: 98px;
 }
 .mission-type-chip {
   display: inline-flex;

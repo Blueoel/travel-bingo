@@ -316,6 +316,13 @@ function missionIconSource(
 ): string {
   if (mission.done) return "/icons/ui/check.svg";
   const label = mission.verificationLabel?.toLocaleLowerCase("ko-KR") ?? "";
+  if (
+    mission.interactionType === "TEXT" ||
+    label.includes("텍스트") ||
+    label.includes("기록")
+  ) {
+    return "/icons/ui/pencil.svg";
+  }
   if (mission.kind === "PHOTO" || label.includes("사진")) {
     return placement === "BOARD" ? "/icons/ui/camera.svg" : "/icons/ui/photo.svg";
   }
