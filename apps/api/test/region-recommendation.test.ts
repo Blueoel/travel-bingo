@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   distanceKm,
+  formatKtoTimestamp,
   normalizeAttractionName,
   normalizeKtoServiceKey,
+  parseKtoTimestamp,
   readRelatedAttractionName,
   RegionRecommendationService,
 } from "../src/recommendations/region-recommendation.service.js";
@@ -25,6 +27,12 @@ describe("KTO service key normalization", () => {
   it("trims whitespace and handles a missing key", () => {
     expect(normalizeKtoServiceKey("  abc123  ")).toBe("abc123");
     expect(normalizeKtoServiceKey(undefined)).toBe("");
+  });
+
+  it("round-trips KTO timestamps in Korea time", () => {
+    const value = "20260909012345";
+    expect(formatKtoTimestamp(parseKtoTimestamp(value)!)).toBe(value);
+    expect(parseKtoTimestamp("invalid")).toBeNull();
   });
 });
 
@@ -89,6 +97,40 @@ describe("region recommendation distance", () => {
         source: "DATABASE",
       },
     });
+  });
+
+  it("reuses a fresh attraction cache and persists the KTO response", async () => {
+    vi.stubEnv("KTO_API_KEY", "main-key");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ response: { body: { items: { item: {
+        title: "안성맞춤랜드",
+        addr1: "경기도 안성시",
+        firstimage: "https://cdn.visitkorea.or.kr/test.jpg",
+        mapx: "127.31",
+        mapy: "37.03",
+        contentid: "cached-1",
+        contenttypeid: "12",
+        modifiedtime: "20260909010000",
+      } } } } }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const upsert = vi.fn(async () => ({}));
+    const service = new RegionRecommendationService({
+      region: { findMany: async () => [{
+        id: "region-1",
+        name: "경기도 안성시",
+        centerLatitude: 37.008,
+        centerLongitude: 127.2797,
+        places: [],
+      }] },
+      place: { upsert },
+    } as never);
+
+    await service.recommend(null, 3);
+    await service.recommend(null, 3);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(upsert).toHaveBeenCalled();
   });
 
   it("provides saved attraction candidates for an inactive region admin", async () => {

@@ -357,6 +357,18 @@ function missionIconSource(
   if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg";
   return "/icons/ui/check.svg";
 }
+
+function cachedTourismImageUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "cdn.visitkorea.or.kr" || parsed.hostname === "tong.visitkorea.or.kr") {
+      return `/api/tourism-image?url=${encodeURIComponent(parsed.toString())}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
 const contributedDemoMissions: Mission[] = [
   {
     id: "demo-shadow",
@@ -3432,7 +3444,7 @@ export default function Home() {
                 <span className="region-card-visual">
                   {region.attraction?.imageUrl && !regionImageFailures[region.attraction.imageUrl] ? (
                     <img
-                      src={region.attraction.imageUrl}
+                      src={cachedTourismImageUrl(region.attraction.imageUrl)}
                       alt={`${region.attraction.title} 관광지`}
                       referrerPolicy="no-referrer"
                       onError={() =>

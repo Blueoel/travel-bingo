@@ -9,6 +9,12 @@ const KTO_LEGAL_REGION_URL =
   "https://apis.data.go.kr/B551011/KorService2/ldongCode2";
 const KTO_AREA_BASED_URL =
   "https://apis.data.go.kr/B551011/KorService2/areaBasedList2";
+const KTO_SYNC_URL =
+  "https://apis.data.go.kr/B551011/KorService2/areaBasedSyncList2";
+const KTO_DETAIL_URL =
+  "https://apis.data.go.kr/B551011/KorService2/detailCommon2";
+const KTO_IMAGE_URL =
+  "https://apis.data.go.kr/B551011/KorService2/detailImage2";
 const KTO_PHOTO_SEARCH_URL =
   "https://apis.data.go.kr/B551011/PhotoGalleryService1/gallerySearchList1";
 const KTO_RELATED_SEARCH_URL =
@@ -25,7 +31,11 @@ type KtoItem = {
   mapy?: string;
   contentid?: string;
   contenttypeid?: string;
+  modifiedtime?: string;
+  createdtime?: string;
+  showflag?: string;
 };
+type KtoImageItem = { originimgurl?: string; smallimageurl?: string };
 type KtoPhotoItem = {
   galContentId?: string;
   galTitle?: string;
@@ -100,6 +110,10 @@ export class RegionRecommendationService {
   private regionDirectoryCache:
     | { expiresAt: number; entries: AdminRegionSearchResult[] }
     | undefined;
+  private readonly attractionCache = new Map<
+    string,
+    { freshUntil: number; staleUntil: number; items: KtoItem[] }
+  >();
 
   constructor(
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient,
@@ -235,7 +249,7 @@ export class RegionRecommendationService {
 
     return Promise.all(
       ranked.map(async ({ region, center, distanceKm: distance }) => {
-        const kto = await this.findKtoAttraction(center);
+        const kto = await this.findKtoAttraction(center, region.id);
         const saved = region.places[0];
         return {
           id: region.id,
@@ -295,7 +309,7 @@ export class RegionRecommendationService {
         ? { contentTypeId: options.contentTypeId }
         : {}),
       radiusM: Math.round(radiusKm * 1_000),
-    });
+    }, region.id);
     const relatedNames = ktoItems.length
       ? await this.fetchRelatedAttractionNames(
           query.trim() || ktoItems[0]?.title || region.name,
@@ -398,8 +412,9 @@ export class RegionRecommendationService {
 
   private async findKtoAttraction(
     center: Coordinates,
+    regionId: string,
   ): Promise<KtoItem | null> {
-    const items = await this.fetchKtoAttractions(center, 12);
+    const items = await this.fetchKtoAttractions(center, 12, {}, regionId);
     const withImages = items.filter(
       (candidate) =>
         candidate.title &&
@@ -418,10 +433,14 @@ export class RegionRecommendationService {
     const regionSeed =
       Math.round(center.latitude * 1_000) +
       Math.round(center.longitude * 1_000);
-    return (
+    const selected = (
       candidates[Math.abs(rotationWindow + regionSeed) % candidates.length] ??
       null
     );
+    if (!selected) return null;
+    const hydrated = await this.hydrateKtoItem(selected);
+    await this.persistKtoAttractions(regionId, [hydrated]);
+    return hydrated;
   }
 
   private async loadAdministrativeRegionDirectory(): Promise<
@@ -533,13 +552,163 @@ export class RegionRecommendationService {
     return provinceFallbackCenter(input.legalRegionCode);
   }
 
+  async syncChangedAttractions(since = new Date(Date.now() - 25 * 60 * 60_000)): Promise<{
+    received: number;
+    updated: number;
+    deactivated: number;
+  }> {
+    const items = await this.fetchKtoItems<KtoItem>(
+      KTO_SYNC_URL,
+      process.env.KTO_API_KEY,
+      {
+        modifiedTime: formatKtoTimestamp(since),
+        arrange: "C",
+        numOfRows: "1000",
+        pageNo: "1",
+      },
+    );
+    if (!items.length) return { received: 0, updated: 0, deactivated: 0 };
+
+    const regions = await this.database.region.findMany({
+      where: { status: "ACTIVE" },
+      select: { id: true, centerLatitude: true, centerLongitude: true },
+    });
+    let updated = 0;
+    let deactivated = 0;
+    for (const item of items) {
+      if (!item.contentid) continue;
+      const contentType = item.contenttypeid || "TOURIST_SPOT";
+      if (item.showflag === "0") {
+        const result = await this.database.place.updateMany({
+          where: { source: "KTO", externalContentId: item.contentid },
+          data: { status: "INACTIVE", syncedAt: new Date() },
+        });
+        deactivated += result.count;
+        continue;
+      }
+      const latitude = Number(item.mapy);
+      const longitude = Number(item.mapx);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !item.title) continue;
+      const nearest = regions
+        .map((region) => ({
+          id: region.id,
+          distance: distanceKm(
+            { latitude, longitude },
+            { latitude: Number(region.centerLatitude), longitude: Number(region.centerLongitude) },
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance)[0];
+      if (!nearest || nearest.distance > 30) continue;
+      await this.persistKtoAttractions(nearest.id, [{ ...item, contenttypeid: contentType }]);
+      updated += 1;
+    }
+    this.attractionCache.clear();
+    return { received: items.length, updated, deactivated };
+  }
+
+  private async hydrateKtoItem(item: KtoItem): Promise<KtoItem> {
+    if (!item.contentid || (item.firstimage || item.firstimage2)) return item;
+    const [details, images] = await Promise.all([
+      this.fetchKtoItems<KtoItem>(KTO_DETAIL_URL, process.env.KTO_API_KEY, {
+        contentId: item.contentid,
+        defaultYN: "Y",
+        firstImageYN: "Y",
+        addrinfoYN: "Y",
+        mapinfoYN: "Y",
+        overviewYN: "N",
+        numOfRows: "10",
+        pageNo: "1",
+      }),
+      this.fetchKtoItems<KtoImageItem>(KTO_IMAGE_URL, process.env.KTO_API_KEY, {
+        contentId: item.contentid,
+        imageYN: "Y",
+        subImageYN: "Y",
+        numOfRows: "10",
+        pageNo: "1",
+      }),
+    ]);
+    const detail = details[0];
+    const image = images[0];
+    const firstimage = detail?.firstimage || image?.originimgurl || item.firstimage;
+    const firstimage2 = detail?.firstimage2 || image?.smallimageurl || item.firstimage2;
+    return {
+      ...item,
+      ...detail,
+      ...(firstimage ? { firstimage } : {}),
+      ...(firstimage2 ? { firstimage2 } : {}),
+    };
+  }
+
+  private async persistKtoAttractions(regionId: string, items: readonly KtoItem[]): Promise<void> {
+    const placeClient = (this.database as DatabaseClient & { place?: DatabaseClient["place"] }).place;
+    if (!placeClient?.upsert) return;
+    const syncedAt = new Date();
+    for (const item of items) {
+      const latitude = Number(item.mapy);
+      const longitude = Number(item.mapx);
+      if (!item.contentid || !item.title || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+      const contentType = item.contenttypeid || "TOURIST_SPOT";
+      const data = {
+        regionId,
+        title: item.title.trim(),
+        address: item.addr1?.trim() || null,
+        latitude,
+        longitude,
+        imageUrl: normalizeImageUrl(item.firstimage || item.firstimage2 || null),
+        sourceUpdatedAt: parseKtoTimestamp(item.modifiedtime || item.createdtime),
+        syncedAt,
+        status: "ACTIVE" as const,
+      };
+      await placeClient.upsert({
+        where: {
+          source_externalContentId_contentType: {
+            source: "KTO",
+            externalContentId: item.contentid,
+            contentType,
+          },
+        },
+        update: data,
+        create: {
+          ...data,
+          source: "KTO",
+          externalContentId: item.contentid,
+          contentType,
+        },
+      });
+    }
+  }
+
+  private async loadSavedKtoAttractions(regionId: string, limit: number): Promise<KtoItem[]> {
+    const placeClient = (this.database as DatabaseClient & { place?: DatabaseClient["place"] }).place;
+    if (!placeClient?.findMany) return [];
+    const places = await placeClient.findMany({
+      where: { regionId, source: "KTO", status: "ACTIVE" },
+      orderBy: [{ sourceUpdatedAt: "desc" }, { syncedAt: "desc" }],
+      take: limit,
+    });
+    return places.map((place) => ({
+      contentid: place.externalContentId,
+      contenttypeid: place.contentType,
+      title: place.title,
+      ...(place.address ? { addr1: place.address } : {}),
+      ...(place.imageUrl ? { firstimage: place.imageUrl } : {}),
+      mapx: String(place.longitude),
+      mapy: String(place.latitude),
+      ...(place.sourceUpdatedAt ? { modifiedtime: formatKtoTimestamp(place.sourceUpdatedAt) } : {}),
+    }));
+  }
+
   private async fetchKtoAttractions(
     center: Coordinates,
     limit: number,
     options: { contentTypeId?: string; radiusM?: number } = {},
+    regionId?: string,
   ): Promise<KtoItem[]> {
     const serviceKey = normalizeKtoServiceKey(process.env.KTO_API_KEY);
-    if (!serviceKey) return [];
+    if (!serviceKey) return regionId ? this.loadSavedKtoAttractions(regionId, limit) : [];
+    const cacheKey = `${center.latitude.toFixed(4)}:${center.longitude.toFixed(4)}:${options.contentTypeId ?? ""}:${options.radiusM ?? 20_000}:${limit}`;
+    const cached = this.attractionCache.get(cacheKey);
+    if (cached && cached.freshUntil > Date.now()) return cached.items;
     const parameters = new URLSearchParams({
       serviceKey,
       MobileOS: "ETC",
@@ -559,16 +728,24 @@ export class RegionRecommendationService {
       const response = await fetch(`${KTO_LOCATION_URL}?${parameters}`, {
         signal: AbortSignal.timeout(6_000),
       });
-      if (!response.ok) return [];
+      if (!response.ok) throw new Error(`KTO_${response.status}`);
       const payload = (await response.json()) as {
         response?: {
           body?: { items?: { item?: KtoItem | KtoItem[] } };
         };
       };
       const item = payload.response?.body?.items?.item;
-      return Array.isArray(item) ? item : item ? [item] : [];
+      const items = Array.isArray(item) ? item : item ? [item] : [];
+      this.attractionCache.set(cacheKey, {
+        freshUntil: Date.now() + 10 * 60_000,
+        staleUntil: Date.now() + 24 * 60 * 60_000,
+        items,
+      });
+      if (regionId && items.length) await this.persistKtoAttractions(regionId, items);
+      return items;
     } catch {
-      return [];
+      if (cached && cached.staleUntil > Date.now()) return cached.items;
+      return regionId ? this.loadSavedKtoAttractions(regionId, limit) : [];
     }
   }
 
@@ -763,6 +940,30 @@ export function normalizeAttractionName(value: unknown): string {
 
 export function normalizeRegionName(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("ko").replace(/\s+/g, "");
+}
+
+export function parseKtoTimestamp(value: string | undefined): Date | null {
+  if (!value || !/^\d{14}$/.test(value)) return null;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6)) - 1;
+  const day = Number(value.slice(6, 8));
+  const hour = Number(value.slice(8, 10));
+  const minute = Number(value.slice(10, 12));
+  const second = Number(value.slice(12, 14));
+  const parsed = new Date(Date.UTC(year, month, day, hour - 9, minute, second));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function formatKtoTimestamp(value: Date): string {
+  const korea = new Date(value.getTime() + 9 * 60 * 60_000);
+  return [
+    korea.getUTCFullYear(),
+    String(korea.getUTCMonth() + 1).padStart(2, "0"),
+    String(korea.getUTCDate()).padStart(2, "0"),
+    String(korea.getUTCHours()).padStart(2, "0"),
+    String(korea.getUTCMinutes()).padStart(2, "0"),
+    String(korea.getUTCSeconds()).padStart(2, "0"),
+  ].join("");
 }
 
 function normalizeImageUrl(value: string | null | undefined): string | null {
