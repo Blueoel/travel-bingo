@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from "@nestjs/common";
 
 import { AuthService } from "../auth/auth.service.js";
@@ -164,6 +165,22 @@ export class DailySessionController {
     @Headers("cookie") cookieHeader: string | undefined,
   ) {
     return this.missionCompletionService.getPhotoEvidence(await this.authService.requireUserId(cookieHeader, userId), sessionId, cellId);
+  }
+
+  @Put(":sessionId/cells/:cellId/photo")
+  async replacePhoto(
+    @Param("sessionId") sessionId: string,
+    @Param("cellId") cellId: string,
+    @Headers("x-user-id") userId: string | undefined,
+    @Headers("cookie") cookieHeader: string | undefined,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const input = asInput(body);
+    if (typeof input.imageDataUrl !== "string") throw new BadRequestException("사진을 선택해주세요.");
+    const resolvedUserId = await this.authService.requireUserId(cookieHeader, userId);
+    const analysis = await this.photoVerificationService.analyze({ userId: resolvedUserId, sessionId, cellId, imageDataUrl: input.imageDataUrl });
+    return this.missionCompletionService.replacePhotoEvidence({ userId: resolvedUserId, sessionId, cellId, idempotencyKey: requireIdempotencyKey(idempotencyKey), imageDataUrl: input.imageDataUrl, analysis });
   }
 
   @Post(":sessionId/cells/:cellId/photo-review-request")

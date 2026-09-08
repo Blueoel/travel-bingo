@@ -139,6 +139,29 @@ export class MissionCompletionService {
     return { imageDataUrl };
   }
 
+  async replacePhotoEvidence(command: { userId: string; sessionId: string; cellId: string; idempotencyKey: string; imageDataUrl: string; analysis: PhotoAnalysis }) {
+    const cell = await this.database.sessionCell.findFirst({
+      where: { id: command.cellId, sessionId: command.sessionId, status: "VERIFIED", session: { userId: command.userId } },
+      select: { id: true, missionSnapshot: true },
+    });
+    if (!cell) throw new NotFoundException("완료된 사진 미션을 찾지 못했어요.");
+    const snapshot = asRecord(cell.missionSnapshot);
+    const policy = asRecord(snapshot?.verificationPolicy);
+    const requirements = Array.isArray(policy?.requirements) ? policy.requirements : [];
+    if (snapshot?.kind !== "PHOTO" && !requirements.some((item) => asRecord(item)?.type === "PHOTO")) {
+      throw new ConflictException("사진을 사용하는 미션만 사진을 바꿀 수 있어요.");
+    }
+    if (command.analysis.decision !== "APPROVED") {
+      return { updated: false, verificationStatus: command.analysis.decision, reasonCode: command.analysis.failureReasons[0] ?? "PHOTO_NOT_APPROVED" };
+    }
+    await this.database.verification.create({ data: {
+      sessionCellId: cell.id, userId: command.userId, idempotencyKey: command.idempotencyKey,
+      type: "PHOTO", status: "APPROVED", evidence: { imageDataUrl: command.imageDataUrl },
+      reasonCode: "PHOTO_REPLACED", decidedAt: new Date(),
+    } });
+    return { updated: true, verificationStatus: "APPROVED" as const };
+  }
+
   async completeCheckIn(
     command: CompleteMissionCommand,
   ): Promise<MissionCompletionResult> {

@@ -313,6 +313,11 @@ const completedClientLineKeys = (missions: Mission[]) =>
       ? [`client-line-${index}`]
       : [],
   );
+
+const missionUsesPhoto = (mission: Pick<Mission, "kind" | "compositeRequirements">) =>
+  mission.kind === "PHOTO" ||
+  mission.compositeRequirements?.some((requirement) => requirement.type === "PHOTO") === true;
+
 function missionIconSource(
   mission: Pick<Mission, "kind" | "done" | "interactionType" | "verificationLabel" | "compositeRequirements">,
   placement: "BOARD" | "DETAIL" = "BOARD",
@@ -901,7 +906,7 @@ export default function Home() {
     const urls: string[] = [];
     void Promise.all(
       items
-        .filter((item) => item.kind === "PHOTO" && item.done)
+        .filter((item) => missionUsesPhoto(item) && item.done)
         .map(async (item) => {
           const photo = await loadBingoPhoto(bingoPhotoKey(item.id));
           if (photo) {
@@ -2704,6 +2709,23 @@ export default function Home() {
     }
     try {
       const imageDataUrl = prepared.dataUrl;
+      if (selected.done) {
+        const response = await apiFetch(`/daily-sessions/${sessionId}/cells/${selected.id}/photo`, {
+          method: "PUT",
+          headers: { "idempotency-key": `web-photo-replace-${crypto.randomUUID()}`, "content-type": "application/json" },
+          body: JSON.stringify({ imageDataUrl }),
+        });
+        const result = (await response.json()) as { updated?: boolean; verificationStatus?: string; message?: string };
+        if (!response.ok || !result.updated) {
+          setPhotoStage("DETAIL");
+          setMessage(result.message ?? "새 사진이 미션 조건에 맞지 않아 기존 사진을 유지했어요.");
+          return;
+        }
+        setBingoPhotos((current) => ({ ...current, [selected.id]: imageDataUrl }));
+        setPhotoStage("DETAIL");
+        setMessage("사진을 새 사진으로 바꿨어요. 다른 기기에도 동일하게 표시됩니다.");
+        return;
+      }
       const response = await apiFetch(
         `/daily-sessions/${sessionId}/cells/${selected.id}/verify`,
         {
@@ -3315,9 +3337,9 @@ export default function Home() {
                 setAnswer("");
                 setPhotoStage("DETAIL");
                 setPhotoPreview(
-                  item.kind === "PHOTO" ? bingoPhotos[item.id] ?? null : null,
+                  missionUsesPhoto(item) ? bingoPhotos[item.id] ?? null : null,
                 );
-                if (item.kind === "PHOTO" && !bingoPhotos[item.id]) {
+                if (missionUsesPhoto(item) && !bingoPhotos[item.id]) {
                   void loadBingoPhoto(bingoPhotoKey(item.id)).then((photo) => {
                     if (!photo) return;
                     const url = URL.createObjectURL(photo);
@@ -3336,7 +3358,7 @@ export default function Home() {
                 }
               }}
             >
-              {item.done && item.kind === "PHOTO" && bingoPhotos[item.id] && (
+              {item.done && missionUsesPhoto(item) && bingoPhotos[item.id] && (
                 <img className="board-photo" src={bingoPhotos[item.id]} alt="" />
               )}
               <span className={`mission-icon ${item.kind.toLowerCase()}`}>
@@ -5213,7 +5235,7 @@ export default function Home() {
                         photoStage === "REVIEWING" ||
                         photoReviewState === "REQUESTING" ||
                         photoReviewState === "PENDING" ||
-                        selected.done
+                        false
                       }
                     >
                       사진 촬영하기
@@ -5225,7 +5247,7 @@ export default function Home() {
                         photoStage === "REVIEWING" ||
                         photoReviewState === "REQUESTING" ||
                         photoReviewState === "PENDING" ||
-                        selected.done
+                        false
                       }
                     >
                       앨범에서 선택

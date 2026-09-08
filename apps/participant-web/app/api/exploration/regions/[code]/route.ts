@@ -3,36 +3,11 @@ import { NextResponse } from "next/server";
 import {
   getEligibleMemoryPhoto,
   resolveGuest,
-  withGuestCookie,
 } from "../../../../../db/photo-verifications";
 import { getReviewPhoto } from "../../../../../db/photo-storage";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const REGION_CODE_PATTERN = /^\d{2,10}$/;
-
-async function bindings() {
-  const { env } = await import("cloudflare:workers");
-  if (!env.DB || !env.PHOTOS) {
-    throw new Error("Exploration storage bindings are unavailable.");
-  }
-  return { database: env.DB, bucket: env.PHOTOS };
-}
-
-async function ensureTable(database: D1Database) {
-  await database
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS exploration_region_memories (
-        guest_id TEXT NOT NULL,
-        region_code TEXT NOT NULL,
-        photo_key TEXT NOT NULL,
-        mime_type TEXT NOT NULL,
-        line_count INTEGER NOT NULL DEFAULT 3,
-        selected_at INTEGER NOT NULL,
-        PRIMARY KEY (guest_id, region_code)
-      )`,
-    )
-    .run();
-}
 
 export async function GET(
   request: Request,
@@ -42,43 +17,19 @@ export async function GET(
   if (!REGION_CODE_PATTERN.test(code)) {
     return NextResponse.json({ error: "Unsupported region" }, { status: 404 });
   }
-  const guest = resolveGuest(request);
   try {
-    const { database } = await bindings();
-    await ensureTable(database);
-    const memory = await database
-      .prepare(
-        `SELECT line_count AS lineCount, selected_at AS selectedAt
-         FROM exploration_region_memories
-         WHERE guest_id = ? AND region_code = ?`,
-      )
-      .bind(guest.guestId, code)
-      .first<{ lineCount: number; selectedAt: number }>();
-    return withGuestCookie(
-      NextResponse.json({
-        regionCode: code,
-        lineCount: memory?.lineCount ?? 0,
-        unlocked: (memory?.lineCount ?? 0) >= 3,
-        photoUrl: memory
-          ? `/api/exploration/regions/${code}/photo?v=${memory.selectedAt}`
-          : null,
-        selectedAt: memory?.selectedAt
-          ? new Date(memory.selectedAt).toISOString()
-          : null,
-      }),
-      guest,
-    );
+    const response = await fetch(new URL(`/api/backend/travel-memories/${code}`, request.url), {
+      headers: { cookie: request.headers.get("cookie") ?? "" }, cache: "no-store", signal: AbortSignal.timeout(30_000),
+    });
+    return new Response(response.body, { status: response.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
   } catch {
-    return withGuestCookie(
-      NextResponse.json({
+    return NextResponse.json({
         regionCode: code,
         lineCount: 0,
         unlocked: false,
         photoUrl: null,
         selectedAt: null,
-      }),
-      guest,
-    );
+      }, { status: 503 });
   }
 }
 
@@ -143,63 +94,28 @@ export async function POST(
   }
 
   try {
-    const { database, bucket } = await bindings();
-    await ensureTable(database);
-    const photoKey = `exploration/${guest.guestId}/${code}/${crypto.randomUUID()}`;
-    await bucket.put(photoKey, bytes, {
-      httpMetadata: { contentType: mimeType },
+    const imageDataUrl = `data:${mimeType};base64,${bytesToBase64(bytes)}`;
+    const response = await fetch(new URL(`/api/backend/travel-memories/${code}`, request.url), {
+      method: "PUT",
+      headers: { cookie: request.headers.get("cookie") ?? "", "content-type": "application/json" },
+      body: JSON.stringify({ imageDataUrl, lineCount: Math.floor(lineCount) }),
+      signal: AbortSignal.timeout(30_000),
     });
-    const previous = await database
-      .prepare(
-        `SELECT photo_key AS photoKey
-         FROM exploration_region_memories
-         WHERE guest_id = ? AND region_code = ?`,
-      )
-      .bind(guest.guestId, code)
-      .first<{ photoKey: string }>();
-    const selectedAt = Date.now();
-    await database
-      .prepare(
-        `INSERT INTO exploration_region_memories
-          (guest_id, region_code, photo_key, mime_type, line_count, selected_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT (guest_id, region_code) DO UPDATE SET
-          photo_key = excluded.photo_key,
-          mime_type = excluded.mime_type,
-          line_count = excluded.line_count,
-          selected_at = excluded.selected_at`,
-      )
-      .bind(
-        guest.guestId,
-        code,
-        photoKey,
-        mimeType,
-        Math.floor(lineCount),
-        selectedAt,
-      )
-      .run();
-    if (previous?.photoKey && previous.photoKey !== photoKey) {
-      await bucket.delete(previous.photoKey);
-    }
-    return withGuestCookie(
-      NextResponse.json({
-        regionCode: code,
-        lineCount: Math.floor(lineCount),
-        unlocked: true,
-        photoUrl: `/api/exploration/regions/${code}/photo?v=${selectedAt}`,
-        selectedAt: new Date(selectedAt).toISOString(),
-      }),
-      guest,
-    );
+    return new Response(response.body, { status: response.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
   } catch {
-    return withGuestCookie(
-      NextResponse.json(
+    return NextResponse.json(
         { error: "Representative photo could not be saved" },
         { status: 500 },
-      ),
-      guest,
     );
   }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+  }
+  return btoa(binary);
 }
 
 async function actualRegionLineCount(

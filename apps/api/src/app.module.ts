@@ -12,6 +12,7 @@ import { RankingModule } from "./ranking/ranking.module.js";
 import { QrModule } from "./qr/qr.module.js";
 import { RecommendationsModule } from "./recommendations/recommendations.module.js";
 import { SupportModule } from "./support/support.module.js";
+import { TravelMemoryModule } from "./travel-memory/travel-memory.module.js";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SupportModule } from "./support/support.module.js";
     QrModule,
     RecommendationsModule,
     SupportModule,
+    TravelMemoryModule,
   ],
 })
 export class AppModule {}
