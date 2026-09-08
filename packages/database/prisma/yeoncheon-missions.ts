@@ -222,11 +222,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_11",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -242,11 +245,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_12",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -366,18 +372,21 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_18",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
-    "placeTitle": null,
-    "address": null,
-    "latitude": null,
-    "longitude": null
+    "placeTitle": "당포성",
+    "address": "경기도 연천군 미산면 동이리 778",
+    "latitude": 38.0396,
+    "longitude": 126.9976
   },
   {
     "order": 19,
@@ -386,11 +395,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_19",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -406,11 +418,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_20",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -508,11 +523,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_25",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -571,11 +589,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_28",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
@@ -654,11 +675,14 @@ export const yeoncheonMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_32",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 150 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,

@@ -244,6 +244,55 @@ describe("composite mission verification", () => {
     ).toMatchObject({ approved: true });
   });
 
+  it("requires both an on-site GPS reading and an approved photo", () => {
+    const mission = {
+      kind: "COMPOSITE",
+      place: { latitude: 38.0396, longitude: 126.9976 },
+      verificationPolicy: {
+        type: "COMPOSITE",
+        requirements: [
+          { type: "GPS", count: 1, radiusM: 150 },
+          { type: "PHOTO", count: 1 },
+        ],
+      },
+    };
+    const onSiteGps = {
+      type: "GPS" as const,
+      latitude: 38.0396,
+      longitude: 126.9976,
+      accuracyM: 12,
+      measuredAt: now,
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        { type: "COMPOSITE", items: [onSiteGps, photo] },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "COMPOSITE_VERIFIED" });
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "COMPOSITE",
+          items: [
+            { ...onSiteGps, latitude: 38.0496 },
+            photo,
+          ],
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: false });
+    expect(
+      evaluateMission(
+        mission,
+        { type: "COMPOSITE", items: [onSiteGps] },
+        now,
+      ),
+    ).toMatchObject({ approved: false, reasonCode: "COMPOSITE_PHOTO_REQUIRED" });
+  });
+
   it("approves an automatic mission after the configured count", () => {
     const mission = {
       kind: "COMPOSITE",
