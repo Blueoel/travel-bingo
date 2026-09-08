@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "KNPS Kkomi";
-  src: url("/fonts/KNPSKkomi.otf") format("opentype");
+  font-family: "Mitmi";
+  src: url("/fonts/mitmi-font.ttf") format("truetype");
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
@@ -43,7 +43,7 @@ body {
   margin: 0;
   background: var(--app-bg);
   color: var(--ink);
-  font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif;
+  font-family: "Mitmi", sans-serif;
 }
 
 html[lang="ko"] body {
@@ -59,8 +59,9 @@ pre {
   overflow-wrap: anywhere;
 }
 
-html[lang="ko"] body *:not(code):not(pre) {
-  font-family: "KNPS Kkomi", "Noto Sans KR", sans-serif !important;
+html[lang="ko"] body,
+html[lang="ko"] body * {
+  font-family: "Mitmi", sans-serif !important;
 }
 button {
   font: inherit;
