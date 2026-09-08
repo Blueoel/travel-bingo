@@ -257,7 +257,9 @@ export class BingoCatalogService {
     }
 
     const identity: DailyLayoutIdentity = {
-      date: `region:${template.id}`,
+      // Keep retries idempotent while giving every newly started regional
+      // challenge a fresh mission selection and board arrangement.
+      date: `region:${template.id}:${input.idempotencyKey}`,
       userId: input.userId,
       dailyVersion: template.version,
     };

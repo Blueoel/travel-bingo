@@ -548,6 +548,11 @@ function trackingTime(seconds: number): string {
 }
 
 const MAX_TRACKING_RESUME_AGE_MS = 24 * 60 * 60 * 1_000;
+const TIMER_STORAGE_PREFIX = "travel-bingo-timer:";
+
+function timerStorageKey(sessionId: string, missionId: string): string {
+  return `${TIMER_STORAGE_PREFIX}${sessionId}:${missionId}`;
+}
 
 function difficultyLabel(value?: number): Mission["difficulty"] {
   return value === 1
@@ -1339,6 +1344,15 @@ export default function Home() {
       });
       const payload = await response.json().catch(() => ({})) as { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "여행 빙고를 취소하지 못했어요.");
+      if (trackingSessionId === sessionId) resetTracking();
+      for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+        const key = window.localStorage.key(index);
+        if (key?.startsWith(`${TIMER_STORAGE_PREFIX}${sessionId}:`)) {
+          window.localStorage.removeItem(key);
+        }
+      }
+      setTimerStartedAt(null);
+      setTimerAttemptToken(null);
       setCancelRegionStep(0);
       setSelected(null);
       await loadDaily(true);
@@ -1998,15 +2012,37 @@ export default function Home() {
   }, [tracking.active]);
 
   useEffect(() => {
-    if (!selected || selected.interactionType !== "TIMER") {
+    if (!selected || selected.interactionType !== "TIMER" || !sessionId) {
       setTimerStartedAt(null);
       setTimerAttemptToken(null);
       return;
     }
-    setTimerStartedAt(null);
-    setTimerAttemptToken(null);
+    try {
+      const raw = window.localStorage.getItem(timerStorageKey(sessionId, selected.id));
+      if (!raw) {
+        setTimerStartedAt(null);
+        setTimerAttemptToken(null);
+        setTimerNow(Date.now());
+        return;
+      }
+      const saved = JSON.parse(raw) as { startedAt?: string; attemptToken?: string };
+      const startedAt = new Date(saved.startedAt ?? "").getTime();
+      const age = Date.now() - startedAt;
+      if (!saved.attemptToken || !Number.isFinite(startedAt) || age < 0 || age > MAX_TRACKING_RESUME_AGE_MS) {
+        window.localStorage.removeItem(timerStorageKey(sessionId, selected.id));
+        setTimerStartedAt(null);
+        setTimerAttemptToken(null);
+      } else {
+        setTimerStartedAt(new Date(startedAt).toISOString());
+        setTimerAttemptToken(saved.attemptToken);
+      }
+    } catch {
+      window.localStorage.removeItem(timerStorageKey(sessionId, selected.id));
+      setTimerStartedAt(null);
+      setTimerAttemptToken(null);
+    }
     setTimerNow(Date.now());
-  }, [selected, sessionId]);
+  }, [selected?.id, selected?.interactionType, sessionId]);
 
   useEffect(() => {
     if (!timerStartedAt) return;
@@ -2345,6 +2381,10 @@ export default function Home() {
       const response = await apiFetch(`/daily-sessions/${sessionId}/cells/${selected.id}/attempts`, { method: "POST" });
       if (!response.ok) throw new Error("attempt start failed");
       const attempt = (await response.json()) as { attemptToken: string; startedAt: string };
+      window.localStorage.setItem(
+        timerStorageKey(sessionId, selected.id),
+        JSON.stringify(attempt),
+      );
       setTimerAttemptToken(attempt.attemptToken); setTimerStartedAt(attempt.startedAt); setTimerNow(Date.now()); setMessage(null);
     } catch { setMessage("타이머를 시작하지 못했어요. 연결 상태를 확인해주세요."); }
   };
@@ -2378,7 +2418,7 @@ export default function Home() {
       setPoints((current) => current + selected.points);
       if (selected.interactionType === "TIMER") {
         window.localStorage.removeItem(
-          `travel-bingo-timer:${sessionId ?? "demo"}:${selected.id}`,
+          timerStorageKey(sessionId ?? "demo", selected.id),
         );
       }
       setSelected(null);
@@ -2417,7 +2457,7 @@ export default function Home() {
       );
       if (selected.interactionType === "TIMER") {
         window.localStorage.removeItem(
-          `travel-bingo-timer:${sessionId}:${selected.id}`,
+          timerStorageKey(sessionId, selected.id),
         );
       }
       setSelected(null);
