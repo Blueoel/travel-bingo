@@ -825,6 +825,26 @@ export function evaluateMission(
     }
     const attempt = evidence.attemptToken ? inspectAttempt(evidence.attemptToken, receivedAt) : testActivityAttempt(evidence);
     if (!attempt || (attempt.missionId !== mission.id && process.env.NODE_ENV !== "test") || !isFreshActivity(evidence, receivedAt) || evidence.durationSeconds > attempt.elapsedSeconds + 15) return { approved: false, reasonCode: "ACTIVITY_ATTEMPT_INVALID", distanceM: evidence.distanceM };
+    const targetLatitude = toFiniteNumber(policy?.latitude) ?? toFiniteNumber(mission.place?.latitude);
+    const targetLongitude = toFiniteNumber(policy?.longitude) ?? toFiniteNumber(mission.place?.longitude);
+    const targetRadiusM = toFiniteNumber(policy?.radiusM);
+    if (targetLatitude !== null && targetLongitude !== null && targetRadiusM !== null) {
+      const locationDecision = evaluateGpsVerification({
+        target: { latitude: targetLatitude, longitude: targetLongitude },
+        measured: { latitude: evidence.latitude, longitude: evidence.longitude },
+        accuracyM: evidence.accuracyM,
+        measuredAt: evidence.measuredAt,
+        receivedAt,
+        rule: { radiusM: targetRadiusM, maximumAccuracyM: 50, maximumAgeMs: 60_000 },
+      });
+      if (!locationDecision.approved) {
+        return {
+          approved: false,
+          reasonCode: locationDecision.code,
+          ...(locationDecision.distanceM !== undefined ? { distanceM: locationDecision.distanceM } : {}),
+        };
+      }
+    }
     if (attempt.elapsedSeconds < minimumSeconds || evidence.durationSeconds < minimumSeconds) {
       return {
         approved: false,
@@ -1000,23 +1020,47 @@ function evaluateCompositeRequirement(
         };
   }
   if (requirement.type === "GPS" && evidence.type === "GPS") {
-    const latitude = toFiniteNumber(requirement.latitude) ?? toFiniteNumber(mission.place?.latitude);
-    const longitude = toFiniteNumber(requirement.longitude) ?? toFiniteNumber(mission.place?.longitude);
     const radiusM = toFiniteNumber(requirement.radiusM) ?? toFiniteNumber(mission.radiusM);
-    if (latitude === null || longitude === null || radiusM === null) {
+    const allowedLocations = Array.isArray(requirement.allowedLocations)
+      ? requirement.allowedLocations
+          .map(asRecord)
+          .filter((location): location is Record<string, unknown> => location !== null)
+          .flatMap((location) => {
+            const latitude = toFiniteNumber(location.latitude);
+            const longitude = toFiniteNumber(location.longitude);
+            return latitude === null || longitude === null
+              ? []
+              : [{ latitude, longitude }];
+          })
+      : [];
+    const fallbackLatitude = toFiniteNumber(requirement.latitude) ?? toFiniteNumber(mission.place?.latitude);
+    const fallbackLongitude = toFiniteNumber(requirement.longitude) ?? toFiniteNumber(mission.place?.longitude);
+    const targets = allowedLocations.length > 0
+      ? allowedLocations
+      : fallbackLatitude !== null && fallbackLongitude !== null
+        ? [{ latitude: fallbackLatitude, longitude: fallbackLongitude }]
+        : [];
+    if (targets.length === 0 || radiusM === null) {
       throw new ConflictException("The composite GPS policy is invalid.");
     }
-    const result = evaluateGpsVerification({
-      target: { latitude, longitude },
-      measured: { latitude: evidence.latitude, longitude: evidence.longitude },
-      accuracyM: evidence.accuracyM,
-      measuredAt: evidence.measuredAt,
-      receivedAt,
-      rule: {
-        radiusM,
-        maximumAccuracyM: toFiniteNumber(requirement.maximumAccuracyM) ?? 50,
-        maximumAgeMs: toFiniteNumber(requirement.maximumAgeMs) ?? 60_000,
-      },
+    const results = targets.map((target) =>
+      evaluateGpsVerification({
+        target,
+        measured: { latitude: evidence.latitude, longitude: evidence.longitude },
+        accuracyM: evidence.accuracyM,
+        measuredAt: evidence.measuredAt,
+        receivedAt,
+        rule: {
+          radiusM,
+          maximumAccuracyM: toFiniteNumber(requirement.maximumAccuracyM) ?? 50,
+          maximumAgeMs: toFiniteNumber(requirement.maximumAgeMs) ?? 60_000,
+        },
+      }),
+    );
+    const result = results.find((candidate) => candidate.approved) ?? results.reduce((nearest, candidate) => {
+      const nearestDistance = "distanceM" in nearest ? nearest.distanceM ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY;
+      const candidateDistance = "distanceM" in candidate ? candidate.distanceM ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY;
+      return candidateDistance < nearestDistance ? candidate : nearest;
     });
     return result.approved
       ? { approved: true, reasonCode: "GPS_INSIDE_RADIUS", distanceM: result.distanceM }

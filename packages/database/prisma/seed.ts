@@ -23,12 +23,18 @@ const ids = {
 };
 
 const gongjuRegionId = "20000000-0000-4000-8000-000000000002";
+const gongjuThemeId = "30000000-0000-4000-8000-000000000004";
+const gongjuTemplateId = "40000000-0000-4000-8000-000000000004";
 const yeoncheonRegionId = "20000000-0000-4000-8000-000000000003";
 const yeoncheonThemeId = "30000000-0000-4000-8000-000000000003";
 const yeoncheonTemplateId = "40000000-0000-4000-8000-000000000003";
 
 function gongjuMissionId(order: number): string {
   return `90000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function gongjuPlaceId(order: number): string {
+  return `93000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
 }
 
 function yeoncheonMissionId(order: number): string {
@@ -1013,6 +1019,7 @@ async function seed(): Promise<void> {
       centerLatitude: 36.4465,
       centerLongitude: 127.119,
       populationDeclineFlag: true,
+      status: "ACTIVE",
     },
     create: {
       id: gongjuRegionId,
@@ -1021,50 +1028,88 @@ async function seed(): Promise<void> {
       centerLatitude: 36.4465,
       centerLongitude: 127.119,
       populationDeclineFlag: true,
-      status: "NEEDS_REVIEW",
+      status: "ACTIVE",
     },
   });
 
+  const gongjuPlaceIds = new Map<string, string>();
   for (const mission of gongjuMissionSeed) {
-    const id = gongjuMissionId(mission.order);
-    await database.mission.upsert({
-      where: { id },
+    const latitude = "latitude" in mission ? mission.latitude : null;
+    const longitude = "longitude" in mission ? mission.longitude : null;
+    if (!mission.placeTitle || typeof latitude !== "number" || typeof longitude !== "number") continue;
+    if (gongjuPlaceIds.has(mission.placeTitle)) continue;
+    const placeId = gongjuPlaceId(mission.order);
+    gongjuPlaceIds.set(mission.placeTitle, placeId);
+    await database.place.upsert({
+      where: { id: placeId },
       update: {
-        kind: mission.kind,
-        scope: "REGION",
-        title: mission.title,
-        description: mission.description,
-        category: mission.category,
-        verificationPolicy: mission.verificationPolicy,
-        targetValue: mission.targetValue,
-        targetUnit: mission.targetUnit,
-        points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
-        difficulty: mission.difficulty,
-        similarityGroup: mission.similarityGroup,
-        status: mission.status,
+        regionId: gongjuRegion.id,
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude,
+        longitude,
+        status: "ACTIVE",
       },
       create: {
-        id,
-        kind: mission.kind,
-        scope: "REGION",
-        title: mission.title,
-        description: mission.description,
-        category: mission.category,
-        verificationPolicy: mission.verificationPolicy,
-        targetValue: mission.targetValue,
-        targetUnit: mission.targetUnit,
-        points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
-        difficulty: mission.difficulty,
-        similarityGroup: mission.similarityGroup,
-        status: mission.status,
+        id: placeId,
+        regionId: gongjuRegion.id,
+        source: "GONGJU_MISSION_CATALOG",
+        externalContentId: `gongju-${mission.order}`,
+        contentType: "TOURIST_SPOT",
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude,
+        longitude,
       },
+    });
+  }
+
+  const activeGongjuMissionIds: string[] = [];
+  for (const mission of gongjuMissionSeed) {
+    const id = gongjuMissionId(mission.order);
+    const placeId = mission.placeTitle ? gongjuPlaceIds.get(mission.placeTitle) ?? null : null;
+    const missionData = {
+      placeId,
+      kind: mission.kind,
+      scope: "REGION" as const,
+      title: mission.title,
+      description: mission.description,
+      category: mission.category,
+      verificationPolicy: mission.verificationPolicy,
+      targetValue: mission.targetValue,
+      targetUnit: mission.targetUnit,
+      points: Number(mission.difficulty) === 3 ? 30 : Number(mission.difficulty) === 2 ? 20 : 10,
+      difficulty: mission.difficulty,
+      similarityGroup: mission.similarityGroup,
+      status: mission.status,
+    };
+    await database.mission.upsert({
+      where: { id },
+      update: missionData,
+      create: { id, ...missionData },
     });
     await database.missionRegion.upsert({
       where: { missionId_regionId: { missionId: id, regionId: gongjuRegion.id } },
       update: {},
       create: { missionId: id, regionId: gongjuRegion.id },
     });
+    if (mission.status === "ACTIVE") activeGongjuMissionIds.push(id);
   }
+
+  await database.bingoTheme.upsert({
+    where: { id: gongjuThemeId },
+    update: { regionId: gongjuRegion.id, name: "공주 여행 빙고", category: "REGION", isRequiredForRegionCompletion: true, status: "ACTIVE", displayOrder: 4 },
+    create: { id: gongjuThemeId, regionId: gongjuRegion.id, name: "공주 여행 빙고", category: "REGION", isRequiredForRegionCompletion: true, status: "ACTIVE", displayOrder: 4 },
+  });
+  await database.bingoTemplate.upsert({
+    where: { id: gongjuTemplateId },
+    update: { regionId: gongjuRegion.id, themeId: gongjuThemeId, title: "충청남도 공주시 여행 빙고", type: "REGION", status: "PUBLISHED", publishedAt: new Date("2026-09-08T00:00:00.000Z") },
+    create: { id: gongjuTemplateId, regionId: gongjuRegion.id, themeId: gongjuThemeId, title: "충청남도 공주시 여행 빙고", type: "REGION", status: "PUBLISHED", version: 1, startsAt: new Date("2026-09-08T00:00:00.000Z"), publishedAt: new Date("2026-09-08T00:00:00.000Z") },
+  });
+  await database.templateCell.deleteMany({ where: { templateId: gongjuTemplateId } });
+  await database.templateCell.createMany({
+    data: activeGongjuMissionIds.slice(0, 25).map((missionId, position) => ({ templateId: gongjuTemplateId, position, missionId })),
+  });
 
   const yeoncheonRegion = await database.region.upsert({
     where: { administrativeCode: "41800" },
@@ -1137,7 +1182,7 @@ async function seed(): Promise<void> {
       targetValue: mission.targetValue,
       targetUnit: mission.targetUnit,
       radiusM: effectiveKind === "PLACE_VISIT" ? 150 : null,
-      points: mission.difficulty === 3 ? 30 : mission.difficulty === 2 ? 20 : 10,
+      points: Number(mission.difficulty) === 3 ? 30 : Number(mission.difficulty) === 2 ? 20 : 10,
       difficulty: mission.difficulty,
       similarityGroup: mission.similarityGroup,
       status: effectiveStatus,

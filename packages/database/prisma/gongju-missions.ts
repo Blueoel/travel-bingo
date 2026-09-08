@@ -6,16 +6,21 @@ export const gongjuMissionSeed = [
     "category": "탐색",
     "difficulty": 1,
     "similarityGroup": "GONGJU_GONGSANSEONG",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 250 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "공산성",
-    "address": "충남 공주시 금성동 53-51"
+    "address": "충남 공주시 웅진로 280",
+    "latitude": 36.4629981682,
+    "longitude": 127.1268075582
   },
   {
     "order": 2,
@@ -105,16 +110,18 @@ export const gongjuMissionSeed = [
     "category": "탐색",
     "difficulty": 2,
     "similarityGroup": "GONGJU_GONGSANSEONG",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS"
+      "type": "COMPOSITE",
+      "requirements": [{ "type": "GPS", "count": 1, "radiusM": 600 }]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "공산성",
-    "address": "충남 공주시 금성동 53-51"
+    "address": "충남 공주시 웅진로 280",
+    "latitude": 36.4629981682,
+    "longitude": 127.1268075582
   },
   {
     "order": 7,
@@ -163,14 +170,18 @@ export const gongjuMissionSeed = [
     "category": "휴식",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS 체류"
+      "type": "GPS_STAY",
+      "minimumSeconds": 180,
+      "allowedDriftM": 120,
+      "latitude": 36.4465,
+      "longitude": 127.119,
+      "radiusM": 22000
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 180,
+    "targetUnit": "SECOND",
     "placeTitle": null,
     "address": null
   },
@@ -181,16 +192,21 @@ export const gongjuMissionSeed = [
     "category": "관찰",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS 방문+텍스트"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 250 },
+        { "type": "TEXT", "count": 1, "maxLength": 100 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "국립공주박물관",
-    "address": "충남 공주시 관광단지길 34 국립공주박물관"
+    "address": "충남 공주시 관광단지길 34 국립공주박물관",
+    "latitude": 36.4655287,
+    "longitude": 127.1122874
   },
   {
     "order": 11,
@@ -297,16 +313,22 @@ export const gongjuMissionSeed = [
     "category": "휴식",
     "difficulty": 1,
     "similarityGroup": "GONGJU_GEUMGANG",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS 체류"
+      "type": "GPS_STAY",
+      "minimumSeconds": 180,
+      "allowedDriftM": 120,
+      "latitude": 36.4712,
+      "longitude": 127.1286,
+      "radiusM": 1000
     },
-    "targetValue": null,
-    "targetUnit": null,
-    "placeTitle": null,
-    "address": null
+    "targetValue": 180,
+    "targetUnit": "SECOND",
+    "placeTitle": "금강신관공원 일대",
+    "address": "충남 공주시 금벽로 368",
+    "latitude": 36.4712,
+    "longitude": 127.1286
   },
   {
     "order": 17,
@@ -353,20 +375,18 @@ export const gongjuMissionSeed = [
     "category": "탐색",
     "difficulty": 1,
     "similarityGroup": "GONGJU_SEOKJANGNI",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS",
-      "allowedPlaces": [
-        "석장리 유적",
-        "석장리박물관 (한 곳 방문)"
-      ]
+      "type": "COMPOSITE",
+      "requirements": [{ "type": "GPS", "count": 1, "radiusM": 350 }]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "석장리 유적 또는 석장리박물관",
-    "address": "충남 공주시 금벽로 990"
+    "address": "충남 공주시 금벽로 990",
+    "latitude": 36.4444403786,
+    "longitude": 127.1945853132
   },
   {
     "order": 20,
@@ -395,16 +415,23 @@ export const gongjuMissionSeed = [
     "category": "탐색",
     "difficulty": 1,
     "similarityGroup": "GONGJU_TEMPLE",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진",
-      "allowedPlaces": [
-        "마곡사",
-        "갑사",
-        "동학사",
-        "신원사"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "GPS",
+          "count": 1,
+          "radiusM": 300,
+          "allowedLocations": [
+            { "name": "마곡사", "latitude": 36.5581751, "longitude": 127.0125524 },
+            { "name": "갑사", "latitude": 36.365371, "longitude": 127.1876513 },
+            { "name": "동학사", "latitude": 36.3532371, "longitude": 127.2197807 },
+            { "name": "신원사", "latitude": 36.335379, "longitude": 127.184164 }
+          ]
+        },
+        { "type": "PHOTO", "count": 1 }
       ]
     },
     "targetValue": null,
@@ -419,16 +446,16 @@ export const gongjuMissionSeed = [
     "category": "걷기",
     "difficulty": 2,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
-    "kind": "COMPOSITE",
+    "status": "ACTIVE",
+    "kind": "WALK_DISTANCE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS"
+      "type": "GPS_DISTANCE",
+      "minimumKilometers": 1
     },
-    "targetValue": null,
-    "targetUnit": null,
-    "placeTitle": null,
-    "address": null
+    "targetValue": 1,
+    "targetUnit": "KILOMETER",
+    "placeTitle": "계룡산 탐방로",
+    "address": "충남 공주시 반포면 동학사1로 327-6"
   },
   {
     "order": 23,
@@ -437,16 +464,21 @@ export const gongjuMissionSeed = [
     "category": "사진",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 500 },
+        { "type": "PHOTO", "count": 1 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
-    "placeTitle": null,
-    "address": null
+    "placeTitle": "유구색동수국정원",
+    "address": "충남 공주시 유구읍 창말길 44",
+    "latitude": 36.555467,
+    "longitude": 126.9544899
   },
   {
     "order": 24,
@@ -584,16 +616,27 @@ export const gongjuMissionSeed = [
     "category": "탐방·기록",
     "difficulty": 3,
     "similarityGroup": "GONGJU_GONGSANSEONG",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+메모"
+      "type": "COMPOSITE",
+      "requirements": [
+        {
+          "type": "GPS",
+          "count": 1,
+          "radiusM": 350,
+          "allowedLocations": [
+            { "name": "공산성", "latitude": 36.4629981682, "longitude": 127.1268075582 },
+            { "name": "공주 무령왕릉과 왕릉원", "latitude": 36.4626, "longitude": 127.1132 }
+          ]
+        },
+        { "type": "TEXT", "count": 1, "maxLength": 140 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
-    "placeTitle": null,
-    "address": null
+    "placeTitle": "공산성 또는 공주 무령왕릉과 왕릉원",
+    "address": "충남 공주시 일대"
   },
   {
     "order": 31,
@@ -620,16 +663,22 @@ export const gongjuMissionSeed = [
     "category": "탐색",
     "difficulty": 3,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+사진+메모"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 350 },
+        { "type": "PHOTO", "count": 1 },
+        { "type": "TEXT", "count": 1, "maxLength": 140 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "고마나루",
-    "address": null
+    "address": "충남 공주시 웅진동 452-3",
+    "latitude": 36.4601387,
+    "longitude": 127.1065104
   },
   {
     "order": 33,
@@ -665,16 +714,22 @@ export const gongjuMissionSeed = [
     "category": "체류·탐방",
     "difficulty": 3,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS 체류"
+      "type": "GPS_STAY",
+      "minimumSeconds": 1800,
+      "allowedDriftM": 900,
+      "latitude": 36.4339097854,
+      "longitude": 127.1239113799,
+      "radiusM": 1000
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 1800,
+    "targetUnit": "SECOND",
     "placeTitle": "금학생태공원",
-    "address": "충남 공주시 수원지공원길 74"
+    "address": "충남 공주시 수원지공원길 74",
+    "latitude": 36.4339097854,
+    "longitude": 127.1239113799
   },
   {
     "order": 35,
@@ -683,16 +738,21 @@ export const gongjuMissionSeed = [
     "category": "문학·기록",
     "difficulty": 1,
     "similarityGroup": "GONGJU_NA_TAEJOO",
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS+텍스트"
+      "type": "COMPOSITE",
+      "requirements": [
+        { "type": "GPS", "count": 1, "radiusM": 200 },
+        { "type": "TEXT", "count": 1, "maxLength": 100 }
+      ]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "나태주 풀꽃문학관",
-    "address": "충남 공주시 봉황로 85-12"
+    "address": "충남 공주시 봉황로 85-12",
+    "latitude": 36.4467232,
+    "longitude": 127.120264
   },
   {
     "order": 36,
@@ -746,15 +806,17 @@ export const gongjuMissionSeed = [
     "category": "탐방",
     "difficulty": 1,
     "similarityGroup": null,
-    "status": "NEEDS_REVIEW",
+    "status": "ACTIVE",
     "kind": "COMPOSITE",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "GPS"
+      "type": "COMPOSITE",
+      "requirements": [{ "type": "GPS", "count": 1, "radiusM": 200 }]
     },
     "targetValue": null,
     "targetUnit": null,
     "placeTitle": "공주 옛 읍사무소",
-    "address": "충남 공주시 우체국길 8"
+    "address": "충남 공주시 우체국길 8",
+    "latitude": 36.454559,
+    "longitude": 127.1221175
   }
 ] as const;

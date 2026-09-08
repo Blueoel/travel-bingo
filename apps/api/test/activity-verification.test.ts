@@ -293,6 +293,47 @@ describe("composite mission verification", () => {
     ).toMatchObject({ approved: false, reasonCode: "COMPOSITE_PHOTO_REQUIRED" });
   });
 
+  it("accepts GPS evidence near any configured composite location", () => {
+    const mission = {
+      kind: "COMPOSITE",
+      verificationPolicy: {
+        type: "COMPOSITE",
+        requirements: [
+          {
+            type: "GPS",
+            count: 1,
+            radiusM: 300,
+            allowedLocations: [
+              { latitude: 36.5581751, longitude: 127.0125524 },
+              { latitude: 36.3532371, longitude: 127.2197807 },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "COMPOSITE",
+          items: [{ type: "GPS", latitude: 36.3532371, longitude: 127.2197807, accuracyM: 10, measuredAt: now }],
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "COMPOSITE_VERIFIED" });
+    expect(
+      evaluateMission(
+        mission,
+        {
+          type: "COMPOSITE",
+          items: [{ type: "GPS", latitude: 36.4465, longitude: 127.119, accuracyM: 10, measuredAt: now }],
+        },
+        now,
+      ),
+    ).toMatchObject({ approved: false });
+  });
+
   it("approves an automatic mission after the configured count", () => {
     const mission = {
       kind: "COMPOSITE",
