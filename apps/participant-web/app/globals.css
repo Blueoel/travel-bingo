@@ -123,10 +123,7 @@ button {
   width: min(86vw, 372px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  background:
-    radial-gradient(circle at 16% 9%, #ddc9a829 0 1px, transparent 1.6px),
-    var(--app-bg);
-  background-size: 18px 20px, auto;
+  background: var(--app-bg);
   box-shadow: 16px 0 42px #0d241b38;
   animation: side-menu-enter 180ms ease-out;
 }
@@ -154,6 +151,13 @@ button {
   font-family: "Segoe Print", "Comic Sans MS", cursive;
   font-size: 19px;
   font-weight: 800;
+  overflow: hidden;
+}
+.side-menu-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 .side-menu-profile div { display: grid; gap: 2px; }
 .side-menu-profile small { color: #c8daa9; font-size: 8px; font-weight: 900; letter-spacing: 1.5px; }
@@ -201,13 +205,12 @@ button {
 .side-menu-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   padding: 14px 20px calc(15px + env(safe-area-inset-bottom));
   border-top: 1px solid #e2dbcf;
   background: #f7f3e9;
 }
-.side-menu-footer small { color: #7a8078; font-size: 9px; }
 .side-menu-footer button { border: 0; background: transparent; color: #315b40; font-size: 11px; font-weight: 800; cursor: pointer; }
 .home-greeting {
   min-height: 96px;
@@ -953,6 +956,57 @@ button {
   border-radius: 16px 12px 18px 13px;
   background: #fffdf9;
   box-shadow: 0 5px 13px #5647300c;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.selected-region-card.selected {
+  border-color: #78916a;
+  box-shadow: 0 0 0 2px #78916a24, 0 5px 13px #5647300c;
+}
+.selected-region-card.empty {
+  cursor: default;
+}
+.active-region-section {
+  margin-top: 18px;
+}
+.active-region-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 2px 8px;
+}
+.active-region-heading h2 {
+  margin: 0;
+  color: #2b4932;
+  font-size: 14px;
+}
+.active-region-heading span {
+  color: #72816d;
+  font-size: 10px;
+}
+.active-region-list {
+  display: grid;
+  gap: 9px;
+}
+.region-card-copy {
+  min-width: 0;
+}
+.region-card-copy strong {
+  display: block;
+  margin: 2px 0;
+  color: #2b4932;
+  font-size: 17px;
+}
+.region-card-copy > span {
+  display: block;
+  overflow: hidden;
+  color: #747268;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .memory-detail-button {
   grid-column: 2 / -1;
@@ -984,19 +1038,6 @@ button {
 .selected-region-card small {
   color: #918979;
   font-size: 9px;
-}
-.selected-region-card h2 {
-  margin: 2px 0;
-  color: #2b4932;
-  font-size: 17px;
-}
-.selected-region-card p {
-  margin: 0;
-  overflow: hidden;
-  color: #747268;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .region-status {
   padding: 6px 8px;

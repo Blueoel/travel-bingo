@@ -3790,49 +3790,73 @@ export default function Home() {
             <p className="map-gesture-tip">버튼으로 확대하고 끌어서 둘러보세요</p>
           </div>
 
-          <article className="selected-region-card">
-            <div className="region-stamp" aria-hidden="true">
-              {selectedMapRegion.name.slice(0, 1)}
-            </div>
-            <div>
-              <small>{selectedMapRegion.province || "대한민국"}</small>
-              <h2>{selectedMapRegion.name}</h2>
-              <p>
-                {selectedRegionRecord
-                  ? explorationMemory.photoUrl
-                    ? `대표 사진으로 ${selectedMapRegion.name}의 추억을 채웠어요.`
-                    : explorationMemory.unlocked
-                      ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
-                      : `${selectedMapRegion.name} 여행 빙고에 도전 중이에요.`
-                  : "아직 이 지역의 여행 기록이 없어요."}
-              </p>
-            </div>
-            <span
-              className={
-                selectedRegionRecord
-                  ? "region-status active"
-                  : "region-status"
-              }
-            >
-              {selectedRegionRecord
-                ? explorationMemory.photoUrl
-                  ? "사진 완료"
-                  : explorationMemory.unlocked
-                    ? "해금"
-                    : "도전 중"
-                : "미발견"}
-            </span>
-            {selectedRegionRecord &&
-              explorationMemory.photoUrl && (
+          {explorationRecords.length > 0 ? (
+            <section className="active-region-section" aria-labelledby="active-region-title">
+              <div className="active-region-heading">
+                <h2 id="active-region-title">도전 중인 지역</h2>
+                <span>{explorationRecords.length}곳</span>
+              </div>
+              <div className="active-region-list">
+                {explorationRecords.map((record) => {
+                  const isSelected = record.regionCode === selectedMapRegion.code;
+                  return (
+                    <button
+                      type="button"
+                      key={record.regionCode}
+                      className={`selected-region-card${isSelected ? " selected" : ""}`}
+                      aria-pressed={isSelected}
+                      onClick={() =>
+                        setSelectedMapRegion({
+                          code: record.regionCode,
+                          name: record.regionName,
+                          province: record.provinceName,
+                        })
+                      }
+                    >
+                      <span className="region-stamp" aria-hidden="true">
+                        {record.regionName.replace(/(시|군|구)$/, "").slice(0, 1)}
+                      </span>
+                      <span className="region-card-copy">
+                        <small>{record.provinceName || "대한민국"}</small>
+                        <strong>{record.regionName}</strong>
+                        <span>
+                          {record.photoUrl
+                            ? `대표 사진으로 ${record.regionName}의 추억을 채웠어요.`
+                            : record.unlocked
+                              ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
+                              : `${record.regionName} 여행 빙고에 도전 중이에요.`}
+                        </span>
+                      </span>
+                      <span className="region-status active">
+                        {record.photoUrl ? "사진 완료" : record.unlocked ? "해금" : "도전 중"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedRegionRecord?.photoUrl && (
                 <button
                   type="button"
                   className="memory-detail-button"
                   onClick={() => setMemoryDetailOpen(true)}
                 >
-                  추억 보기
+                  {selectedMapRegion.name} 추억 보기
                 </button>
               )}
-          </article>
+            </section>
+          ) : (
+            <article className="selected-region-card empty">
+              <div className="region-stamp" aria-hidden="true">
+                {selectedMapRegion.name.slice(0, 1)}
+              </div>
+              <div className="region-card-copy">
+                <small>{selectedMapRegion.province || "대한민국"}</small>
+                <strong>{selectedMapRegion.name}</strong>
+                <span>아직 도전 중인 지역 빙고가 없어요.</span>
+              </div>
+              <span className="region-status">미발견</span>
+            </article>
+          )}
 
           {selectedRegionRecord ? (
             <div
@@ -4613,11 +4637,17 @@ export default function Home() {
             onClick={(event) => event.stopPropagation()}
           >
             <header className="side-menu-profile">
-              <span aria-hidden="true">{nickname.slice(0, 1)}</span>
+              <span className="side-menu-avatar" aria-hidden="true">
+                {account?.avatarDataUrl ? (
+                  <img src={account.avatarDataUrl} alt="" />
+                ) : (
+                  (account?.nickname ?? nickname).slice(0, 1)
+                )}
+              </span>
               <div>
                 <small>TRAVELER</small>
-                <b>{nickname}님</b>
-                <em>{points.toLocaleString()} Point</em>
+                <b>{account?.nickname ?? nickname}님</b>
+                <em>{(badgeSummary?.totals.points ?? points).toLocaleString()} Point</em>
               </div>
               <button type="button" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)}>×</button>
             </header>
@@ -4661,7 +4691,6 @@ export default function Home() {
             </div>
 
             <footer className="side-menu-footer">
-              <small>Travel Bingo · 테스트 서비스</small>
               <button type="button" disabled={logoutPending} onClick={() => { setMenuOpen(false); void logout(); }}>
                 {logoutPending ? "로그아웃 중…" : "로그아웃"}
               </button>
