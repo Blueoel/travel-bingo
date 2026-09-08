@@ -358,7 +358,7 @@ function missionIconSource(
   if (mission.kind === "WALK_DISTANCE" || mission.kind === "WALK_STEPS") {
     return "/icons/ui/footprint.svg";
   }
-  if (mission.kind === "QUIZ") return "/icons/ui/star.svg";
+  if (mission.kind === "QUIZ") return "/icons/ui/question.svg";
   if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg";
   return "/icons/ui/check.svg";
 }
@@ -3382,7 +3382,7 @@ export default function Home() {
         )}
       </section>
       <button type="button" className="bingo-share-card" onClick={() => void shareBingoBoard()} disabled={sharingBingo}>
-        <span aria-hidden="true">♧</span>
+        <span aria-hidden="true"><img src="/icons/ui/share.svg" alt="" /></span>
         <b>{sharingBingo ? "빙고판 만드는 중…" : "빙고판 공유하기"}</b>
         <i aria-hidden="true">↗</i>
       </button>
@@ -3661,7 +3661,7 @@ export default function Home() {
                   }}
                 >
                   <span className="region-directory-pin" aria-hidden="true">
-                    {bingo ? "⌖" : "·"}
+                    <img src={bingo ? "/icons/ui/location.svg" : "/icons/ui/lock.svg"} alt="" />
                   </span>
                   <span>
                     <strong>{fullName}</strong>
@@ -4568,7 +4568,7 @@ export default function Home() {
               {latestTravelPhoto?.photoUrl ? (
                 <img src={latestTravelPhoto.photoUrl} alt={`${latestTravelPhoto.regionName} 여행 대표 사진`} />
               ) : (
-                <i aria-hidden="true">▧</i>
+                <i aria-hidden="true"><img src="/icons/ui/travel-note.svg" alt="" /></i>
               )}
               <span>
                 <strong>방문한 지역 {travelSummaryRecords.length}곳</strong>
@@ -4593,7 +4593,7 @@ export default function Home() {
           </div>
           <div className="my-menu">
             <button type="button" onClick={() => setMyView("travel-note")}>
-              <span>▤</span>
+              <span><img src="/icons/ui/travel-note.svg" alt="" /></span>
               여행 기록
               <b>›</b>
             </button>
@@ -4633,7 +4633,7 @@ export default function Home() {
               <b>›</b>
             </button>
             <button type="button" onClick={() => setMyView("rewards")}>
-              <span>♕</span>
+              <span><img src="/icons/ui/reward.svg" alt="" /></span>
               랭킹 보상 이력
               <b>›</b>
             </button>
@@ -4690,28 +4690,28 @@ export default function Home() {
               <section className="side-menu-group">
                 <small>나의 활동</small>
                 <button type="button" onClick={() => { setMenuOpen(false); setAnnouncementsOpen(true); }}>
-                  <span aria-hidden="true">♧</span><b>공지사항과 알림</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/notification.svg" alt="" /></span><b>공지사항과 알림</b><i>›</i>
                 </button>
                 <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); setMyView("badges"); }}>
-                  <span aria-hidden="true">☆</span><b>획득한 배지</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/achievement.svg" alt="" /></span><b>획득한 배지</b><i>›</i>
                 </button>
                 <button type="button" onClick={() => { setMenuOpen(false); setFriendsOpen(true); void loadFriends(); }}>
-                  <span aria-hidden="true">♧</span><b>친구 관리</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/footprint.svg" alt="" /></span><b>친구 관리</b><i>›</i>
                 </button>
               </section>
 
               <section className="side-menu-group side-menu-guides">
                 <small>이용 안내</small>
                 <details>
-                  <summary><span aria-hidden="true">?</span><b>Travel Bingo 이용 방법</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/info.svg" alt="" /></span><b>Travel Bingo 이용 방법</b><i>⌄</i></summary>
                   <p>매일 새로운 Daily 빙고에 도전하고, 여행지에서는 지역 빙고를 시작해보세요. 미션을 한 줄 완성할 때마다 포인트와 기록이 쌓입니다.</p>
                 </details>
                 <details>
-                  <summary><span aria-hidden="true">⌖</span><b>GPS·사진 인증 안내</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg" alt="" /></span><b>GPS·사진 인증 안내</b><i>⌄</i></summary>
                   <p>GPS 미션은 야외에서 위치 권한을 허용해주세요. 사진에는 주변 사람의 얼굴이나 차량번호가 나오지 않도록 촬영해주세요.</p>
                 </details>
                 <details>
-                  <summary><span aria-hidden="true">◎</span><b>관광정보 활용 안내</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg" alt="" /></span><b>관광정보 활용 안내</b><i>⌄</i></summary>
                   <p>추천 지역과 관광지 정보에는 한국관광공사 국문 관광정보·관광사진·연관 관광지 OpenAPI가 활용됩니다.</p>
                 </details>
               </section>
@@ -4719,7 +4719,7 @@ export default function Home() {
               <section className="side-menu-group">
                 <small>서비스</small>
                 <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); void openSettings(); }}>
-                  <span aria-hidden="true">⚙</span><b>계정 및 앱 설정</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/settings.svg" alt="" /></span><b>계정 및 앱 설정</b><i>›</i>
                 </button>
               </section>
             </div>
