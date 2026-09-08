@@ -210,10 +210,9 @@ button {
 .side-menu-footer button { border: 0; background: transparent; color: #315b40; font-size: 11px; font-weight: 800; cursor: pointer; }
 .home-greeting {
   min-height: 96px;
-  display: grid;
-  grid-template-columns: 1fr 105px;
+  display: block;
   align-items: center;
-  gap: 8px;
+  padding: 18px 0 12px;
 }
 .home-greeting p {
   margin: 0 0 7px;
@@ -227,32 +226,6 @@ button {
   font-family: "Segoe Print", "Comic Sans MS", "Noto Sans KR", cursive;
   font-size: 21px;
   line-height: 1.45;
-}
-.home-walker {
-  position: relative;
-  height: 105px;
-  color: #477042;
-}
-.home-walker span {
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  color: #f2ad38;
-  font-size: 24px;
-}
-.home-walker b {
-  position: absolute;
-  right: 25px;
-  bottom: 22px;
-  font-size: 58px;
-  transform: rotate(-7deg);
-}
-.home-walker i {
-  position: absolute;
-  right: 5px;
-  bottom: 9px;
-  color: #9aaa74;
-  font-size: 35px;
 }
 .daily-home-card {
   width: 100%;
@@ -1073,6 +1046,11 @@ button {
 }
 .region-memory-content {
   min-width: 0;
+}
+.region-progress-note > span img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 .memory-photo-actions button {
   min-height: 32px;
@@ -2132,24 +2110,6 @@ button {
   cursor: pointer;
 }
 .logout-button:disabled { cursor: wait; opacity: .55; }
-.my-doodle {
-  display: flex;
-  justify-content: center;
-  align-items: end;
-  gap: 23px;
-  height: 80px;
-  color: #718b4f;
-  font-family: cursive;
-  font-size: 32px;
-}
-.my-doodle i {
-  color: #e8a229;
-  font-style: normal;
-  font-size: 24px;
-}
-.my-doodle b {
-  font-size: 38px;
-}
 header {
   display: flex;
   justify-content: space-between;
@@ -2438,6 +2398,11 @@ h1 {
 .mission-icon.quiz,
 .large-icon.quiz {
   background: #ffe8a9;
+}
+.mission-icon img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
 }
 .quiz-choices {
   display: grid;
@@ -2998,6 +2963,16 @@ nav .active img {
   max-height: 94dvh;
   overflow-y: auto;
   background: var(--cream);
+}
+.large-icon img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+.completion-medal img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 .journal-sheet .large-icon {
   border: 1px solid #ddd2bd;
@@ -3896,13 +3871,6 @@ nav .active img {
   .selected-region-card .region-status {
     grid-column: 2;
     justify-self: start;
-  }
-  .home-greeting {
-    grid-template-columns: minmax(0, 1fr) 82px;
-  }
-  .home-walker {
-    transform: scale(.82);
-    transform-origin: right center;
   }
   .daily-home-card {
     grid-template-columns: minmax(0, 1fr) 92px;

@@ -310,16 +310,33 @@ const completedClientLineKeys = (missions: Mission[]) =>
       ? [`client-line-${index}`]
       : [],
   );
-const icon: Record<MissionKind, string> = {
-  CHECK_IN: "✓",
-  QUIZ: "?",
-  PLACE_VISIT: "⌖",
-  QR_SCAN: "▦",
-  PHOTO: "▣",
-  COMPOSITE: "◷",
-  WALK_DISTANCE: "↝",
-  WALK_STEPS: "♟",
-};
+function missionIconSource(
+  mission: Pick<Mission, "kind" | "done" | "interactionType" | "verificationLabel">,
+  placement: "BOARD" | "DETAIL" = "BOARD",
+): string {
+  if (mission.done) return "/icons/ui/check.svg";
+  const label = mission.verificationLabel?.toLocaleLowerCase("ko-KR") ?? "";
+  if (mission.kind === "PHOTO" || label.includes("사진")) {
+    return placement === "BOARD" ? "/icons/ui/camera.svg" : "/icons/ui/photo.svg";
+  }
+  if (
+    mission.interactionType === "TIMER" ||
+    label.includes("타이머") ||
+    label.includes("시간") ||
+    label.includes("체류")
+  ) {
+    return "/icons/ui/timer.svg";
+  }
+  if (mission.kind === "WALK_DISTANCE" || mission.kind === "WALK_STEPS") {
+    return "/icons/ui/footprint.svg";
+  }
+  if (mission.kind === "PLACE_VISIT" || label.includes("gps") || label.includes("위치")) {
+    return "/icons/ui/location.svg";
+  }
+  if (mission.kind === "QUIZ") return "/icons/ui/star.svg";
+  if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg";
+  return "/icons/ui/check.svg";
+}
 const contributedDemoMissions: Mission[] = [
   {
     id: "demo-shadow",
@@ -3229,7 +3246,11 @@ export default function Home() {
                 <img className="board-photo" src={bingoPhotos[item.id]} alt="" />
               )}
               <span className={`mission-icon ${item.kind.toLowerCase()}`}>
-                {item.done ? "✓" : item.reviewPending ? "…" : icon[item.kind]}
+                {item.reviewPending ? (
+                  "…"
+                ) : (
+                  <img src={missionIconSource(item, "BOARD")} alt="" />
+                )}
               </span>
               <b>{item.title}</b>
               <small>
@@ -3286,11 +3307,6 @@ export default function Home() {
                 오늘도 작은 발견을
                 <br />시작해볼까요?
               </h1>
-            </div>
-            <div className="home-walker" aria-hidden="true">
-              <span>☀</span>
-              <b>♙</b>
-              <i>⌁</i>
             </div>
           </div>
 
@@ -3743,7 +3759,10 @@ export default function Home() {
               }`}
             >
               <span aria-hidden="true">
-                {explorationMemory.photoUrl ? "✓" : "✎"}
+                <img
+                  src={explorationMemory.photoUrl ? "/icons/ui/check.svg" : "/icons/ui/pencil.svg"}
+                  alt=""
+                />
               </span>
               <div className="region-memory-content">
                 <b>
@@ -4497,11 +4516,6 @@ export default function Home() {
           <button className="logout-button" type="button" disabled={logoutPending} onClick={() => void logout()}>
             {logoutPending ? "로그아웃 중…" : "로그아웃"}
           </button>
-          <div className="my-doodle" aria-hidden="true">
-            <span>⌁</span>
-            <i>✿</i>
-            <b>♧</b>
-          </div>
             </>
           )}
         </section>
@@ -4763,7 +4777,7 @@ export default function Home() {
               <div className="mission-complete">
                 <p className="sheet-kicker">미션 완료</p>
                 <div className="completion-medal" aria-hidden="true">
-                  ✓
+                  <img src="/icons/ui/check.svg" alt="" />
                 </div>
                 <h2>{selected.title}</h2>
                 <strong>+ {selected.points} Point</strong>
@@ -4796,7 +4810,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <span className={`large-icon ${selected.kind.toLowerCase()}`}>
-                    {selected.done ? "✓" : icon[selected.kind]}
+                    <img src={missionIconSource(selected, "DETAIL")} alt="" />
                   </span>
                 )}
                 </div>
