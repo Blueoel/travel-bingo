@@ -3409,10 +3409,10 @@ export default function Home() {
               <span className="daily-home-action">이어하기 <b>›</b></span>
             </span>
             <div className="daily-notebook" aria-hidden="true">
-              <i>✓</i>
-              <i>✿</i>
-              <i>☆</i>
-              <i>⌁</i>
+              <i><img src="/icons/ui/timer.svg" alt="" /></i>
+              <i><img src="/icons/ui/camera.svg" alt="" /></i>
+              <i><img src="/icons/ui/pencil.svg" alt="" /></i>
+              <i><img src="/icons/ui/star.svg" alt="" /></i>
             </div>
           </button>
 

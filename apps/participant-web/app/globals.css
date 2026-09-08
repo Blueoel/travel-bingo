@@ -287,6 +287,12 @@ button {
   font-size: 14px;
   font-style: normal;
 }
+.daily-notebook i img {
+  width: 21px;
+  height: 21px;
+  display: block;
+  object-fit: contain;
+}
 .home-section-title {
   display: flex;
   align-items: center;
