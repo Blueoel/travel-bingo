@@ -156,11 +156,11 @@ export const yeoncheonMissionSeed = [
     "category": "퀴즈",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_08",
-    "status": "NEEDS_REVIEW",
-    "kind": "COMPOSITE",
+    "status": "ACTIVE",
+    "kind": "QUIZ",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "주관식",
+      "type": "QUIZ",
+      "answerHash": "109552d09ae0e971b41b5e1e1a3afe7c828ede87d2929b5931012da6b75bd897",
       "caution": "암벽 접근 금지"
     },
     "targetValue": null,
@@ -467,11 +467,11 @@ export const yeoncheonMissionSeed = [
     "category": "퀴즈",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_23",
-    "status": "NEEDS_REVIEW",
-    "kind": "COMPOSITE",
+    "status": "ACTIVE",
+    "kind": "QUIZ",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "주관식"
+      "type": "QUIZ",
+      "answerHash": "c6b7e23123949ad63100c5651d3fe6e11db5d9a6b21c2be5355c448c3e2b1f21"
     },
     "targetValue": null,
     "targetUnit": null,
@@ -866,11 +866,14 @@ export const yeoncheonMissionSeed = [
     "category": "퀴즈",
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_42",
-    "status": "NEEDS_REVIEW",
-    "kind": "COMPOSITE",
+    "status": "ACTIVE",
+    "kind": "QUIZ",
     "verificationPolicy": {
-      "type": "MANUAL",
-      "intendedVerification": "주관식"
+      "type": "QUIZ",
+      "answerHash": "f0fb8d70b6c1584c7914e865ed17b624e6c90bc16d074753bb1132f8474b6c27",
+      "acceptedAnswerHashes": [
+        "0b1b5035c5e2305231543c1229dbeda1267c3e05a07a0f40b3a7dd18a945fc7a"
+      ]
     },
     "targetValue": null,
     "targetUnit": null,

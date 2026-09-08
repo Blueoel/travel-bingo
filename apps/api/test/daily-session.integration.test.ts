@@ -264,7 +264,12 @@ describeWithDatabase("DailySessionService integration", () => {
             kind: "QUIZ",
             title: "안성 역사 퀴즈",
             points: 20,
-            verificationPolicy: { answerHash },
+            verificationPolicy: {
+              answerHash,
+              acceptedAnswerHashes: [
+                createHash("sha256").update("바우덕이정답").digest("hex"),
+              ],
+            },
           },
         },
       }),
@@ -314,6 +319,22 @@ describeWithDatabase("DailySessionService integration", () => {
     );
     expect(correctQuiz.verificationStatus).toBe("APPROVED");
     expect(correctQuiz.pointsEarned).toBe(20);
+
+    await database.sessionCell.update({
+      where: { id: quizCell.id },
+      data: { status: "AVAILABLE", verifiedAt: null },
+    });
+    const normalizedAliasQuiz = await completionService.verify(
+      {
+        userId,
+        sessionId: session.id,
+        cellId: quizCell.id,
+        idempotencyKey: `quiz-alias-${quizCell.id}`,
+        now,
+      },
+      { type: "QUIZ", answer: " 바우 덕이 정답! " },
+    );
+    expect(normalizedAliasQuiz.verificationStatus).toBe("APPROVED");
 
     const outsideGps = await completionService.verify(
       {

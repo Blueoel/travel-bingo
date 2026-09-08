@@ -689,19 +689,31 @@ export function evaluateMission(
   if (mission.kind === "QUIZ" && evidence.type === "QUIZ") {
     const policy = asRecord(mission.verificationPolicy);
     const answerHash = policy?.answerHash;
-    if (typeof answerHash !== "string") {
+    const answerHashes = [
+      ...(typeof answerHash === "string" ? [answerHash] : []),
+      ...(Array.isArray(policy?.acceptedAnswerHashes)
+        ? policy.acceptedAnswerHashes.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : []),
+    ];
+    if (answerHashes.length === 0) {
       throw new ConflictException("The quiz answer policy is invalid.");
     }
-    const submittedAnswers = [
+    const submittedAnswers = new Set([
       normalizeAnswer(evidence.answer),
       normalizeAnswer(evidence.answer.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/u, "")),
-    ];
+      normalizeCompactAnswer(evidence.answer),
+      normalizeCompactAnswer(
+        evidence.answer.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/u, ""),
+      ),
+    ]);
     const submittedHashes = new Set(
-      submittedAnswers.map((answer) =>
+      [...submittedAnswers].map((answer) =>
         createHash("sha256").update(answer).digest("hex"),
       ),
     );
-    return submittedHashes.has(answerHash)
+    return answerHashes.some((acceptedHash) => submittedHashes.has(acceptedHash))
       ? { approved: true, reasonCode: "QUIZ_CORRECT" }
       : { approved: false, reasonCode: "QUIZ_INCORRECT" };
   }
@@ -860,6 +872,12 @@ export function evaluateMission(
 
 function normalizeAnswer(answer: string): string {
   return answer.trim().toLocaleLowerCase("ko-KR").normalize("NFC");
+}
+
+function normalizeCompactAnswer(answer: string): string {
+  return normalizeAnswer(answer)
+    .normalize("NFKC")
+    .replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

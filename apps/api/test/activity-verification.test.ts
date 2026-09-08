@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
 import { evaluateMission } from "../src/daily/mission-completion.service.js";
@@ -125,6 +127,51 @@ describe("record and timer mission verification", () => {
         now,
       ),
     ).toMatchObject({ approved: false, reasonCode: "TIMER_NOT_REACHED" });
+  });
+});
+
+describe("subjective quiz verification", () => {
+  const hash = (answer: string) =>
+    createHash("sha256").update(answer).digest("hex");
+
+  it("accepts spacing and punctuation differences without exposing answers", () => {
+    const mission = {
+      kind: "QUIZ",
+      verificationPolicy: {
+        type: "QUIZ",
+        answerHash: hash("증기기관차"),
+      },
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        { type: "QUIZ", answer: " 증기 기관차! " },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "QUIZ_CORRECT" });
+  });
+
+  it("accepts configured aliases and still rejects unrelated answers", () => {
+    const mission = {
+      kind: "QUIZ",
+      verificationPolicy: {
+        type: "QUIZ",
+        answerHash: hash("대성전"),
+        acceptedAnswerHashes: [hash("대성전건물")],
+      },
+    };
+
+    expect(
+      evaluateMission(
+        mission,
+        { type: "QUIZ", answer: "대성전 건물" },
+        now,
+      ),
+    ).toMatchObject({ approved: true, reasonCode: "QUIZ_CORRECT" });
+    expect(
+      evaluateMission(mission, { type: "QUIZ", answer: "명륜당" }, now),
+    ).toMatchObject({ approved: false, reasonCode: "QUIZ_INCORRECT" });
   });
 });
 
