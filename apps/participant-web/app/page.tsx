@@ -42,6 +42,8 @@ type Mission = {
     type: "GPS" | "PHOTO" | "TEXT" | "ACTIVITY";
     count: number;
     maxLength?: number;
+    role?: "COLOR_NOTE";
+    options?: string[];
   }>;
   radiusM?: number | null;
   place?: {
@@ -113,6 +115,7 @@ function toMission(cell: SessionCell): Mission {
       cell.mission.targetValue,
       cell.mission.targetUnit,
       cell.mission.interactionType,
+      cell.mission.compositeRequirements,
     ),
     targetValue: Number(cell.mission.targetValue) || null,
     targetUnit: cell.mission.targetUnit,
@@ -311,20 +314,33 @@ const completedClientLineKeys = (missions: Mission[]) =>
       : [],
   );
 function missionIconSource(
-  mission: Pick<Mission, "kind" | "done" | "interactionType" | "verificationLabel">,
+  mission: Pick<Mission, "kind" | "done" | "interactionType" | "verificationLabel" | "compositeRequirements">,
   placement: "BOARD" | "DETAIL" = "BOARD",
 ): string {
   if (mission.done) return "/icons/ui/check.svg";
   const label = mission.verificationLabel?.toLocaleLowerCase("ko-KR") ?? "";
   if (
+    mission.kind === "PLACE_VISIT" ||
+    label.includes("gps") ||
+    label.includes("위치") ||
+    mission.compositeRequirements?.some((requirement) => requirement.type === "GPS")
+  ) {
+    return "/icons/ui/location.svg";
+  }
+  if (
+    mission.kind === "PHOTO" ||
+    label.includes("사진") ||
+    mission.compositeRequirements?.some((requirement) => requirement.type === "PHOTO")
+  ) {
+    return placement === "BOARD" ? "/icons/ui/camera.svg" : "/icons/ui/photo.svg";
+  }
+  if (
     mission.interactionType === "TEXT" ||
     label.includes("텍스트") ||
-    label.includes("기록")
+    label.includes("색 선택") ||
+    mission.compositeRequirements?.some((requirement) => requirement.type === "TEXT")
   ) {
     return "/icons/ui/pencil.svg";
-  }
-  if (mission.kind === "PHOTO" || label.includes("사진")) {
-    return placement === "BOARD" ? "/icons/ui/camera.svg" : "/icons/ui/photo.svg";
   }
   if (
     mission.interactionType === "TIMER" ||
@@ -336,9 +352,6 @@ function missionIconSource(
   }
   if (mission.kind === "WALK_DISTANCE" || mission.kind === "WALK_STEPS") {
     return "/icons/ui/footprint.svg";
-  }
-  if (mission.kind === "PLACE_VISIT" || label.includes("gps") || label.includes("위치")) {
-    return "/icons/ui/location.svg";
   }
   if (mission.kind === "QUIZ") return "/icons/ui/star.svg";
   if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg";
@@ -479,11 +492,21 @@ function verificationLabel(
   targetValue?: string | null,
   targetUnit?: string | null,
   interactionType?: "TEXT" | "TIMER",
+  compositeRequirements?: Mission["compositeRequirements"],
 ): string | undefined {
   const target = Number(targetValue);
   if (interactionType === "TEXT") return "텍스트 기록";
   if (interactionType === "TIMER") {
     return `타이머 ${Math.max(1, Math.round(target / 60))}분`;
+  }
+  if (compositeRequirements?.some((requirement) => requirement.role === "COLOR_NOTE")) {
+    return "색 선택 + 텍스트";
+  }
+  if (
+    compositeRequirements?.some((requirement) => requirement.type === "PHOTO") &&
+    compositeRequirements.some((requirement) => requirement.type === "TEXT")
+  ) {
+    return "사진 1장 + 텍스트";
   }
   if (kind === "PHOTO") {
     return target > 1 ? `사진 ${target}장` : "사진 1장";
@@ -655,6 +678,7 @@ export default function Home() {
   const [selected, setSelected] = useState<Mission | null>(null);
   const [answer, setAnswer] = useState("");
   const [textRecord, setTextRecord] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
   const [compositePhotos, setCompositePhotos] = useState<File[]>([]);
   const [qrToken, setQrToken] = useState("");
   const [qrScanning, setQrScanning] = useState(false);
@@ -2148,6 +2172,7 @@ export default function Home() {
     setPhotoVerificationId(null);
     setAnswer("");
     setTextRecord("");
+    setSelectedColor("");
     setCompositePhotos([]);
     setSelected(null);
   };
@@ -2160,7 +2185,16 @@ export default function Home() {
       for (const requirement of requirements) {
         if (requirement.type === "TEXT") {
           if (!textRecord.trim()) return setMessage("짧은 기록을 입력해주세요.");
-          items.push({ type: "TEXT", text: textRecord.trim() });
+          if (requirement.role === "COLOR_NOTE" && !selectedColor) {
+            return setMessage("오늘의 연천을 표현할 색을 선택해주세요.");
+          }
+          items.push({
+            type: "TEXT",
+            text:
+              requirement.role === "COLOR_NOTE"
+                ? `색상: ${selectedColor}\n기록: ${textRecord.trim()}`
+                : textRecord.trim(),
+          });
         }
         if (requirement.type === "PHOTO") {
           if (compositePhotos.length < requirement.count) {
@@ -2205,6 +2239,7 @@ export default function Home() {
       }
       setSelected(null);
       setTextRecord("");
+      setSelectedColor("");
       setCompositePhotos([]);
       await reloadCurrentBingo();
       await syncEarnedBadges();
@@ -4979,12 +5014,33 @@ export default function Home() {
                                 : "활동 기록"}
                         </b>
                         {requirement.type === "TEXT" && (
-                          <textarea
-                            value={textRecord}
-                            maxLength={requirement.maxLength ?? 100}
-                            onChange={(event) => setTextRecord(event.target.value)}
-                            placeholder="현장에서 발견한 내용을 짧게 기록해주세요."
-                          />
+                          <>
+                            {requirement.role === "COLOR_NOTE" && (
+                              <div className="mission-color-options" role="group" aria-label="연천색 선택">
+                                {(requirement.options ?? []).map((color) => (
+                                  <button
+                                    type="button"
+                                    key={color}
+                                    className={selectedColor === color ? "is-selected" : ""}
+                                    aria-pressed={selectedColor === color}
+                                    onClick={() => setSelectedColor(color)}
+                                  >
+                                    {color}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <textarea
+                              value={textRecord}
+                              maxLength={requirement.role === "COLOR_NOTE" ? 100 : requirement.maxLength ?? 100}
+                              onChange={(event) => setTextRecord(event.target.value)}
+                              placeholder={
+                                requirement.role === "COLOR_NOTE"
+                                  ? "선택한 색이 오늘의 연천을 닮은 이유를 적어주세요."
+                                  : "현장에서 발견한 내용을 짧게 기록해주세요."
+                              }
+                            />
+                          </>
                         )}
                         {requirement.type === "PHOTO" && (
                           <label className="secondary composite-file-button">

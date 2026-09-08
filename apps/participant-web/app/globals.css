@@ -3804,6 +3804,26 @@ nav .active img {
 .badge-celebration-card p { margin: 0 auto 22px; color: #746e62; font-size: 13px; line-height: 1.6; }
 .badge-celebration-view { width: 100%; min-height: 52px; border: 0; border-radius: 15px; background: #467149; color: #fff; font-size: 15px; font-weight: 800; }
 .composite-evidence-panel { display: grid; gap: 12px; }
+.mission-color-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.mission-color-options button {
+  min-height: 42px;
+  border: 1px solid #d8cfbd;
+  border-radius: 14px;
+  background: #fffdf8;
+  color: var(--green-deep);
+  font: inherit;
+}
+.mission-color-options button.is-selected {
+  border-color: var(--green-deep);
+  background: #dfeee3;
+  box-shadow: inset 0 0 0 1px var(--green-deep);
+  font-weight: 700;
+}
 .composite-requirement { display: grid; gap: 7px; padding: 12px; border: 1px dashed #cbbd9f; border-radius: 14px; background: rgb(255 255 255 / 58%); }
 .composite-requirement b { color: #315b43; font-size: 13px; }
 .composite-requirement small { color: #777166; font-size: 11px; }

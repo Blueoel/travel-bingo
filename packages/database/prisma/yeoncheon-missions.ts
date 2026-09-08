@@ -1052,12 +1052,10 @@ export const yeoncheonMissionSeed = [
       "type": "COMPOSITE",
       "requirements": [
         {
-          "type": "PHOTO",
-          "count": 1
-        },
-        {
           "type": "TEXT",
-          "maxLength": 100
+          "role": "COLOR_NOTE",
+          "maxLength": 140,
+          "options": ["빨강", "주황", "노랑", "초록", "파랑", "보라", "분홍", "갈색", "회색", "흰색", "검정"]
         }
       ]
     },

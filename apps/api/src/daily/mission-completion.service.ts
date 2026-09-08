@@ -89,6 +89,7 @@ export interface MissionCompletionResult {
 
 type MissionSnapshot = {
   readonly id?: unknown;
+  readonly title?: unknown;
   readonly kind?: unknown;
   readonly points?: unknown;
   readonly radiusM?: unknown;
@@ -613,10 +614,12 @@ export function evaluateMission(
 ): MissionDecision {
   if (mission.kind === "COMPOSITE" && evidence.type === "COMPOSITE") {
     const policy = asRecord(mission.verificationPolicy);
-    const requirements = Array.isArray(policy?.requirements)
+    const storedRequirements = Array.isArray(policy?.requirements)
       ? policy.requirements.map(asRecord).filter((item): item is Record<string, unknown> => item !== null)
       : [];
-    if (policy?.type !== "COMPOSITE" || requirements.length === 0) {
+    const requirements =
+      yeoncheonCompositeRequirements(String(mission.title ?? "")) ?? storedRequirements;
+    if (requirements.length === 0) {
       throw new ConflictException("The composite verification policy is invalid.");
     }
     for (const requirement of requirements) {
@@ -1013,6 +1016,21 @@ function evaluateCompositeRequirement(
     return { approved: true, reasonCode: "ACTIVITY_REACHED", distanceM: evidence.distanceM };
   }
   return { approved: false, reasonCode: `COMPOSITE_${String(requirement.type ?? "EVIDENCE")}_INVALID` };
+}
+
+function yeoncheonCompositeRequirements(
+  title: string,
+): Record<string, unknown>[] | null {
+  if (title === "오늘의 연천") {
+    return [
+      { type: "PHOTO", count: 1 },
+      { type: "TEXT", count: 1, maxLength: 100 },
+    ];
+  }
+  if (title === "오늘의 연천색") {
+    return [{ type: "TEXT", count: 1, maxLength: 140, role: "COLOR_NOTE" }];
+  }
+  return null;
 }
 
 function verificationType(

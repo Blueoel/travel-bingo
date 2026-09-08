@@ -340,7 +340,7 @@ function toPublicMission(snapshot: unknown): unknown {
       : policy?.type === "TIMER"
         ? "TIMER"
         : undefined;
-  const compositeRequirements =
+  const policyCompositeRequirements =
     policy?.type === "COMPOSITE" && Array.isArray(policy.requirements)
       ? policy.requirements
           .filter((item): item is Record<string, unknown> =>
@@ -352,8 +352,15 @@ function toPublicMission(snapshot: unknown): unknown {
               typeof item.count === "number" ? Math.max(1, item.count) : 1,
             maxLength:
               typeof item.maxLength === "number" ? item.maxLength : undefined,
+            role: typeof item.role === "string" ? item.role : undefined,
+            options: Array.isArray(item.options)
+              ? item.options.filter((option): option is string => typeof option === "string")
+              : undefined,
           }))
       : undefined;
+  const compositeRequirements =
+    YEONCHEON_COMPOSITE_REQUIREMENTS[String(publicMission.title ?? "")] ??
+    policyCompositeRequirements;
   const quizChoices =
     policy?.type === "QUIZ"
       ? toQuizChoices(policy.choices) ??
@@ -401,6 +408,25 @@ const LEGACY_QUIZ_CHOICES: Record<string, string[]> = {
     "②1965년",
     "③1977년",
     "④1981년",
+  ],
+};
+
+const YEONCHEON_COMPOSITE_REQUIREMENTS: Record<
+  string,
+  Array<{ type: string; count: number; maxLength?: number; role?: string; options?: string[] }>
+> = {
+  "오늘의 연천": [
+    { type: "PHOTO", count: 1 },
+    { type: "TEXT", count: 1, maxLength: 100 },
+  ],
+  "오늘의 연천색": [
+    {
+      type: "TEXT",
+      count: 1,
+      maxLength: 140,
+      role: "COLOR_NOTE",
+      options: ["빨강", "주황", "노랑", "초록", "파랑", "보라", "분홍", "갈색", "회색", "흰색", "검정"],
+    },
   ],
 };
 

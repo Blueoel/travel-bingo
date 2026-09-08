@@ -135,8 +135,8 @@ export class DailySessionController {
           );
         }
       }
-      if (items.length < 2 || items.length > 6) {
-        throw new BadRequestException("Composite evidence requires 2 to 6 items.");
+      if (items.length < 1 || items.length > 6) {
+        throw new BadRequestException("Composite evidence requires 1 to 6 items.");
       }
       return this.missionCompletionService.verify(command, {
         type: "COMPOSITE",
