@@ -14,7 +14,7 @@ services:
       - key: API_PORT
         value: 10000
       - key: CORS_ORIGINS
-        value: https://travel-bingo-walk.blueo03.chatgpt.site
+        value: https://travel-bingo-walk.blueo03.chatgpt.site,https://app.travelbingo.kr
       - key: DATABASE_URL
         sync: false
       - key: RESEND_API_KEY
@@ -22,4 +22,4 @@ services:
       - key: PASSWORD_RESET_FROM
         sync: false
       - key: PASSWORD_RESET_URL
-        value: https://travel-bingo-walk.blueo03.chatgpt.site
+        value: https://app.travelbingo.kr
