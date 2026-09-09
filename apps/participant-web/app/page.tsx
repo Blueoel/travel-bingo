@@ -235,6 +235,7 @@ type BingoCatalogItem = {
   completedCellCount: number;
   totalCellCount: number;
   totalPoints: number;
+  sessionStartedAt: string | null;
   startsAt: string | null;
   endsAt: string | null;
 };
@@ -1575,9 +1576,15 @@ export default function Home() {
         // Exploration progress must only be derived from sessions the user has
         // actually started (or completed), otherwise every published region is
         // incorrectly shown as "도전 중" with zero progress.
-        const regions = payload.items.filter(
-          (item) => item.type === "REGION" && Boolean(item.sessionId),
-        );
+        const regions = payload.items
+          .filter((item) => item.type === "REGION" && Boolean(item.sessionId))
+          .sort((left, right) => {
+            const leftStartedAt = Date.parse(left.sessionStartedAt ?? "");
+            const rightStartedAt = Date.parse(right.sessionStartedAt ?? "");
+            if (!Number.isFinite(leftStartedAt)) return 1;
+            if (!Number.isFinite(rightStartedAt)) return -1;
+            return leftStartedAt - rightStartedAt;
+          });
         return Promise.all(
           regions.map(async (region) => {
             const regionCode =
@@ -3830,53 +3837,135 @@ export default function Home() {
                 <h2 id="active-region-title">도전 중인 지역</h2>
                 <span>{explorationRecords.length}곳</span>
               </div>
-              <div className="active-region-list">
+              <div
+                className="active-region-carousel"
+                aria-label="도전 중인 지역 목록"
+                onScroll={(event) => {
+                  const carousel = event.currentTarget;
+                  const slides = Array.from(carousel.children) as HTMLElement[];
+                  const center = carousel.scrollLeft + carousel.clientWidth / 2;
+                  const activeIndex = slides.reduce(
+                    (nearest, slide, index) =>
+                      Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center) <
+                      Math.abs(slides[nearest].offsetLeft + slides[nearest].offsetWidth / 2 - center)
+                        ? index
+                        : nearest,
+                    0,
+                  );
+                  const record = explorationRecords[activeIndex];
+                  if (record && record.regionCode !== selectedMapRegion.code) {
+                    setSelectedMapRegion({
+                      code: record.regionCode,
+                      name: record.regionName,
+                      province: record.provinceName,
+                    });
+                  }
+                }}
+              >
                 {explorationRecords.map((record) => {
                   const isSelected = record.regionCode === selectedMapRegion.code;
                   return (
-                    <button
-                      type="button"
-                      key={record.regionCode}
-                      className={`selected-region-card${isSelected ? " selected" : ""}`}
-                      aria-pressed={isSelected}
-                      onClick={() =>
-                        setSelectedMapRegion({
-                          code: record.regionCode,
-                          name: record.regionName,
-                          province: record.provinceName,
-                        })
-                      }
-                    >
-                      <span className="region-stamp" aria-hidden="true">
-                        {record.regionName.replace(/(시|군|구)$/, "").slice(0, 1)}
-                      </span>
-                      <span className="region-card-copy">
-                        <small>{record.provinceName || "대한민국"}</small>
-                        <strong>{record.regionName}</strong>
-                        <span>
-                          {record.photoUrl
-                            ? `대표 사진으로 ${record.regionName}의 추억을 채웠어요.`
-                            : record.unlocked
-                              ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
-                              : `${record.regionName} 여행 빙고에 도전 중이에요.`}
+                    <article className="active-region-slide" key={record.regionCode}>
+                      <button
+                        type="button"
+                        className={`selected-region-card${isSelected ? " selected" : ""}`}
+                        aria-pressed={isSelected}
+                        onClick={() =>
+                          setSelectedMapRegion({
+                            code: record.regionCode,
+                            name: record.regionName,
+                            province: record.provinceName,
+                          })
+                        }
+                      >
+                        <span className="region-stamp" aria-hidden="true">
+                          {record.regionName.replace(/(시|군|구)$/, "").slice(0, 1)}
                         </span>
-                      </span>
-                      <span className="region-status active">
-                        {record.photoUrl ? "사진 완료" : record.unlocked ? "해금" : "도전 중"}
-                      </span>
-                    </button>
+                        <span className="region-card-copy">
+                          <small>{record.provinceName || "대한민국"}</small>
+                          <strong>{record.regionName}</strong>
+                          <span>
+                            {record.photoUrl
+                              ? `대표 사진으로 ${record.regionName}의 추억을 채웠어요.`
+                              : record.unlocked
+                                ? "3 Bingo 달성! 대표 사진을 선택할 수 있어요."
+                                : `${record.regionName} 여행 빙고에 도전 중이에요.`}
+                          </span>
+                        </span>
+                        <span className="region-status active">
+                          {record.photoUrl ? "사진 완료" : record.unlocked ? "해금" : "도전 중"}
+                        </span>
+                      </button>
+
+                      <div className={`region-progress-note ${record.unlocked ? "unlocked" : ""}`}>
+                        <span aria-hidden="true">
+                          <img
+                            src={record.photoUrl ? "/icons/ui/check.svg" : "/icons/ui/pencil.svg"}
+                            alt=""
+                          />
+                        </span>
+                        <div className="region-memory-content">
+                          <b>
+                            {record.photoUrl
+                              ? `${record.regionName} 대표 사진을 채웠어요`
+                              : record.unlocked
+                                ? "대표 사진 선택 가능"
+                                : "사진 해금까지 3 Bingo"}
+                          </b>
+                          <p>
+                            {record.photoUrl
+                              ? `지도 속 ${record.regionName} 영역을 선택한 사진으로 표시하고 있어요.`
+                              : record.unlocked
+                                ? "여행 사진을 고르거나 새 사진을 선택해보세요."
+                                : `${record.regionName} 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요.`}
+                          </p>
+                          {record.unlocked && isSelected && (
+                            <div className="memory-photo-actions">
+                              <input
+                                ref={representativePhotoInput}
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                onChange={(event) => {
+                                  const photo = event.currentTarget.files?.[0];
+                                  if (photo) void saveRepresentativePhoto(photo);
+                                  event.currentTarget.value = "";
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setMemoryPhotoPickerOpen(true)}
+                                disabled={explorationMemorySaving}
+                              >
+                                {record.photoUrl ? "인증 사진에서 바꾸기" : "인증 사진에서 선택"}
+                              </button>
+                              <button
+                                type="button"
+                                className="sample"
+                                onClick={() => representativePhotoInput.current?.click()}
+                                disabled={explorationMemorySaving}
+                              >
+                                {explorationMemorySaving ? "사진 저장 중…" : "새 사진 선택"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <strong>{Math.min(3, record.lineCount)} / 3</strong>
+                      </div>
+
+                      {record.photoUrl && isSelected && (
+                        <button
+                          type="button"
+                          className="memory-detail-button"
+                          onClick={() => setMemoryDetailOpen(true)}
+                        >
+                          {record.regionName} 추억 보기
+                        </button>
+                      )}
+                    </article>
                   );
                 })}
               </div>
-              {selectedRegionRecord?.photoUrl && (
-                <button
-                  type="button"
-                  className="memory-detail-button"
-                  onClick={() => setMemoryDetailOpen(true)}
-                >
-                  {selectedMapRegion.name} 추억 보기
-                </button>
-              )}
             </section>
           ) : (
             <article className="selected-region-card empty">
@@ -3892,71 +3981,7 @@ export default function Home() {
             </article>
           )}
 
-          {selectedRegionRecord ? (
-            <div
-              className={`region-progress-note ${
-                explorationMemory.unlocked ? "unlocked" : ""
-              }`}
-            >
-              <span aria-hidden="true">
-                <img
-                  src={explorationMemory.photoUrl ? "/icons/ui/check.svg" : "/icons/ui/pencil.svg"}
-                  alt=""
-                />
-              </span>
-              <div className="region-memory-content">
-                <b>
-                  {explorationMemory.photoUrl
-                    ? `${selectedMapRegion.name} 대표 사진을 채웠어요`
-                    : explorationMemory.unlocked
-                      ? "대표 사진 선택 가능"
-                      : "사진 해금까지 3 Bingo"}
-                </b>
-                <p>
-                  {explorationMemory.photoUrl
-                    ? `지도 속 ${selectedMapRegion.name} 영역을 선택한 사진으로 표시하고 있어요.`
-                    : explorationMemory.unlocked
-                      ? "여행 사진을 고르거나 샘플 사진으로 지도 표시를 확인해보세요."
-                      : `${selectedMapRegion.name} 지역 빙고에서 세 줄을 완성하면 지도에 대표 사진을 남길 수 있어요.`}
-                </p>
-                {explorationMemory.unlocked && (
-                  <div className="memory-photo-actions">
-                    <input
-                      ref={representativePhotoInput}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(event) => {
-                        const photo = event.currentTarget.files?.[0];
-                        if (photo) void saveRepresentativePhoto(photo);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setMemoryPhotoPickerOpen(true)}
-                      disabled={explorationMemorySaving}
-                    >
-                      {explorationMemory.photoUrl
-                        ? "인증 사진에서 바꾸기"
-                        : "인증 사진에서 선택"}
-                    </button>
-                    <button
-                      type="button"
-                      className="sample"
-                      onClick={() => representativePhotoInput.current?.click()}
-                      disabled={explorationMemorySaving}
-                    >
-                      {explorationMemorySaving
-                        ? "사진 저장 중…"
-                        : "새 사진 선택"}
-                    </button>
-                  </div>
-                )}
-              </div>
-              <strong>{Math.min(3, explorationMemory.lineCount)} / 3</strong>
-            </div>
-          ) : (
+          {!selectedRegionRecord && (
             <div className="region-progress-note muted">
               <span aria-hidden="true">☆</span>
               <div>

@@ -34,6 +34,7 @@ export interface BingoCatalogItem {
   readonly completedCellCount: number;
   readonly totalCellCount: number;
   readonly totalPoints: number;
+  readonly sessionStartedAt: string | null;
   readonly startsAt: string | null;
   readonly endsAt: string | null;
 }
@@ -127,6 +128,7 @@ export class BingoCatalogService {
         completedCellCount,
         totalCellCount: session.cells.length,
         totalPoints: session.totalPoints,
+        sessionStartedAt: session.startedAt?.toISOString() ?? null,
         startsAt: toIso(session.template.startsAt),
         endsAt: toIso(session.template.endsAt),
       } satisfies BingoCatalogItem;
@@ -147,6 +149,7 @@ export class BingoCatalogService {
             completedCellCount: 0,
             totalCellCount: template._count.cells,
             totalPoints: 0,
+            sessionStartedAt: null,
             startsAt: toIso(template.startsAt),
             endsAt: toIso(template.endsAt),
           }) satisfies BingoCatalogItem,

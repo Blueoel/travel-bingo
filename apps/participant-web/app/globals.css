@@ -989,15 +989,31 @@ button {
 .active-region-heading h2 {
   margin: 0;
   color: #2b4932;
-  font-size: 14px;
+  font-size: 20px;
 }
 .active-region-heading span {
   color: #72816d;
-  font-size: 10px;
+  font-size: 16px;
+  font-weight: 800;
 }
-.active-region-list {
-  display: grid;
-  gap: 9px;
+.active-region-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.active-region-carousel::-webkit-scrollbar {
+  display: none;
+}
+.active-region-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.active-region-slide .selected-region-card {
+  margin-top: 8px;
 }
 .region-card-copy {
   min-width: 0;
