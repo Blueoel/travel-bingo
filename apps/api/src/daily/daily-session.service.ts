@@ -358,9 +358,14 @@ function toPublicMission(snapshot: unknown): unknown {
               : undefined,
           }))
       : undefined;
+  const usesLegacyRecordPhoto = YEONCHEON_RECORD_PHOTO_TITLES.has(
+    String(publicMission.title ?? ""),
+  );
   const compositeRequirements =
-    YEONCHEON_COMPOSITE_REQUIREMENTS[String(publicMission.title ?? "")] ??
-    policyCompositeRequirements;
+    usesLegacyRecordPhoto
+      ? undefined
+      : YEONCHEON_COMPOSITE_REQUIREMENTS[String(publicMission.title ?? "")] ??
+        policyCompositeRequirements;
   const quizChoices =
     policy?.type === "QUIZ"
       ? toQuizChoices(policy.choices) ??
@@ -368,6 +373,9 @@ function toPublicMission(snapshot: unknown): unknown {
       : undefined;
   return {
     ...publicMission,
+    ...(usesLegacyRecordPhoto
+      ? { kind: "PHOTO", targetValue: 1, targetUnit: "PHOTO" }
+      : {}),
     ...(interactionType ? { interactionType } : {}),
     ...(interactionType === "TIMER" &&
     typeof policy?.durationSeconds === "number"
@@ -410,6 +418,11 @@ const LEGACY_QUIZ_CHOICES: Record<string, string[]> = {
     "④1981년",
   ],
 };
+
+const YEONCHEON_RECORD_PHOTO_TITLES = new Set([
+  "총탄의 흔적",
+  "유네스코도 인정한 좌상바위",
+]);
 
 const YEONCHEON_COMPOSITE_REQUIREMENTS: Record<
   string,

@@ -52,7 +52,7 @@ export class PhotoVerificationService {
       throw new NotFoundException("The active photo mission was not found.");
 
     const mission = asRecord(cell.missionSnapshot);
-    if (mission?.kind !== "PHOTO") {
+    if (mission?.kind !== "PHOTO" && mission?.kind !== "COMPOSITE") {
       throw new BadRequestException(
         "This mission does not support photo verification.",
       );

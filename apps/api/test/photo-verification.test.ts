@@ -81,6 +81,32 @@ describe("PhotoVerificationService", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("accepts a free-form photo inside a composite journal mission", async () => {
+    database.sessionCell.findFirst.mockResolvedValueOnce({
+      missionSnapshot: {
+        kind: "COMPOSITE",
+        title: "오늘의 연천",
+        description: "한 장면과 한 줄을 기록하세요.",
+        verificationPolicy: {
+          type: "COMPOSITE",
+          photoVerificationMode: "RECORD",
+          requirements: [{ type: "PHOTO", count: 1 }, { type: "TEXT", count: 1 }],
+        },
+      },
+    } as never);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const service = new PhotoVerificationService(database as never);
+    const result = await service.analyze({
+      userId: "user",
+      sessionId: "session",
+      cellId: "cell",
+      imageDataUrl: image,
+    });
+
+    expect(result).toMatchObject({ decision: "APPROVED", model: "record-only" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("returns a structured verdict from the Gemini vision check", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     vi.stubGlobal(

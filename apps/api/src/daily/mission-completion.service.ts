@@ -635,6 +635,25 @@ export function evaluateMission(
   receivedAt: Date,
   qrVerifier?: Pick<MissionQrService, "inspect">,
 ): MissionDecision {
+  // Sessions created before these missions were corrected still contain the
+  // former COMPOSITE (GPS + photo) snapshot. Treat their photo as a free-form
+  // record so users do not have to recreate an in-progress bingo board.
+  if (
+    mission.kind === "COMPOSITE" &&
+    evidence.type === "PHOTO" &&
+    YEONCHEON_RECORD_PHOTO_TITLES.has(String(mission.title ?? ""))
+  ) {
+    return evidence.analysis.decision === "APPROVED"
+      ? { approved: true, reasonCode: "PHOTO_RECORDED" }
+      : {
+          approved: false,
+          reasonCode:
+            evidence.analysis.decision === "NEEDS_REVIEW"
+              ? "PHOTO_NEEDS_REVIEW"
+              : "PHOTO_REJECTED",
+        };
+  }
+
   if (mission.kind === "COMPOSITE" && evidence.type === "COMPOSITE") {
     const policy = asRecord(mission.verificationPolicy);
     const storedRequirements = Array.isArray(policy?.requirements)
@@ -912,6 +931,11 @@ export function evaluateMission(
     `Evidence type ${evidence.type} cannot verify mission kind ${String(mission.kind)}.`,
   );
 }
+
+const YEONCHEON_RECORD_PHOTO_TITLES = new Set([
+  "총탄의 흔적",
+  "유네스코도 인정한 좌상바위",
+]);
 
 function normalizeAnswer(answer: string): string {
   return answer.trim().toLocaleLowerCase("ko-KR").normalize("NFC");

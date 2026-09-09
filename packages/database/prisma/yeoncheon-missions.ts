@@ -524,16 +524,15 @@ export const yeoncheonMissionSeed = [
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_25",
     "status": "ACTIVE",
-    "kind": "COMPOSITE",
+    "kind": "PHOTO",
     "verificationPolicy": {
-      "type": "COMPOSITE",
-      "requirements": [
-        { "type": "GPS", "count": 1, "radiusM": 150 },
-        { "type": "PHOTO", "count": 1 }
-      ]
+      "type": "PHOTO",
+      "requiredPhotoCount": 1,
+      "photoVerificationMode": "RECORD",
+      "fallbackToAdminReview": false
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 1,
+    "targetUnit": "PHOTO",
     "placeTitle": "연천역 급수탑",
     "address": "경기도 연천군 연천읍 연천로 273-7",
     "latitude": 38.1001,
@@ -676,16 +675,15 @@ export const yeoncheonMissionSeed = [
     "difficulty": 1,
     "similarityGroup": "YEONCHEON_32",
     "status": "ACTIVE",
-    "kind": "COMPOSITE",
+    "kind": "PHOTO",
     "verificationPolicy": {
-      "type": "COMPOSITE",
-      "requirements": [
-        { "type": "GPS", "count": 1, "radiusM": 150 },
-        { "type": "PHOTO", "count": 1 }
-      ]
+      "type": "PHOTO",
+      "requiredPhotoCount": 1,
+      "photoVerificationMode": "RECORD",
+      "fallbackToAdminReview": false
     },
-    "targetValue": null,
-    "targetUnit": null,
+    "targetValue": 1,
+    "targetUnit": "PHOTO",
     "placeTitle": "좌상바위",
     "address": "경기도 연천군 전곡읍 신답리",
     "latitude": 38.0383163,
@@ -1048,6 +1046,7 @@ export const yeoncheonMissionSeed = [
     "kind": "COMPOSITE",
     "verificationPolicy": {
       "type": "COMPOSITE",
+      "photoVerificationMode": "RECORD",
       "requirements": [
         {
           "type": "PHOTO",

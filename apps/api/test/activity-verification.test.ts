@@ -244,6 +244,29 @@ describe("composite mission verification", () => {
     ).toMatchObject({ approved: true });
   });
 
+  it.each(["총탄의 흔적", "유네스코도 인정한 좌상바위"])(
+    "accepts a free-form photo for the legacy composite snapshot: %s",
+    (title) => {
+      expect(
+        evaluateMission(
+          {
+            title,
+            kind: "COMPOSITE",
+            verificationPolicy: {
+              type: "COMPOSITE",
+              requirements: [
+                { type: "GPS", count: 1 },
+                { type: "PHOTO", count: 1 },
+              ],
+            },
+          },
+          photo,
+          now,
+        ),
+      ).toMatchObject({ approved: true, reasonCode: "PHOTO_RECORDED" });
+    },
+  );
+
   it("requires both an on-site GPS reading and an approved photo", () => {
     const mission = {
       kind: "COMPOSITE",
