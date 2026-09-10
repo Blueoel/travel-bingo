@@ -131,6 +131,57 @@ function boardMissionIds(board: { cells: readonly { mission: unknown }[] }) {
 }
 
 describe("BingoCatalogService", () => {
+  it("exposes regional composite requirements with their real evidence types", async () => {
+    const database = {
+      bingoSession: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "region-session",
+          status: "ACTIVE",
+          totalPoints: 0,
+          template: {
+            id: "region-template",
+            type: "REGION",
+            title: "연천 여행 빙고",
+            region: { name: "경기도 연천군", administrativeCode: "41800" },
+          },
+          cells: [
+            {
+              id: "cell-1",
+              position: 0,
+              status: "AVAILABLE",
+              missionSnapshot: {
+                kind: "COMPOSITE",
+                title: "오늘의 연천",
+                description: "한 장면과 한 줄을 기록하세요.",
+                points: 10,
+                verificationPolicy: {
+                  type: "COMPOSITE",
+                  requirements: [
+                    { type: "PHOTO", count: 1 },
+                    { type: "TEXT", count: 1, maxLength: 100 },
+                  ],
+                },
+              },
+            },
+          ],
+        }),
+      },
+    };
+
+    const result = await new BingoCatalogService(database as never).getSession(
+      "user-1",
+      "region-session",
+    );
+
+    expect(result.cells[0]?.mission).toMatchObject({
+      kind: "COMPOSITE",
+      compositeRequirements: [
+        { type: "PHOTO", count: 1 },
+        { type: "TEXT", count: 1, maxLength: 100 },
+      ],
+    });
+  });
+
   it("abandons an active region session and reverses its awarded points", async () => {
     const update = vi.fn().mockResolvedValue({});
     const create = vi.fn().mockResolvedValue({});

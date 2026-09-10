@@ -520,11 +520,17 @@ function verificationLabel(
   if (compositeRequirements?.some((requirement) => requirement.role === "COLOR_NOTE")) {
     return "색 선택 + 텍스트";
   }
-  if (
-    compositeRequirements?.some((requirement) => requirement.type === "PHOTO") &&
-    compositeRequirements.some((requirement) => requirement.type === "TEXT")
-  ) {
-    return "사진 1장 + 텍스트";
+  if (compositeRequirements?.length) {
+    const labels: string[] = [];
+    const gps = compositeRequirements.find((requirement) => requirement.type === "GPS");
+    const photo = compositeRequirements.find((requirement) => requirement.type === "PHOTO");
+    const text = compositeRequirements.find((requirement) => requirement.type === "TEXT");
+    const activity = compositeRequirements.find((requirement) => requirement.type === "ACTIVITY");
+    if (gps) labels.push("GPS");
+    if (photo) labels.push(`사진 ${Math.max(1, photo.count)}장`);
+    if (text) labels.push("텍스트");
+    if (activity) labels.push("활동 기록");
+    if (labels.length) return labels.join(" + ");
   }
   if (kind === "PHOTO") {
     return target > 1 ? `사진 ${target}장` : "사진 1장";
@@ -534,6 +540,9 @@ function verificationLabel(
   }
   if (kind === "COMPOSITE" && targetUnit === "SECOND") {
     return `GPS ${Math.round(target / 60)}분 기록`;
+  }
+  if (kind === "COMPOSITE" && targetUnit === "MISSION") {
+    return `미션 ${Math.max(1, target)}개 달성`;
   }
   if (kind === "PLACE_VISIT") return "현재 위치 GPS";
   if (kind === "QR_SCAN") return "현장 QR 스캔";
@@ -4629,7 +4638,7 @@ export default function Home() {
                 void loadFriends();
               }}
             >
-              <span><img src="/icons/ui/notification.svg" alt="" /></span>
+              <span><img src="/icons/ui/footprint.svg" alt="" /></span>
               <span className="my-menu-title">
                 친구 관리
                 {friends.some(
