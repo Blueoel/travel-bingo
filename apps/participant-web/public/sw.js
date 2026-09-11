@@ -1,4 +1,4 @@
-const CACHE_NAME = "travel-bingo-shell-v1";
+const CACHE_NAME = "travel-bingo-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -27,6 +27,11 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.startsWith("/icons/")) {
+    event.respondWith(fetch(new Request(event.request, { cache: "reload" })));
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     event.respondWith(
