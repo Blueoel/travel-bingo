@@ -998,10 +998,13 @@ button {
 }
 .active-region-carousel {
   display: flex;
+  gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 .active-region-carousel::-webkit-scrollbar {
   display: none;
@@ -2519,8 +2522,11 @@ h1 {
   color: var(--green);
 }
 .done .mission-icon {
-  background: var(--green);
+  background: #416b52;
   color: white;
+}
+.done .mission-icon img {
+  filter: brightness(0) invert(1);
 }
 .board b {
   width: 100%;
@@ -4154,10 +4160,16 @@ nav .active img {
 .my-travel-note-summary strong { font-size: 20px; }
 .my-travel-note-summary > b { align-self: start; color: #718567; font-size: 10px; }
 .my-travel-preview { min-width: 0; display: grid; grid-template-columns: 50px 1fr; align-items: center; gap: 9px; }
-.my-travel-preview > img,
-.my-travel-preview > i { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; }
-.my-travel-preview > i { display: grid; place-items: center; background: #eef1d8; color: #6d865d; font-style: normal; font-size: 20px; }
-.my-travel-preview > i img { width: 34px; height: 34px; object-fit: contain; }
+.my-travel-preview > i {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: #6d865d;
+  font-style: normal;
+}
+.my-travel-preview > i img { width: 48px; height: 48px; object-fit: contain; }
 .my-travel-preview > span { min-width: 0; display: grid; gap: 3px; }
 .my-travel-preview > span strong { font-size: 12px; white-space: nowrap; }
 .my-travel-preview > span small { color: #807b70; font-size: 10px; }

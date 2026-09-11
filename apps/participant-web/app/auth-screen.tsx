@@ -182,7 +182,7 @@ export function AuthScreen({
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" && (
           <label>
-            <span className="field-icon"><img src="/icons/navigation/my.svg" alt="" /></span>
+            <span className="field-icon"><img src="/icons/navigation/my.svg?v=124" alt="" /></span>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -194,7 +194,7 @@ export function AuthScreen({
           </label>
         )}
         {(mode === "login" || mode === "register" || mode === "forgot") && <label>
-          <span className="field-icon"><img src="/icons/ui/mail.svg" alt="" /></span>
+          <span className="field-icon"><img src="/icons/ui/mail.svg?v=124" alt="" /></span>
           <input
             type="email"
             value={email}
@@ -205,7 +205,7 @@ export function AuthScreen({
           />
         </label>}
         {(mode === "login" || mode === "register" || mode === "reset") && <label>
-          <span className="field-icon"><img src="/icons/ui/key.svg" alt="" /></span>
+          <span className="field-icon"><img src="/icons/ui/key.svg?v=124" alt="" /></span>
           <input
             type={showPassword ? "text" : "password"}
             value={password}
@@ -228,7 +228,7 @@ export function AuthScreen({
         </label>}
         {(mode === "register" || mode === "reset") && (
           <label>
-            <span className="field-icon"><img src="/icons/ui/key.svg" alt="" /></span>
+            <span className="field-icon"><img src="/icons/ui/key.svg?v=124" alt="" /></span>
             <input
               type={showPassword ? "text" : "password"}
               value={passwordConfirm}

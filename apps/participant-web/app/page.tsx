@@ -323,7 +323,7 @@ function missionIconSource(
   mission: Pick<Mission, "kind" | "done" | "interactionType" | "verificationLabel" | "compositeRequirements">,
   placement: "BOARD" | "DETAIL" = "BOARD",
 ): string {
-  if (mission.done) return "/icons/ui/check.svg";
+  if (mission.done) return "/icons/ui/check.svg?v=124";
   const label = mission.verificationLabel?.toLocaleLowerCase("ko-KR") ?? "";
   if (
     mission.kind === "PLACE_VISIT" ||
@@ -331,14 +331,14 @@ function missionIconSource(
     label.includes("위치") ||
     mission.compositeRequirements?.some((requirement) => requirement.type === "GPS")
   ) {
-    return "/icons/ui/location.svg";
+    return "/icons/ui/location.svg?v=124";
   }
   if (
     mission.kind === "PHOTO" ||
     label.includes("사진") ||
     mission.compositeRequirements?.some((requirement) => requirement.type === "PHOTO")
   ) {
-    return placement === "BOARD" ? "/icons/ui/camera.svg" : "/icons/ui/photo.svg";
+    return placement === "BOARD" ? "/icons/ui/camera.svg?v=124" : "/icons/ui/photo.svg?v=124";
   }
   if (
     mission.interactionType === "TEXT" ||
@@ -346,7 +346,7 @@ function missionIconSource(
     label.includes("색 선택") ||
     mission.compositeRequirements?.some((requirement) => requirement.type === "TEXT")
   ) {
-    return "/icons/ui/pencil.svg";
+    return "/icons/ui/pencil.svg?v=124";
   }
   if (
     mission.interactionType === "TIMER" ||
@@ -354,14 +354,14 @@ function missionIconSource(
     label.includes("시간") ||
     label.includes("체류")
   ) {
-    return "/icons/ui/timer.svg";
+    return "/icons/ui/timer.svg?v=124";
   }
   if (mission.kind === "WALK_DISTANCE" || mission.kind === "WALK_STEPS") {
-    return "/icons/ui/footprint.svg";
+    return "/icons/ui/footprint.svg?v=124";
   }
-  if (mission.kind === "QUIZ") return "/icons/ui/question.svg";
-  if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg";
-  return "/icons/ui/check.svg";
+  if (mission.kind === "QUIZ") return "/icons/ui/question.svg?v=124";
+  if (mission.kind === "QR_SCAN") return "/icons/ui/lock.svg?v=124";
+  return "/icons/ui/check.svg?v=124";
 }
 
 function cachedTourismImageUrl(url: string): string {
@@ -1782,9 +1782,6 @@ export default function Home() {
     .sort((left, right) =>
       (right.selectedAt ?? "").localeCompare(left.selectedAt ?? ""),
     );
-  const latestTravelPhoto = travelSummaryRecords.find(
-    (record) => record.photoUrl,
-  );
   const myBingoCatalog = bingoCatalog.filter(
     (item) => item.type !== "REGION" || item.state !== "AVAILABLE",
   );
@@ -3398,7 +3395,7 @@ export default function Home() {
         )}
       </section>
       <button type="button" className="bingo-share-card" onClick={() => void shareBingoBoard()} disabled={sharingBingo}>
-        <span aria-hidden="true"><img src="/icons/ui/share.svg" alt="" /></span>
+        <span aria-hidden="true"><img src="/icons/ui/share.svg?v=124" alt="" /></span>
         <b>{sharingBingo ? "빙고판 만드는 중…" : "빙고판 공유하기"}</b>
         <i aria-hidden="true">↗</i>
       </button>
@@ -3428,7 +3425,7 @@ export default function Home() {
               className="notice-bell"
               onClick={() => setAnnouncementsOpen(true)}
             >
-              <img src="/icons/ui/notification.svg" alt="" />{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || photoReviewNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + photoReviewNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
+              <img src="/icons/ui/notification.svg?v=124" alt="" />{(announcements.some((item) => !item.isRead) || badgeNotifications.some((item) => !item.isRead) || photoReviewNotifications.some((item) => !item.isRead) || rankingRewards.some((item) => !item.isRead) || friends.some((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread)) && <i>{Math.min(99, announcements.filter((item) => !item.isRead).length + badgeNotifications.filter((item) => !item.isRead).length + photoReviewNotifications.filter((item) => !item.isRead).length + rankingRewards.filter((item) => !item.isRead).length + friends.filter((item) => (item.status === "PENDING" && item.direction === "RECEIVED") || item.isUnread).length)}</i>}
             </button>
           </header>
 
@@ -3459,10 +3456,10 @@ export default function Home() {
               <span className="daily-home-action">이어하기 <b>›</b></span>
             </span>
             <div className="daily-notebook" aria-hidden="true">
-              <i><img src="/icons/ui/timer.svg" alt="" /></i>
-              <i><img src="/icons/ui/camera.svg" alt="" /></i>
-              <i><img src="/icons/ui/pencil.svg" alt="" /></i>
-              <i><img src="/icons/ui/star.svg" alt="" /></i>
+              <i><img src="/icons/ui/timer.svg?v=124" alt="" /></i>
+              <i><img src="/icons/ui/camera.svg?v=124" alt="" /></i>
+              <i><img src="/icons/ui/pencil.svg?v=124" alt="" /></i>
+              <i><img src="/icons/ui/star.svg?v=124" alt="" /></i>
             </div>
           </button>
 
@@ -3625,7 +3622,7 @@ export default function Home() {
             </div>
           </header>
           <label className="region-search-box">
-            <img src="/icons/ui/search.svg" alt="" />
+            <img src="/icons/ui/search.svg?v=124" alt="" />
             <input
               type="search"
               value={regionSearch}
@@ -3677,7 +3674,7 @@ export default function Home() {
                   }}
                 >
                   <span className="region-directory-pin" aria-hidden="true">
-                    <img src={bingo ? "/icons/ui/location.svg" : "/icons/ui/lock.svg"} alt="" />
+                    <img src={bingo ? "/icons/ui/location.svg?v=124" : "/icons/ui/lock.svg?v=124"} alt="" />
                   </span>
                   <span>
                     <strong>{fullName}</strong>
@@ -3909,7 +3906,7 @@ export default function Home() {
                       <div className={`region-progress-note ${record.unlocked ? "unlocked" : ""}`}>
                         <span aria-hidden="true">
                           <img
-                            src={record.photoUrl ? "/icons/ui/check.svg" : "/icons/ui/pencil.svg"}
+                            src={record.photoUrl ? "/icons/ui/check.svg?v=124" : "/icons/ui/pencil.svg?v=124"}
                             alt=""
                           />
                         </span>
@@ -4398,7 +4395,7 @@ export default function Home() {
               </button>
             )}
             <h1>{myView === "travel-note" ? "여행 노트" : myView === "badges" ? "획득 배지" : myView === "rewards" ? "랭킹 보상 이력" : myView === "support" ? "신고·문의" : myView === "settings" ? "설정" : "Travel Bingo"}</h1>
-            {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}><img src="/icons/ui/settings.svg" alt="" /></button>}
+            {myView === "main" && <button type="button" className="my-settings-button" aria-label="설정 열기" onClick={() => void openSettings()}><img src="/icons/ui/settings.svg?v=124" alt="" /></button>}
           </header>
           {myView === "travel-note" ? (
             <div className="travel-note-view">
@@ -4587,7 +4584,7 @@ export default function Home() {
           <div className="my-profile-card">
             <button className="my-avatar" type="button" aria-label="프로필 사진 변경" onClick={() => profilePhotoInput.current?.click()}>
               {account?.avatarDataUrl ? <img src={account.avatarDataUrl} alt="현재 프로필" /> : (account?.nickname ?? nickname).slice(0, 1)}
-              <i aria-hidden="true"><img src="/icons/ui/pencil.svg" alt="" /></i>
+              <i aria-hidden="true"><img src="/icons/ui/pencil.svg?v=124" alt="" /></i>
             </button>
             <input ref={profilePhotoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => void changeProfilePhoto(event.target.files?.[0])} />
             <div>
@@ -4599,11 +4596,7 @@ export default function Home() {
           <button className="my-travel-note-summary" type="button" onClick={() => setMyView("travel-note")}>
             <span><small>여행 노트</small><strong>{new Date().getFullYear()}</strong></span>
             <span className="my-travel-preview">
-              {latestTravelPhoto?.photoUrl ? (
-                <img src={latestTravelPhoto.photoUrl} alt={`${latestTravelPhoto.regionName} 여행 대표 사진`} />
-              ) : (
-                <i aria-hidden="true"><img src="/icons/ui/travel-note.svg" alt="" /></i>
-              )}
+              <i aria-hidden="true"><img src="/icons/ui/travel-note.svg?v=124" alt="" /></i>
               <span>
                 <strong>방문한 지역 {travelSummaryRecords.length}곳</strong>
                 <small>대표 사진 {travelSummaryRecords.filter((record) => record.photoUrl).length}장</small>
@@ -4626,11 +4619,6 @@ export default function Home() {
             </div>
           </div>
           <div className="my-menu">
-            <button type="button" onClick={() => setMyView("travel-note")}>
-              <span><img src="/icons/ui/travel-note.svg" alt="" /></span>
-              여행 기록
-              <b>›</b>
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -4638,7 +4626,7 @@ export default function Home() {
                 void loadFriends();
               }}
             >
-              <span><img src="/icons/ui/footprint.svg" alt="" /></span>
+              <span><img src="/icons/ui/footprint.svg?v=124" alt="" /></span>
               <span className="my-menu-title">
                 친구 관리
                 {friends.some(
@@ -4662,22 +4650,22 @@ export default function Home() {
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openBadges()}>
-              <span><img src="/icons/ui/achievement.svg" alt="" /></span>
+              <span><img src="/icons/ui/achievement.svg?v=124" alt="" /></span>
               획득 배지
               <b>›</b>
             </button>
             <button type="button" onClick={() => setMyView("rewards")}>
-              <span><img src="/icons/ui/reward.svg" alt="" /></span>
+              <span><img src="/icons/ui/reward.svg?v=124" alt="" /></span>
               랭킹 보상 이력
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openSupport()}>
-              <span><img src="/icons/ui/pencil.svg" alt="" /></span>
+              <span><img src="/icons/ui/pencil.svg?v=124" alt="" /></span>
               신고·문의
               <b>›</b>
             </button>
             <button type="button" onClick={() => void openSettings()}>
-              <span><img src="/icons/ui/settings.svg" alt="" /></span>
+              <span><img src="/icons/ui/settings.svg?v=124" alt="" /></span>
               설정
               <b>›</b>
             </button>
@@ -4724,28 +4712,28 @@ export default function Home() {
               <section className="side-menu-group">
                 <small>나의 활동</small>
                 <button type="button" onClick={() => { setMenuOpen(false); setAnnouncementsOpen(true); }}>
-                  <span aria-hidden="true"><img src="/icons/ui/notification.svg" alt="" /></span><b>공지사항과 알림</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/notification.svg?v=124" alt="" /></span><b>공지사항과 알림</b><i>›</i>
                 </button>
                 <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); setMyView("badges"); }}>
-                  <span aria-hidden="true"><img src="/icons/ui/achievement.svg" alt="" /></span><b>획득한 배지</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/achievement.svg?v=124" alt="" /></span><b>획득한 배지</b><i>›</i>
                 </button>
                 <button type="button" onClick={() => { setMenuOpen(false); setFriendsOpen(true); void loadFriends(); }}>
-                  <span aria-hidden="true"><img src="/icons/ui/footprint.svg" alt="" /></span><b>친구 관리</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/footprint.svg?v=124" alt="" /></span><b>친구 관리</b><i>›</i>
                 </button>
               </section>
 
               <section className="side-menu-group side-menu-guides">
                 <small>이용 안내</small>
                 <details>
-                  <summary><span aria-hidden="true"><img src="/icons/ui/info.svg" alt="" /></span><b>Travel Bingo 이용 방법</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/info.svg?v=124" alt="" /></span><b>Travel Bingo 이용 방법</b><i>⌄</i></summary>
                   <p>매일 새로운 Daily 빙고에 도전하고, 여행지에서는 지역 빙고를 시작해보세요. 미션을 한 줄 완성할 때마다 포인트와 기록이 쌓입니다.</p>
                 </details>
                 <details>
-                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg" alt="" /></span><b>GPS·사진 인증 안내</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg?v=124" alt="" /></span><b>GPS·사진 인증 안내</b><i>⌄</i></summary>
                   <p>GPS 미션은 야외에서 위치 권한을 허용해주세요. 사진에는 주변 사람의 얼굴이나 차량번호가 나오지 않도록 촬영해주세요.</p>
                 </details>
                 <details>
-                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg" alt="" /></span><b>관광정보 활용 안내</b><i>⌄</i></summary>
+                  <summary><span aria-hidden="true"><img src="/icons/ui/notice.svg?v=124" alt="" /></span><b>관광정보 활용 안내</b><i>⌄</i></summary>
                   <p>추천 지역과 관광지 정보에는 한국관광공사 국문 관광정보·관광사진·연관 관광지 OpenAPI가 활용됩니다.</p>
                 </details>
               </section>
@@ -4753,7 +4741,7 @@ export default function Home() {
               <section className="side-menu-group">
                 <small>서비스</small>
                 <button type="button" onClick={() => { setMenuOpen(false); setActiveTab("my"); void openSettings(); }}>
-                  <span aria-hidden="true"><img src="/icons/ui/settings.svg" alt="" /></span><b>계정 및 앱 설정</b><i>›</i>
+                  <span aria-hidden="true"><img src="/icons/ui/settings.svg?v=124" alt="" /></span><b>계정 및 앱 설정</b><i>›</i>
                 </button>
               </section>
             </div>
@@ -4902,7 +4890,7 @@ export default function Home() {
             setActiveTab("exploration");
           }}
         >
-          <img src="/icons/navigation/explore.svg" alt="" aria-hidden="true" />탐험
+          <img src="/icons/navigation/explore.svg?v=124" alt="" aria-hidden="true" />탐험
         </button>
         <button
           className={
@@ -4910,25 +4898,25 @@ export default function Home() {
           }
           onClick={() => setActiveTab("catalog")}
         >
-          <img src="/icons/navigation/bingo.svg" alt="" aria-hidden="true" />빙고
+          <img src="/icons/navigation/bingo.svg?v=124" alt="" aria-hidden="true" />빙고
         </button>
         <button
           className={activeTab === "home" ? "active" : ""}
           onClick={() => setActiveTab("home")}
         >
-          <img src="/icons/navigation/home.svg" alt="" aria-hidden="true" />홈
+          <img src="/icons/navigation/home.svg?v=124" alt="" aria-hidden="true" />홈
         </button>
         <button
           className={activeTab === "ranking" ? "active" : ""}
           onClick={() => setActiveTab("ranking")}
         >
-          <img src="/icons/navigation/ranking.svg" alt="" aria-hidden="true" />랭킹
+          <img src="/icons/navigation/ranking.svg?v=124" alt="" aria-hidden="true" />랭킹
         </button>
         <button
           className={activeTab === "my" ? "active" : ""}
           onClick={() => setActiveTab("my")}
         >
-          <img src="/icons/navigation/my.svg" alt="" aria-hidden="true" />마이페이지
+          <img src="/icons/navigation/my.svg?v=124" alt="" aria-hidden="true" />마이페이지
         </button>
       </nav>
       {message && !selected && (
@@ -4950,13 +4938,13 @@ export default function Home() {
             <header className="mission-detail-header">
               <button className="close" onClick={closeMission} aria-label="미션 상세 닫기">←</button>
               <b>미션 상세</b>
-              <span aria-hidden="true"><img src="/icons/ui/heart.svg" alt="" /></span>
+              <span aria-hidden="true"><img src="/icons/ui/heart.svg?v=124" alt="" /></span>
             </header>
             {selected.kind === "PHOTO" && photoStage === "COMPLETE" ? (
               <div className="mission-complete">
                 <p className="sheet-kicker">미션 완료</p>
                 <div className="completion-medal" aria-hidden="true">
-                  <img src="/icons/ui/check.svg" alt="" />
+                  <img src="/icons/ui/check.svg?v=124" alt="" />
                 </div>
                 <h2>{selected.title}</h2>
                 <strong>+ {selected.points} Point</strong>
