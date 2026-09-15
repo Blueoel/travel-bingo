@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: "Travel Bingo",
   webDir: "www",
   server: {
-    url: "https://travel-bingo-walk.blueo03.chatgpt.site",
+    url: "https://app.travelbingo.kr",
     cleartext: false,
-    allowNavigation: ["travel-bingo-walk.blueo03.chatgpt.site"],
+    allowNavigation: ["app.travelbingo.kr"],
     errorPath: "offline.html"
   },
   android: {
