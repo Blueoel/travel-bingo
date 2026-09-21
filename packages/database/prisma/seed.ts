@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { createDatabaseClient } from "../src/client.js";
 import { anseongMissionSeed } from "./anseong-missions.js";
+import { buyeoMissionSeed } from "./buyeo-missions.js";
 import { gongjuMissionSeed } from "./gongju-missions.js";
 import { yeoncheonMissionSeed } from "./yeoncheon-missions.js";
 
@@ -29,6 +30,9 @@ const gongjuTemplateId = "40000000-0000-4000-8000-000000000004";
 const yeoncheonRegionId = "20000000-0000-4000-8000-000000000003";
 const yeoncheonThemeId = "30000000-0000-4000-8000-000000000003";
 const yeoncheonTemplateId = "40000000-0000-4000-8000-000000000003";
+const buyeoRegionId = "20000000-0000-4000-8000-000000000004";
+const buyeoThemeId = "30000000-0000-4000-8000-000000000005";
+const buyeoTemplateId = "40000000-0000-4000-8000-000000000005";
 
 function gongjuMissionId(order: number): string {
   return `90000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
@@ -52,6 +56,14 @@ function anseongMissionId(order: number): string {
 
 function anseongPlaceId(order: number): string {
   return `95000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function buyeoMissionId(order: number): string {
+  return `96000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function buyeoPlaceId(order: number): string {
+  return `97000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
 }
 
 const places = [
@@ -1126,6 +1138,168 @@ async function seed(): Promise<void> {
   await database.templateCell.deleteMany({ where: { templateId: gongjuTemplateId } });
   await database.templateCell.createMany({
     data: activeGongjuMissionIds.slice(0, 25).map((missionId, position) => ({ templateId: gongjuTemplateId, position, missionId })),
+  });
+
+  const buyeoRegion = await database.region.upsert({
+    where: { administrativeCode: "44760" },
+    update: {
+      name: "충청남도 부여군",
+      centerLatitude: 36.275,
+      centerLongitude: 126.91,
+      populationDeclineFlag: true,
+      status: "ACTIVE",
+    },
+    create: {
+      id: buyeoRegionId,
+      name: "충청남도 부여군",
+      administrativeCode: "44760",
+      centerLatitude: 36.275,
+      centerLongitude: 126.91,
+      populationDeclineFlag: true,
+      status: "ACTIVE",
+    },
+  });
+
+  const buyeoPlaceIds = new Map<string, string>();
+  for (const mission of buyeoMissionSeed) {
+    if (
+      !mission.placeTitle ||
+      mission.latitude === null ||
+      mission.longitude === null ||
+      buyeoPlaceIds.has(mission.placeTitle)
+    ) {
+      continue;
+    }
+    const placeId = buyeoPlaceId(mission.order);
+    buyeoPlaceIds.set(mission.placeTitle, placeId);
+    await database.place.upsert({
+      where: { id: placeId },
+      update: {
+        regionId: buyeoRegion.id,
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+        status: "ACTIVE",
+      },
+      create: {
+        id: placeId,
+        regionId: buyeoRegion.id,
+        source: "BUYEO_MISSION_CATALOG",
+        externalContentId: `buyeo-${mission.order}`,
+        contentType: "TOURIST_SPOT",
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+        status: "ACTIVE",
+      },
+    });
+  }
+
+  const activeBuyeoMissionIds: string[] = [];
+  for (const mission of buyeoMissionSeed) {
+    const id = buyeoMissionId(mission.order);
+    const placeId = mission.placeTitle
+      ? buyeoPlaceIds.get(mission.placeTitle) ?? null
+      : null;
+    const missionData = {
+      placeId,
+      kind: mission.kind,
+      scope: "REGION" as const,
+      title: mission.title,
+      description: mission.description,
+      category: mission.category,
+      verificationPolicy: securedVerificationPolicy(
+        mission.verificationPolicy,
+      ) as never,
+      targetValue: mission.targetValue,
+      targetUnit: mission.targetUnit,
+      radiusM: placeId ? 200 : null,
+      points:
+        Number(mission.difficulty) === 3
+          ? 30
+          : Number(mission.difficulty) === 2
+            ? 20
+            : 10,
+      difficulty: mission.difficulty,
+      similarityGroup: mission.similarityGroup,
+      status: mission.status,
+    };
+    await database.mission.upsert({
+      where: { id },
+      update: missionData,
+      create: { id, ...missionData },
+    });
+    await database.missionRegion.upsert({
+      where: {
+        missionId_regionId: { missionId: id, regionId: buyeoRegion.id },
+      },
+      update: {},
+      create: { missionId: id, regionId: buyeoRegion.id },
+    });
+    if (mission.status === "ACTIVE") activeBuyeoMissionIds.push(id);
+  }
+
+  if (activeBuyeoMissionIds.length < 25) {
+    throw new Error(
+      `Buyeo region board requires at least 25 active missions; received ${activeBuyeoMissionIds.length}.`,
+    );
+  }
+
+  await database.bingoTheme.upsert({
+    where: { id: buyeoThemeId },
+    update: {
+      regionId: buyeoRegion.id,
+      name: "부여 여행 빙고",
+      category: "REGION",
+      isRequiredForRegionCompletion: true,
+      status: "ACTIVE",
+      displayOrder: 5,
+    },
+    create: {
+      id: buyeoThemeId,
+      regionId: buyeoRegion.id,
+      name: "부여 여행 빙고",
+      category: "REGION",
+      isRequiredForRegionCompletion: true,
+      status: "ACTIVE",
+      displayOrder: 5,
+    },
+  });
+  await database.bingoTemplate.upsert({
+    where: { id: buyeoTemplateId },
+    update: {
+      regionId: buyeoRegion.id,
+      themeId: buyeoThemeId,
+      title: "충청남도 부여군 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      startsAt: new Date("2026-09-21T00:00:00.000Z"),
+      endsAt: null,
+      publishedAt: new Date(),
+    },
+    create: {
+      id: buyeoTemplateId,
+      regionId: buyeoRegion.id,
+      themeId: buyeoThemeId,
+      title: "충청남도 부여군 여행 빙고",
+      type: "REGION",
+      status: "PUBLISHED",
+      version: 1,
+      startsAt: new Date("2026-09-21T00:00:00.000Z"),
+      publishedAt: new Date(),
+    },
+  });
+  await database.templateCell.deleteMany({
+    where: { templateId: buyeoTemplateId },
+  });
+  await database.templateCell.createMany({
+    data: activeBuyeoMissionIds.slice(0, 25).map((missionId, position) => ({
+      templateId: buyeoTemplateId,
+      position,
+      missionId,
+    })),
   });
 
   const yeoncheonRegion = await database.region.upsert({
