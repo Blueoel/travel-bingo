@@ -755,10 +755,10 @@ test("shows approved regional mission photos inside the travel memory", async ()
 });
 
 test("starts available recommended region bingos after confirmation", async () => {
-  const pageSource = await readFile(
-    path.join(projectDirectory, "app", "page.tsx"),
-    "utf8",
-  );
+  const [pageSource, stylesSource] = await Promise.all([
+    readFile(path.join(projectDirectory, "app", "page.tsx"), "utf8"),
+    readFile(path.join(projectDirectory, "app", "globals.css"), "utf8"),
+  ]);
   const recommendationService = await readFile(
     path.join(
       projectDirectory,
@@ -774,6 +774,8 @@ test("starts available recommended region bingos after confirmation", async () =
   assert.match(pageSource, /availableRegionRecommendations/);
   assert.match(pageSource, /!item\.sessionId/);
   assert.match(pageSource, /도전할까요/);
+  assert.match(pageSource, /region\.name\.trim\(\)\.split\(\/\\s\+\/\)\.at\(-1\)/);
+  assert.match(stylesSource, /\.region-challenge-dialog[\s\S]*background:\s*#fffaf0/);
   assert.match(pageSource, /void openCatalogBingo\(challenge\.bingo\)/);
   assert.doesNotMatch(pageSource, /지역 빙고는 곧 공개할 예정이에요/);
   if (recommendationService) {

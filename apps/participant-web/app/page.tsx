@@ -3554,7 +3554,7 @@ export default function Home() {
                 onClick={(event) => event.stopPropagation()}
               >
                 <span className="region-challenge-stamp" aria-hidden="true">
-                  {pendingRegionChallenge.region.name.slice(-2, -1)}
+                  {pendingRegionChallenge.region.name.trim().split(/\s+/).at(-1)}
                 </span>
                 <small>NEW REGION BINGO</small>
                 <h2 id="region-challenge-title">
@@ -3706,7 +3706,7 @@ export default function Home() {
                 onClick={(event) => event.stopPropagation()}
               >
                 <span className="region-challenge-stamp" aria-hidden="true">
-                  {pendingRegionChallenge.region.name.replace(/\s/g, "").slice(-2, -1)}
+                  {pendingRegionChallenge.region.name.trim().split(/\s+/).at(-1)}
                 </span>
                 <small>NEW REGION BINGO</small>
                 <h2 id="directory-region-challenge-title">

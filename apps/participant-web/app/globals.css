@@ -385,16 +385,13 @@ button {
   overflow: hidden;
   border: 1px solid #d4c5a8;
   border-radius: 23px 18px 25px 19px;
-  background:
-    radial-gradient(circle at 8px 8px, #eadfca 1px, transparent 1.4px) 0 0 /
-      18px 18px,
-    #fffdf6;
+  background: #fffaf0;
   box-shadow: 7px 9px 0 #2b423b33;
   text-align: center;
 }
 .region-challenge-stamp {
-  width: 58px;
-  height: 58px;
+  width: 72px;
+  height: 72px;
   display: grid;
   place-items: center;
   margin: 0 auto 12px;
@@ -403,8 +400,12 @@ button {
   background: #e8efd8;
   color: #486442;
   font-family: "Segoe Print", "Comic Sans MS", cursive;
-  font-size: 22px;
+  padding: 6px;
+  font-size: 16px;
   font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-align: center;
   transform: rotate(-4deg);
 }
 .region-challenge-dialog > small {
