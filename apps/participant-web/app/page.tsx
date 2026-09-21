@@ -1805,17 +1805,28 @@ export default function Home() {
             ) &&
             selectedRecord.provinceName === candidate.dataset.province),
       );
-      if (!viewport || !svg || !path || !svg.viewBox.baseVal.width) return;
-      const regionBounds = path.getBBox();
-      const viewBox = svg.viewBox.baseVal;
-      const renderedUnit = svg.clientWidth / viewBox.width;
-      const scale = 2.15;
-      const regionCenterX = regionBounds.x + regionBounds.width / 2 - viewBox.x;
-      const regionCenterY = regionBounds.y + regionBounds.height / 2 - viewBox.y;
-      setMapTransform({
-        scale,
-        x: viewport.clientWidth / 2 - regionCenterX * renderedUnit * scale,
-        y: viewport.clientHeight / 2 - regionCenterY * renderedUnit * scale,
+      if (!viewport || !svg || !path) return;
+      const viewportBounds = viewport.getBoundingClientRect();
+      const regionBounds = path.getBoundingClientRect();
+      const scale = 3.2;
+      setMapTransform((current) => {
+        const regionCenterX =
+          (regionBounds.left +
+            regionBounds.width / 2 -
+            viewportBounds.left -
+            current.x) /
+          current.scale;
+        const regionCenterY =
+          (regionBounds.top +
+            regionBounds.height / 2 -
+            viewportBounds.top -
+            current.y) /
+          current.scale;
+        return {
+          scale,
+          x: viewport.clientWidth / 2 - regionCenterX * scale,
+          y: viewport.clientHeight / 2 - regionCenterY * scale,
+        };
       });
     });
     return () => window.cancelAnimationFrame(frame);

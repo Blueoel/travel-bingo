@@ -170,7 +170,7 @@ test("unlocks and fills regions with persistent representative photos", async ()
   assert.doesNotMatch(pageSource, /시연용 3 Bingo 달성/);
   assert.match(pageSource, /explorationRecords/);
   assert.match(pageSource, /activeRegionCodes/);
-  assert.match(pageSource, /path\.getBBox\(\)/);
+  assert.match(pageSource, /path\.getBoundingClientRect\(\)/);
   assert.match(pageSource, /regionCenterX/);
   assert.match(pageSource, /explorationPreviewMode === "completed"/);
   assert.match(pageSource, /gongsanseong-memory\.svg/);
