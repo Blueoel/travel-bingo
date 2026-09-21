@@ -1699,24 +1699,32 @@ export default function Home() {
 
   useEffect(() => {
     if (activeTab !== "exploration" || !explorationMapSvg) return;
+    const activeRegionCodes = new Set(
+      explorationRecords.map((record) => record.regionCode),
+    );
     const paths = document.querySelectorAll<SVGPathElement>(
       ".exploration-map path[data-code]",
     );
     paths.forEach((path) => {
+      const isActiveRegion = activeRegionCodes.has(path.dataset.code ?? "");
       path.classList.toggle(
         "is-selected",
-        path.dataset.code === selectedMapRegion.code,
+        isActiveRegion && path.dataset.code === selectedMapRegion.code,
       );
-      path.setAttribute("tabindex", "0");
-      path.setAttribute("role", "button");
+      path.classList.toggle("is-active-region", isActiveRegion);
+      path.setAttribute("tabindex", isActiveRegion ? "0" : "-1");
+      path.setAttribute("role", isActiveRegion ? "button" : "img");
       path.setAttribute(
         "aria-label",
-        `${path.dataset.province ?? ""} ${path.dataset.name ?? "지역"}`,
+        `${path.dataset.province ?? ""} ${path.dataset.name ?? "지역"}${
+          isActiveRegion ? " 도전 중" : ""
+        }`,
       );
     });
   }, [
     activeTab,
     explorationMapSvg,
+    explorationRecords,
     selectedMapRegion.code,
   ]);
 
@@ -1766,9 +1774,6 @@ export default function Home() {
   const explorationMapWithPhoto = addRepresentativePhotoPatterns(
     explorationMapSvg,
     explorationRecords.filter((record) => record.photoUrl),
-  );
-  const selectedRegionRecord = explorationRecords.find(
-    (record) => record.regionCode === selectedMapRegion.code,
   );
   const travelRecordsByYear = explorationRecords
     .filter((record) => record.photoUrl && record.selectedAt)
@@ -3973,29 +3978,7 @@ export default function Home() {
                 })}
               </div>
             </section>
-          ) : (
-            <article className="selected-region-card empty">
-              <div className="region-stamp" aria-hidden="true">
-                {selectedMapRegion.name.slice(0, 1)}
-              </div>
-              <div className="region-card-copy">
-                <small>{selectedMapRegion.province || "대한민국"}</small>
-                <strong>{selectedMapRegion.name}</strong>
-                <span>아직 도전 중인 지역 빙고가 없어요.</span>
-              </div>
-              <span className="region-status">미발견</span>
-            </article>
-          )}
-
-          {!selectedRegionRecord && (
-            <div className="region-progress-note muted">
-              <span aria-hidden="true">☆</span>
-              <div>
-                <b>새로운 여행을 기다리고 있어요</b>
-                <p>지역 빙고가 열리면 이곳에서 진행 상황을 확인할 수 있어요.</p>
-              </div>
-            </div>
-          )}
+          ) : null}
           {memoryPhotoPickerOpen && (
             <div
               className="memory-photo-picker-backdrop"

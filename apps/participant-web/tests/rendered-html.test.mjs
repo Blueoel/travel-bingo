@@ -128,8 +128,8 @@ test("connects the nationwide map to the exploration tab", async () => {
   assert.doesNotMatch(pageSource, /exploration-header-marker/);
   assert.match(pageSource, /scale: 1\.06/);
   assert.match(styles, /\.exploration-map-viewport/);
-  assert.match(styles, /height:\s*min\(66vh,\s*620px\)/);
-  assert.match(styles, /path\[data-code="31220"\]/);
+  assert.match(styles, /height:\s*clamp\(390px,\s*62vh,\s*620px\)/);
+  assert.match(styles, /path\.is-active-region/);
   assert.match(styles, /stroke-width:\s*0\.56\s*!important/);
   assert.match(styles, /fill:\s*#69a66f\s*!important/);
   assert.match(styles, /\.exploration-map \.region-label/);
@@ -169,7 +169,9 @@ test("unlocks and fills regions with persistent representative photos", async ()
 
   assert.doesNotMatch(pageSource, /시연용 3 Bingo 달성/);
   assert.match(pageSource, /explorationRecords/);
-  assert.match(pageSource, /selectedRegionRecord/);
+  assert.match(pageSource, /activeRegionCodes/);
+  assert.match(pageSource, /path\.classList\.toggle\("is-active-region"/);
+  assert.doesNotMatch(pageSource, /className="selected-region-card empty"/);
   assert.doesNotMatch(pageSource, /획득한 테두리/);
   assert.match(pageSource, /addRepresentativePhotoPatterns/);
   assert.match(pageSource, /memory-photo-/);
@@ -179,7 +181,7 @@ test("unlocks and fills regions with persistent representative photos", async ()
     /fill:url\(#memory-photo-/,
   );
   assert.match(memoryRoute, /lineCount < 3/);
-  assert.match(memoryRoute, /exploration_region_memories/);
+  assert.match(memoryRoute, /api\/backend\/travel-memories\/\$\{code\}/);
   assert.doesNotMatch(memoryRoute, /demoAnseongPhoto/);
   assert.match(memoryRoute, /getEligibleMemoryPhoto/);
   assert.match(pageSource, /인증 사진에서 선택/);
@@ -208,7 +210,7 @@ test("loads only started region progress for the exploration map", async () => {
   assert.match(pageSource, /Boolean\(item\.sessionId\)/);
   assert.match(pageSource, /region\.regionCode/);
   assert.match(pageSource, /travelRecordsByYear/);
-  assert.match(listRoute, /ORDER BY selected_at DESC/);
+  assert.match(listRoute, /api\/backend\/travel-memories/);
 });
 
 test("opens a functional participant menu and rejects stale GPS tracking", async () => {

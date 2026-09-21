@@ -861,7 +861,7 @@ button {
     stroke 160ms ease,
     filter 160ms ease;
 }
-.exploration-map path[data-code="31220"] {
+.exploration-map path.is-active-region {
   fill: #69a66f !important;
   stroke: #2f6847 !important;
   stroke-width: 1.9 !important;
@@ -882,7 +882,7 @@ button {
   stroke-width: 2.2 !important;
   filter: drop-shadow(0 1px 2px #4b563b55);
 }
-.exploration-map path[data-code="31220"].is-selected {
+.exploration-map path.is-active-region.is-selected {
   fill: #5d9d67 !important;
   stroke: #245c3d !important;
   stroke-width: 2.2 !important;
@@ -890,19 +890,8 @@ button {
     drop-shadow(0 0 2px #fffaf0)
     drop-shadow(0 0 6px #2f684788);
 }
-.exploration-map path[data-code="31220"].has-memory-photo {
-  stroke: #fff7d7 !important;
-  stroke-width: 3 !important;
-  filter:
-    drop-shadow(0 0 2px #244b34)
-    drop-shadow(0 0 7px #d7aa4a99);
-}
 .exploration-map .region-label {
   fill: #3c7465 !important;
-}
-.exploration-map .region-label[data-code="31220"] {
-  fill: #fffdf5 !important;
-  stroke: #2f6847 !important;
 }
 .exploration-map-state {
   position: absolute;
