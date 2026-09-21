@@ -1533,8 +1533,48 @@ async function seed(): Promise<void> {
     })),
   });
 
+  // 안성 지역 미션은 전면 재구성 예정입니다. 기존 참여·인증 이력을
+  // 보존하기 위해 레코드를 물리적으로 삭제하지 않고, 신규 노출과 도전을
+  // 막는 비활성 상태로 전환한 뒤 지역 빙고판 연결만 제거합니다.
+  await database.mission.updateMany({
+    where: { id: { in: regionMissionIds } },
+    data: { status: "INACTIVE" },
+  });
+  await database.missionRegion.deleteMany({
+    where: { regionId: ids.region },
+  });
+  await database.templateCell.deleteMany({
+    where: { templateId: ids.regionTemplate },
+  });
+  await database.bingoSession.updateMany({
+    where: {
+      templateId: ids.regionTemplate,
+      status: "ACTIVE",
+    },
+    data: { status: "ABANDONED" },
+  });
+  await database.bingoTemplate.update({
+    where: { id: ids.regionTemplate },
+    data: {
+      status: "ARCHIVED",
+      endsAt: new Date(),
+    },
+  });
+  await database.bingoTheme.update({
+    where: { id: ids.regionTheme },
+    data: { status: "INACTIVE" },
+  });
+  await database.place.updateMany({
+    where: { regionId: ids.region },
+    data: { status: "INACTIVE" },
+  });
+  await database.region.update({
+    where: { id: ids.region },
+    data: { status: "INACTIVE" },
+  });
+
   console.log(
-    `Seed complete. Demo user: ${ids.user}; Anseong region board: ${regionMissionIds.length} missions`,
+    `Seed complete. Demo user: ${ids.user}; Anseong region and ${regionMissionIds.length} missions deactivated`,
   );
 }
 
