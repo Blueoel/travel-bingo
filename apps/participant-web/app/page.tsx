@@ -1781,7 +1781,7 @@ export default function Home() {
     ) {
       return;
     }
-    const frame = window.requestAnimationFrame(() => {
+    const focusSelectedRegion = () => {
       const viewport = document.querySelector<HTMLElement>(
         ".exploration-map-viewport",
       );
@@ -1828,8 +1828,11 @@ export default function Home() {
           y: viewport.clientHeight / 2 - regionCenterY * scale,
         };
       });
-    });
-    return () => window.cancelAnimationFrame(frame);
+    };
+    const timers = [0, 160, 480].map((delay) =>
+      window.setTimeout(focusSelectedRegion, delay),
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [
     activeTab,
     explorationMapSvg,
@@ -1882,7 +1885,8 @@ export default function Home() {
 
   const explorationMapWithPhoto = addRepresentativePhotoPatterns(
     explorationMapSvg,
-    explorationRecords.filter((record) => record.photoUrl),
+    explorationRecords,
+    selectedMapRegion.code,
   );
   const travelRecordsByYear = explorationRecords
     .filter((record) => record.photoUrl && record.selectedAt)
@@ -5596,6 +5600,7 @@ export default function Home() {
 function addRepresentativePhotoPatterns(
   svg: string,
   records: ExplorationRecord[],
+  selectedRegionCode: string,
 ) {
   if (!svg || !records.length) return svg;
   const patterns = records
@@ -5619,9 +5624,14 @@ function addRepresentativePhotoPatterns(
     const pathPattern = new RegExp(
       `(<path id="region-[^"]+" class=")([^"]*)("[^>]*data-name="${escapedName}"[^>]*data-province="${escapedProvince}"[^>]*)(>)`,
     );
+    const photoStyle = record.photoUrl
+      ? ` style="fill:url(#memory-photo-${record.regionCode}) !important"`
+      : "";
+    const selectedClass =
+      record.regionCode === selectedRegionCode ? " is-selected" : "";
     withPatterns = withPatterns.replace(
       pathPattern,
-      `$1$2 has-memory-photo$3 style="fill:url(#memory-photo-${record.regionCode}) !important"$4`,
+      `$1$2 is-active-region${selectedClass}${record.photoUrl ? " has-memory-photo" : ""}$3${photoStyle}$4`,
     );
   }
   return withPatterns;
