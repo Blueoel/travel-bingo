@@ -1743,10 +1743,16 @@ export default function Home() {
       ".exploration-map path[data-code]",
     );
     paths.forEach((path) => {
-      const isActiveRegion = activeRegionCodes.has(path.dataset.code ?? "");
+      const matchingRecord = explorationRecords.find(
+        (record) =>
+          activeRegionCodes.has(path.dataset.code ?? "") ||
+          (regionNamesMatch(record.regionName, path.dataset.name ?? null) &&
+            record.provinceName === path.dataset.province),
+      );
+      const isActiveRegion = Boolean(matchingRecord);
       path.classList.toggle(
         "is-selected",
-        isActiveRegion && path.dataset.code === selectedMapRegion.code,
+        isActiveRegion && matchingRecord?.regionCode === selectedMapRegion.code,
       );
       path.classList.toggle("is-active-region", isActiveRegion);
       path.setAttribute("tabindex", isActiveRegion ? "0" : "-1");
@@ -1782,8 +1788,22 @@ export default function Home() {
       const svg = document.querySelector<SVGSVGElement>(
         ".exploration-map-svg svg",
       );
-      const path = document.querySelector<SVGGraphicsElement>(
-        `.exploration-map path[data-code="${selectedMapRegion.code}"]`,
+      const selectedRecord = explorationRecords.find(
+        (record) => record.regionCode === selectedMapRegion.code,
+      );
+      const path = Array.from(
+        document.querySelectorAll<SVGGraphicsElement>(
+          ".exploration-map path[data-code]",
+        ),
+      ).find(
+        (candidate) =>
+          candidate.dataset.code === selectedMapRegion.code ||
+          (selectedRecord &&
+            regionNamesMatch(
+              selectedRecord.regionName,
+              candidate.dataset.name ?? null,
+            ) &&
+            selectedRecord.provinceName === candidate.dataset.province),
       );
       if (!viewport || !svg || !path || !svg.viewBox.baseVal.width) return;
       const regionBounds = path.getBBox();
@@ -1981,10 +2001,17 @@ export default function Home() {
         "path[data-code]",
       );
       if (path?.dataset.code && path.dataset.name) {
+        const matchingRecord = explorationRecords.find(
+          (record) =>
+            record.regionCode === path.dataset.code ||
+            (regionNamesMatch(record.regionName, path.dataset.name ?? null) &&
+              record.provinceName === path.dataset.province),
+        );
         setSelectedMapRegion({
-          code: path.dataset.code,
-          name: path.dataset.name,
-          province: path.dataset.province ?? "",
+          code: matchingRecord?.regionCode ?? path.dataset.code,
+          name: matchingRecord?.regionName ?? path.dataset.name,
+          province:
+            matchingRecord?.provinceName ?? path.dataset.province ?? "",
         });
       }
     }
@@ -5573,12 +5600,17 @@ function addRepresentativePhotoPatterns(
     .join("");
   let withPatterns = svg.replace(/(<svg\b[^>]*>)/, `$1<defs>${patterns}</defs>`);
   for (const record of records) {
+    const escapedName = record.regionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedProvince = record.provinceName.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
     const pathPattern = new RegExp(
-      `(<path id="region-${record.regionCode}" class=")([^"]*)(")`,
+      `(<path id="region-[^"]+" class=")([^"]*)("[^>]*data-name="${escapedName}"[^>]*data-province="${escapedProvince}"[^>]*)(>)`,
     );
     withPatterns = withPatterns.replace(
       pathPattern,
-      `$1$2 has-memory-photo$3 style="fill:url(#memory-photo-${record.regionCode}) !important"`,
+      `$1$2 has-memory-photo$3 style="fill:url(#memory-photo-${record.regionCode}) !important"$4`,
     );
   }
   return withPatterns;
