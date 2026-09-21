@@ -499,6 +499,8 @@ function toPublicMission(snapshot: unknown): unknown {
               : undefined,
           }))
       : undefined;
+  const quizChoices =
+    policy?.type === "QUIZ" ? toQuizChoices(policy.choices) : undefined;
   return {
     ...publicMission,
     ...(interactionType ? { interactionType } : {}),
@@ -512,7 +514,24 @@ function toPublicMission(snapshot: unknown): unknown {
     ...(compositeRequirements?.length
       ? { compositeRequirements }
       : {}),
+    ...(quizChoices?.length ? { quizChoices } : {}),
   };
+}
+
+function toQuizChoices(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const choices = value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return choices.length >= 2 ? choices : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  const choices = value
+    .split(/(?=[①②③④⑤⑥⑦⑧⑨⑩])/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return choices.length >= 2 ? choices : undefined;
 }
 
 function isUniqueConstraintError(error: unknown): boolean {

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { createDatabaseClient } from "../src/client.js";
+import { anseongMissionSeed } from "./anseong-missions.js";
 import { gongjuMissionSeed } from "./gongju-missions.js";
 import { yeoncheonMissionSeed } from "./yeoncheon-missions.js";
 
@@ -43,6 +44,14 @@ function yeoncheonMissionId(order: number): string {
 
 function yeoncheonPlaceId(order: number): string {
   return `92000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function anseongMissionId(order: number): string {
+  return `94000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
+}
+
+function anseongPlaceId(order: number): string {
+  return `95000000-0000-4000-8000-${String(order).padStart(12, "0")}`;
 }
 
 const places = [
@@ -981,6 +990,14 @@ function answerHash(answer: string): string {
     .digest("hex");
 }
 
+function securedVerificationPolicy(policy: unknown): unknown {
+  if (typeof policy !== "object" || policy === null) return policy;
+  const record = policy as Record<string, unknown>;
+  if (typeof record.answer !== "string") return policy;
+  const { answer, ...rest } = record;
+  return { ...rest, answerHash: answerHash(answer) };
+}
+
 async function seed(): Promise<void> {
   await database.user.upsert({
     where: { id: ids.user },
@@ -1533,9 +1550,8 @@ async function seed(): Promise<void> {
     })),
   });
 
-  // 안성 지역 미션은 전면 재구성 예정입니다. 기존 참여·인증 이력을
-  // 보존하기 위해 레코드를 물리적으로 삭제하지 않고, 신규 노출과 도전을
-  // 막는 비활성 상태로 전환한 뒤 지역 빙고판 연결만 제거합니다.
+  // 이전 안성 미션은 참여·인증 이력 보존을 위해 비활성 상태로 남기고,
+  // 새 미션 목록만 지역 후보군에 다시 연결합니다.
   await database.mission.updateMany({
     where: { id: { in: regionMissionIds } },
     data: { status: "INACTIVE" },
@@ -1546,35 +1562,121 @@ async function seed(): Promise<void> {
   await database.templateCell.deleteMany({
     where: { templateId: ids.regionTemplate },
   });
-  await database.bingoSession.updateMany({
-    where: {
-      templateId: ids.regionTemplate,
-      status: "ACTIVE",
-    },
-    data: { status: "ABANDONED" },
-  });
-  await database.bingoTemplate.update({
-    where: { id: ids.regionTemplate },
-    data: {
-      status: "ARCHIVED",
-      endsAt: new Date(),
-    },
-  });
-  await database.bingoTheme.update({
-    where: { id: ids.regionTheme },
-    data: { status: "INACTIVE" },
-  });
   await database.place.updateMany({
     where: { regionId: ids.region },
     data: { status: "INACTIVE" },
   });
+
+  const anseongPlaceIds = new Map<string, string>();
+  for (const mission of anseongMissionSeed) {
+    if (
+      !mission.placeTitle ||
+      mission.latitude === null ||
+      mission.longitude === null ||
+      anseongPlaceIds.has(mission.placeTitle)
+    ) {
+      continue;
+    }
+    const id = anseongPlaceId(mission.order);
+    anseongPlaceIds.set(mission.placeTitle, id);
+    await database.place.upsert({
+      where: { id },
+      update: {
+        regionId: ids.region,
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+        status: "ACTIVE",
+      },
+      create: {
+        id,
+        regionId: ids.region,
+        source: "ANSEONG_MISSION_CATALOG",
+        externalContentId: `anseong-${mission.order}`,
+        contentType: "TOURIST_SPOT",
+        title: mission.placeTitle,
+        address: mission.address,
+        latitude: mission.latitude,
+        longitude: mission.longitude,
+        status: "ACTIVE",
+      },
+    });
+  }
+
+  const activeAnseongMissionIds: string[] = [];
+  for (const mission of anseongMissionSeed) {
+    const id = anseongMissionId(mission.order);
+    const placeId = mission.placeTitle
+      ? anseongPlaceIds.get(mission.placeTitle) ?? null
+      : null;
+    const missionData = {
+      placeId,
+      kind: mission.kind,
+      scope: "REGION" as const,
+      title: mission.title,
+      description: mission.description,
+      category: mission.category,
+      verificationPolicy: securedVerificationPolicy(
+        mission.verificationPolicy,
+      ) as never,
+      targetValue: mission.targetValue,
+      targetUnit: mission.targetUnit,
+      radiusM: mission.kind === "PLACE_VISIT" ? 150 : null,
+      points:
+        Number(mission.difficulty) === 3
+          ? 30
+          : Number(mission.difficulty) === 2
+            ? 20
+            : 10,
+      difficulty: mission.difficulty,
+      similarityGroup: mission.similarityGroup,
+      status: mission.status,
+    };
+    await database.mission.upsert({
+      where: { id },
+      update: missionData,
+      create: { id, ...missionData },
+    });
+    await database.missionRegion.create({
+      data: { missionId: id, regionId: ids.region },
+    });
+    if (mission.status === "ACTIVE") activeAnseongMissionIds.push(id);
+  }
+
+  if (activeAnseongMissionIds.length < 25) {
+    throw new Error(
+      `Anseong region board requires at least 25 active missions; received ${activeAnseongMissionIds.length}.`,
+    );
+  }
+
   await database.region.update({
     where: { id: ids.region },
-    data: { status: "INACTIVE" },
+    data: { status: "ACTIVE" },
+  });
+  await database.bingoTheme.update({
+    where: { id: ids.regionTheme },
+    data: { status: "ACTIVE" },
+  });
+  await database.bingoTemplate.update({
+    where: { id: ids.regionTemplate },
+    data: {
+      status: "PUBLISHED",
+      startsAt: new Date("2026-09-21T00:00:00.000Z"),
+      endsAt: null,
+      publishedAt: new Date(),
+    },
+  });
+  await database.templateCell.createMany({
+    data: activeAnseongMissionIds.slice(0, 25).map((missionId, position) => ({
+      templateId: ids.regionTemplate,
+      missionId,
+      position,
+    })),
   });
 
   console.log(
-    `Seed complete. Demo user: ${ids.user}; Anseong region and ${regionMissionIds.length} missions deactivated`,
+    `Seed complete. Demo user: ${ids.user}; Anseong region board: ${activeAnseongMissionIds.length} active missions`,
   );
 }
 

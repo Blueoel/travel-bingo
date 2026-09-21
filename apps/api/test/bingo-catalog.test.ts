@@ -131,6 +131,63 @@ function boardMissionIds(board: { cells: readonly { mission: unknown }[] }) {
 }
 
 describe("BingoCatalogService", () => {
+  it("exposes quiz choices without leaking the verification answer", async () => {
+    const database = {
+      bingoSession: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "region-session",
+          status: "ACTIVE",
+          totalPoints: 0,
+          template: {
+            id: "region-template",
+            type: "REGION",
+            title: "안성 여행 빙고",
+            region: { name: "경기도 안성시", administrativeCode: "41550" },
+          },
+          cells: [
+            {
+              id: "cell-29",
+              position: 0,
+              status: "AVAILABLE",
+              missionSnapshot: {
+                kind: "QUIZ",
+                title: "1919, 그 날",
+                description: "안성 만세항쟁 날짜 퀴즈",
+                points: 20,
+                verificationPolicy: {
+                  type: "QUIZ",
+                  answerHash: "hidden-answer-hash",
+                  choices: [
+                    "①3월 1일",
+                    "②3월 15일",
+                    "③4월 1일",
+                    "④4월 15일",
+                  ],
+                },
+              },
+            },
+          ],
+        }),
+      },
+    };
+
+    const result = await new BingoCatalogService(database as never).getSession(
+      "user-1",
+      "region-session",
+    );
+
+    expect(result.cells[0]?.mission).toMatchObject({
+      kind: "QUIZ",
+      quizChoices: [
+        "①3월 1일",
+        "②3월 15일",
+        "③4월 1일",
+        "④4월 15일",
+      ],
+    });
+    expect(result.cells[0]?.mission).not.toHaveProperty("verificationPolicy");
+  });
+
   it("exposes regional composite requirements with their real evidence types", async () => {
     const database = {
       bingoSession: {
