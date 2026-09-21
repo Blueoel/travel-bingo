@@ -780,6 +780,9 @@ export default function Home() {
   const [explorationMapSvg, setExplorationMapSvg] = useState("");
   const [explorationMapLoading, setExplorationMapLoading] = useState(false);
   const [explorationMapAttempt, setExplorationMapAttempt] = useState(0);
+  const [explorationPreviewMode, setExplorationPreviewMode] = useState<
+    string | null
+  >(null);
   const [explorationMemory, setExplorationMemory] =
     useState<ExplorationMemory>({
       regionCode: "31220",
@@ -1550,6 +1553,18 @@ export default function Home() {
   }, [activeTab, regionDirectory.length]);
 
   useEffect(() => {
+    setExplorationPreviewMode(
+      new URLSearchParams(window.location.search).get("explorationPreview"),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (explorationPreviewMode === "completed") {
+      setActiveTab("exploration");
+    }
+  }, [explorationPreviewMode]);
+
+  useEffect(() => {
     if (activeTab !== "exploration" || explorationMapSvg) return;
     setExplorationMapLoading(true);
     void fetch("/maps/korea-sigungu.svg")
@@ -1565,6 +1580,28 @@ export default function Home() {
 
   useEffect(() => {
     if (activeTab !== "exploration" && activeTab !== "my") return;
+    if (explorationPreviewMode === "completed" && activeTab === "exploration") {
+      const previewRecord: ExplorationRecord = {
+        regionCode: "44150",
+        regionName: "공주시",
+        provinceName: "충청남도",
+        missionTitles: ["공산성에서 남긴 여행의 한 장"],
+        lineCount: 5,
+        unlocked: true,
+        photoUrl: "/examples/gongsanseong-memory.svg",
+        selectedAt: "2026-09-21T00:00:00.000Z",
+      };
+      setExplorationRecords([previewRecord]);
+      setSelectedMapRegion({
+        code: previewRecord.regionCode,
+        name: previewRecord.regionName,
+        province: previewRecord.provinceName,
+      });
+      setExplorationMemory(previewRecord);
+      setAnseongMissionTitles(previewRecord.missionTitles);
+      setExplorationMemoryLoading(false);
+      return;
+    }
     setExplorationMemoryLoading(true);
     void Promise.all([
       fetch("/api/exploration/regions", { credentials: "include" }).then(
@@ -1650,7 +1687,7 @@ export default function Home() {
       })
       .catch(() => undefined)
       .finally(() => setExplorationMemoryLoading(false));
-  }, [activeTab]);
+  }, [activeTab, explorationPreviewMode]);
 
   useEffect(() => {
     const selected = explorationRecords.find(
@@ -1721,6 +1758,47 @@ export default function Home() {
         }`,
       );
     });
+  }, [
+    activeTab,
+    explorationMapSvg,
+    explorationRecords,
+    selectedMapRegion.code,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeTab !== "exploration" ||
+      !explorationMapSvg ||
+      !explorationRecords.some(
+        (record) => record.regionCode === selectedMapRegion.code,
+      )
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const viewport = document.querySelector<HTMLElement>(
+        ".exploration-map-viewport",
+      );
+      const svg = document.querySelector<SVGSVGElement>(
+        ".exploration-map-svg svg",
+      );
+      const path = document.querySelector<SVGGraphicsElement>(
+        `.exploration-map path[data-code="${selectedMapRegion.code}"]`,
+      );
+      if (!viewport || !svg || !path || !svg.viewBox.baseVal.width) return;
+      const regionBounds = path.getBBox();
+      const viewBox = svg.viewBox.baseVal;
+      const renderedUnit = svg.clientWidth / viewBox.width;
+      const scale = 2.15;
+      const regionCenterX = regionBounds.x + regionBounds.width / 2 - viewBox.x;
+      const regionCenterY = regionBounds.y + regionBounds.height / 2 - viewBox.y;
+      setMapTransform({
+        scale,
+        x: viewport.clientWidth / 2 - regionCenterX * renderedUnit * scale,
+        y: viewport.clientHeight / 2 - regionCenterY * renderedUnit * scale,
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [
     activeTab,
     explorationMapSvg,

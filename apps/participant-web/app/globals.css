@@ -844,6 +844,7 @@ button {
   position: relative;
   width: 100%;
   transform-origin: 0 0;
+  transition: transform 280ms ease-out;
   will-change: transform;
 }
 .exploration-map-svg svg {
